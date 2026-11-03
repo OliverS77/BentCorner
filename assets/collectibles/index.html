@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Badges &amp; Collectibles</title>
+<!-- Bent°Corner: alle Tauschtickets, nachgebaut aus ihren Daten (data.js). Läuft per Doppelklick, ohne Internet.
+     Der Nachbau folgt tradelib.offer_image (Kassenbon 720 px); der Pixel-Code kommt Bit für Bit aus den Daten. -->
+<style>
+  @font-face { font-family:"Inter"; src:url("fonts/Inter_18pt-Regular.ttf"); font-weight:400; }
+  @font-face { font-family:"Inter"; src:url("fonts/Inter_18pt-Medium.ttf"); font-weight:500 700; }
+  @font-face { font-family:"Barlow Semi Condensed"; src:url("fonts/BarlowSemiCondensed-SemiBold.ttf"); font-weight:600; }
+  :root { --bg:#141416; --surface:#18181a; --line:#2a2a2c; --line2:#3d3d40; --text:#ededed; --text2:#b5b5b5;
+          --muted:#8e8e8e; --dim:#686868; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font:15px/1.55 "Inter", system-ui, sans-serif; padding:48px 40px 80px; }
+  h1 { font:600 clamp(40px,7vw,72px)/.95 "Barlow Semi Condensed","Barlow",sans-serif; text-transform:uppercase; }
+  h1 span { color:var(--dim); }
+  h2 { font:600 18px "Barlow Semi Condensed","Barlow",sans-serif; text-transform:uppercase; letter-spacing:.08em;
+       margin:56px 0 18px; padding-top:20px; border-top:1px solid var(--line); }
+  .lead { color:var(--text2); max-width:640px; margin-top:14px; }
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+  .stat { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px; min-width:130px; }
+  .stat b { display:block; font:600 26px "Barlow Semi Condensed","Barlow",sans-serif; }
+  .stat span { color:var(--muted); font-size:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:22px; }
+  .item { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; }
+  .item canvas, .item img { width:100%; display:block; border-radius:6px; }
+  .meta { color:var(--muted); font-size:12px; margin-top:10px; }
+  .meta b { color:var(--text2); font-weight:500; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .tabs button { background:#1c1c1f; color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:4px 10px;
+                 font:500 12px "Inter",sans-serif; cursor:pointer; }
+  .tabs button.on { color:var(--text); border-color:var(--line2); }
+  details { margin-top:8px; color:var(--text2); font-size:12px; }
+  summary { cursor:pointer; color:var(--muted); }
+  pre { white-space:pre-wrap; word-break:break-all; font:11px/1.4 ui-monospace,Consolas,monospace; color:var(--muted);
+        max-height:240px; overflow:auto; margin-top:6px; }
+  .empty { color:var(--muted); }
+  @media (max-width:700px) { body { padding:28px 16px 60px; } }
+</style>
+</head>
+<body>
+<h1>Badges &amp;<br><span>Collectibles.</span></h1>
+<p class="lead">Alle Tauschtickets dieses Datenordners – aus ihren Daten nachgebaut, daneben das gespeicherte Bild.
+  Dazu je Programmversion, in der sich am Ticket etwas geändert hat, ein Muster. Code und Daten liegen in den Ordnern
+  <code>formats/</code>, <code>versions/</code> und <code>tickets/</code> daneben.</p>
+<div class="stats" id="stats"></div>
+
+<h2>Deine Tickets</h2>
+<div class="grid" id="tickets"></div>
+
+<h2>Ticket-Formate je Version</h2>
+<div class="grid" id="versions"></div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.BC || {tickets: [], versions: [], formats: []};
+const eur = v => v == null ? "–" : v.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+const date = s => s ? new Date(s * 1000).toLocaleString("de-DE", {dateStyle: "medium", timeStyle: "short"}) : "–";
+const LANG = {de: "DE", fr: "FR", it: "IT", es: "ES", pt: "PT", ja: "JP", ko: "KO", ru: "RU", zhs: "ZH", zht: "ZH"};
+const EVENT = {sent: "gesendet", received: "erhalten", accepted: "angenommen", declined: "abgelehnt",
+               withdrawn: "zurückgezogen", booked: "gebucht", shown: "gezeigt", found: "eingesammelt"};
+
+// Querformat bis v0.8.2 nachbauen (wie das damalige tradelib.offer_image, 1200 px breit, 2× gezeichnet)
+function wide(e) {
+  const t = e.ticket || {}, W = 1200, S = 2, code = e.code;
+  const fName = (t.f || ["", "?"])[1] || "?", oName = (t.o || ["", "?"])[1] || "?";
+  const sides = [[fName + " bekommt", e.b || []], [oName + " bekommt", e.a || []]];
+  const rowsN = Math.max(sides[0][1].length, sides[1][1].length, 1);
+  const stub = code ? code.rows * code.m + code.bottom + 70 : 0;
+  const H = 250 + 34 * Math.min(rowsN, 40) + 150 + stub, cut = H - stub;
+  const cv = document.createElement("canvas"); cv.width = W * S; cv.height = H * S;
+  const p = cv.getContext("2d"); p.scale(S, S);
+  const ink = "#ededed", muted = "#8e8e8e";
+  const font = (px, bold, display) => (bold || display ? "600 " : "400 ") + px + "px " +
+    (display ? '"Barlow Semi Condensed","Barlow",sans-serif' : '"Inter",system-ui,sans-serif');
+  function text(x, y, s, px, color, opts) {
+    opts = opts || {}; p.font = font(px, opts.bold, opts.display); p.fillStyle = color || ink;
+    p.textAlign = opts.align || "left"; p.textBaseline = "middle"; p.fillText(s, x, y);
+  }
+  p.fillStyle = "#0a0a0a"; p.fillRect(0, 0, W, H);
+  // Fläche mit runden Ecken, an der Abriss-Linie links/rechts eingestanzt
+  p.fillStyle = "#141414"; p.strokeStyle = "#262626"; p.lineWidth = 1;
+  p.beginPath(); p.roundRect(16, 16, W - 32, H - 32, 22); p.fill(); p.stroke();
+  if (code) {
+    p.fillStyle = "#0a0a0a"; [16, W - 16].forEach(x => { p.beginPath(); p.arc(x, cut, 18, 0, Math.PI * 2); p.fill(); });
+    p.save(); p.strokeStyle = "#3a3a3a"; p.lineWidth = 2; p.setLineDash([3, 4]);
+    p.beginPath(); p.moveTo(48, cut); p.lineTo(W - 48, cut); p.stroke(); p.restore();
+  }
+  text(48, 44, "BENT°CORNER  ·  TAUSCHTICKET  ·  " + date(t.t).split(",")[0], 13, muted, {bold: true});
+  if (t.k) {
+    const kind = t.k === "f" ? "ABSCHLUSS" : ((t.n || 1) === 1 ? "ANGEBOT" : "GEGENANGEBOT " + t.n);
+    text(W - 48, 44, kind + "  ·  TAUSCH " + String(t.x || t.id || "").toUpperCase(), 13, muted, {bold: true, align: "right"});
+  }
+  text(48, 90, fName + "  ⇄  " + oName, 44, ink, {display: true});
+  p.strokeStyle = "#2a2a2a"; p.lineWidth = 1; p.beginPath(); p.moveTo(48, 140); p.lineTo(W - 48, 140); p.stroke();
+  const colW = (W - 96 - 40) / 2, sums = [];
+  sides.forEach(([title, rows], k) => {
+    const x = 48 + k * (colW + 40);
+    text(x, 167, "0" + (k + 1) + " — " + title.toUpperCase(), 13, muted, {bold: true});
+    let y = 192, total = 0;
+    rows.slice(0, 40).forEach(r => {
+      const n = r.count || 1; total += (r.eur || 0) * n;
+      text(x, y + 12, (n + "×  " + (r.name || r.set + " #" + r.number)).slice(0, 48), 16, ink, {bold: true});
+      text(x + 30, y + 28, r.set + " #" + r.number + (r.foil ? " · Foil" : "") +
+           (r.lang && r.lang !== "en" ? " · " + (LANG[r.lang] || r.lang.toUpperCase()) : ""), 14, muted);
+      text(x + colW, y + 12, r.eur == null ? "–" : eur(r.eur * n), 16, ink, {align: "right"});
+      y += 38;
+    });
+    if (!rows.length) text(x, y + 12, "nichts", 15, muted);
+    sums.push(total);
+  });
+  p.strokeStyle = "#2a2a2a"; p.beginPath(); p.moveTo(48, cut - 110); p.lineTo(W - 48, cut - 110); p.stroke();
+  sums.forEach((total, k) => { const x = 48 + k * (colW + 40);
+    text(x, cut - 86, "WERT", 13, muted, {bold: true}); text(x, cut - 54, eur(total), 34, ink, {display: true}); });
+  text(W - 48, cut - 21, "Preise: Cardmarket-Trend, ohne Gewähr", 12, muted, {align: "right"});
+  const money = (t.m || 0) / 100;
+  if (Math.abs(money) >= .01) {
+    let payer = fName, payee = oName, m = money; if (m < 0) { [payer, payee] = [payee, payer]; m = -m; }
+    text(48, cut - 23, "+ " + eur(m) + " von " + payer + " an " + payee, 15, ink, {bold: true});
+  }
+  if (code) {
+    text(48, cut + 28, "TICKET  Nº " + (e.label || ""), 13, muted, {bold: true});
+    text(W - 48, cut + 28, "Einlösen: Bent°Corner → Tausch → Importieren", 12, muted, {align: "right"});
+    p.fillStyle = "#c9c9c9";
+    for (let i = 0; i < code.bits.length; i++) {
+      if (code.bits[i] !== "1") continue;
+      const r = Math.floor(i / code.cols), c = i % code.cols;
+      p.fillRect(code.x0 + c * code.m + .5, H - code.bottom - (r + 1) * code.m + .5, code.m - 1, code.m - 1);
+    }
+  }
+  return cv;
+}
+
+// Kassenbon nachbauen (wie tradelib.offer_image, Maße in logischen Pixeln, 2× gezeichnet)
+function receipt(e) {
+  if (e.layout === "wide") return wide(e);
+  const t = e.ticket || {}, W = 720, L = 40, R = W - 40, ROW = 50, SHOW = 30, S = 2;
+  // aus Sicht des Ausstellers: f bekommt b, o bekommt a
+  const fName = (t.f || ["", "?"])[1] || "?", oName = (t.o || ["", "?"])[1] || "?";
+  const sides = [[fName + " bekommt", e.b || []], [oName + " bekommt", e.a || []]];
+  const sideH = rows => 40 + Math.max(1, Math.min(rows.length, SHOW)) * ROW + (rows.length > SHOW ? 26 : 0) + 50;
+  const money = (t.m || 0) / 100;
+  const code = e.code;
+  const stub = code ? code.rows * code.m + code.bottom + 96 : 40;
+  const H = 262 + sideH(sides[0][1]) + sideH(sides[1][1]) + (Math.abs(money) >= .01 ? 40 : 0) + 96 + stub;
+  const cv = document.createElement("canvas"); cv.width = W * S; cv.height = H * S;
+  const p = cv.getContext("2d"); p.scale(S, S);
+  const ink = "#ededed", muted = "#8e8e8e";
+  p.fillStyle = "#0a0a0a"; p.fillRect(0, 0, W, H);
+  // Papier mit gezackten Rändern
+  const tooth = 12; p.beginPath(); p.moveTo(8, tooth);
+  for (let x = 8; x < W - 8; x += tooth) { p.lineTo(Math.min(W - 8, x + tooth / 2), 0); p.lineTo(Math.min(W - 8, x + tooth), tooth); }
+  p.lineTo(W - 8, H - tooth);
+  for (let x = W - 8; x > 8; x -= tooth) { p.lineTo(Math.max(8, x - tooth / 2), H); p.lineTo(Math.max(8, x - tooth), H - tooth); }
+  p.closePath(); p.fillStyle = "#151515"; p.fill();
+  const font = (px, bold, display) => (bold || display ? "600 " : "400 ") + px + "px " +
+    (display ? '"Barlow Semi Condensed","Barlow",sans-serif' : '"Inter",system-ui,sans-serif');
+  function text(x, y, s, px, color, opts) {
+    opts = opts || {}; p.font = font(px, opts.bold, opts.display); p.fillStyle = color || ink;
+    p.textAlign = opts.align || "left"; p.textBaseline = "middle"; p.fillText(s, x, y);
+  }
+  function dashed(y) { p.save(); p.strokeStyle = "#3a3a3a"; p.lineWidth = 2; p.setLineDash([3, 4]);
+    p.beginPath(); p.moveTo(L, y); p.lineTo(R, y); p.stroke(); p.restore(); }
+  text(W / 2, 51, "BENT°CORNER", 30, ink, {align: "center", display: true});
+  const kind = t.k === "f" || (!t.k) ? "ABSCHLUSS" : ((t.n || 1) === 1 ? "TAUSCHTICKET" : "GEGENANGEBOT " + t.n);
+  text(W / 2, 82, kind + "  ·  " + date(t.t), 13, muted, {align: "center", bold: true});
+  text(W / 2, 104, "TAUSCH " + String(t.x || t.id || "").toUpperCase(), 13, muted, {align: "center"});
+  dashed(126);
+  text(W / 2, 172, fName + "  ⇄  " + oName, 26, ink, {align: "center", display: true});
+  dashed(222);
+  let y = 238; const sums = [];
+  sides.forEach(([title, rows], k) => {
+    text(L, y + 11, "0" + (k + 1) + " — " + title.toUpperCase(), 13, muted, {bold: true}); y += 40;
+    let total = 0; rows.forEach(r => total += (r.eur || 0) * (r.count || 1));
+    rows.slice(0, SHOW).forEach(r => {
+      const n = r.count || 1;
+      text(L, y + 12, (n + "×  " + (r.name || (r.set + " #" + r.number))).slice(0, 52), 17, ink, {bold: true});
+      text(R, y + 12, r.eur == null ? "–" : eur(r.eur * n), 17, ink, {align: "right"});
+      text(L + 34, y + 33, r.set + " #" + r.number + (r.foil ? " · Foil" : "") +
+           (r.lang && r.lang !== "en" ? " · " + (LANG[r.lang] || r.lang.toUpperCase()) : ""), 14, muted);
+      y += ROW;
+    });
+    if (!rows.length) { text(L, y + 12, "nichts", 16, muted); y += ROW; }
+    if (rows.length > SHOW) { text(L, y + 11, "… und " + (rows.length - SHOW) + " weitere (im Code enthalten)", 14, muted); y += 26; }
+    p.strokeStyle = "#2e2e2e"; p.lineWidth = 1; p.beginPath(); p.moveTo(L, y + 6); p.lineTo(R, y + 6); p.stroke();
+    text(L, y + 26, "SUMME", 13, muted, {bold: true}); text(R, y + 26, eur(total), 22, ink, {align: "right", display: true});
+    y += 50; sums.push(total);
+  });
+  if (Math.abs(money) >= .01) {
+    let payer = fName, payee = oName, m = money; if (m < 0) { [payer, payee] = [payee, payer]; m = -m; }
+    text(L, y + 15, "+ " + eur(m) + " von " + payer + " an " + payee, 17, ink, {bold: true}); y += 40;
+  }
+  dashed(y + 10);
+  const diff = sums[0] - sums[1] - money;
+  text(L, y + 37, ("Bilanz für " + fName).toUpperCase(), 13, muted, {bold: true});
+  text(R, y + 37, (diff > .005 ? "+" : "") + eur(diff), 22, ink, {align: "right", display: true});
+  text(W / 2, y + 67, "Preise: Cardmarket-Trend zum Zeitpunkt des Archivierens, ohne Gewähr", 12, muted, {align: "center"});
+  const cut = H - stub;
+  if (code) {
+    p.fillStyle = "#0a0a0a"; [8, W - 8].forEach(x => { p.beginPath(); p.arc(x, cut, 14, 0, Math.PI * 2); p.fill(); });
+    dashed(cut);
+    text(W / 2, cut + 31, "TICKET  Nº " + (e.label || ""), 15, ink, {align: "center", bold: true});
+    text(W / 2, cut + 56, "Einlösen: Bent°Corner → Tausch → Importieren", 13, muted, {align: "center"});
+    p.fillStyle = "#c9c9c9";
+    for (let i = 0; i < code.bits.length; i++) {
+      if (code.bits[i] !== "1") continue;
+      const r = Math.floor(i / code.cols), c = i % code.cols;
+      p.fillRect(code.x0 + c * code.m + .5, H - code.bottom - (r + 1) * code.m + .5, code.m - 1, code.m - 1);
+    }
+  }
+  return cv;
+}
+
+function item(e, base) {
+  const box = document.createElement("div"); box.className = "item";
+  const tabs = document.createElement("div"); tabs.className = "tabs";
+  const view = document.createElement("div");
+  const rebuilt = receipt(e);
+  const options = [["Nachbau", () => rebuilt]];
+  if (e.png) options.push(["Bild", () => { const im = new Image(); im.src = base + "/" + e.png; return im; }]);
+  options.forEach(([name, make], i) => {
+    const b = document.createElement("button"); b.textContent = name;
+    b.onclick = () => { tabs.querySelectorAll("button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+                        view.innerHTML = ""; view.appendChild(make()); };
+    tabs.appendChild(b); if (i === 0) b.click();
+  });
+  box.appendChild(tabs); box.appendChild(view);
+  const t = e.ticket || {};
+  const ev = (e.events || []).map(x => (EVENT[x.event] || x.event) + " " + date(x.at)).join(" · ");
+  const m = document.createElement("div"); m.className = "meta";
+  m.innerHTML = "<b>Nº " + (e.label || "") + "</b> · " + (e.game || "") + " · " + ((t.f || [])[1] || "?") + " ⇄ " +
+    ((t.o || [])[1] || "?") + "<br>Version im Tausch " + (e.version_in_trade || 1) + " · Programm " + (e.app_version || "?") +
+    " · Ticket-Format v" + (e.ticket_format || "?") + (e.render ? " · Aussehen " + e.render : "") + "<br>" + ev;
+  box.appendChild(m);
+  const det = document.createElement("details");
+  det.innerHTML = "<summary>Rohdaten</summary><pre></pre>";
+  det.querySelector("pre").textContent = JSON.stringify(Object.assign({}, e, {code: e.code ? "(" + e.code.rows + " Zeilen)" : null}), null, 1);
+  box.appendChild(det);
+  return box;
+}
+
+(function () {
+  const T = D.tickets || [];
+  const trades = new Set(T.map(e => e.trade)).size;
+  const booked = T.filter(e => (e.events || []).some(x => x.event === "booked")).length;
+  const cards = T.reduce((n, e) => n + [...(e.a || []), ...(e.b || [])].reduce((k, r) => k + (r.count || 1), 0), 0);
+  const value = T.filter(e => (e.events || []).some(x => x.event === "booked")).reduce((s, e) => s + [...(e.a || []), ...(e.b || [])]
+    .reduce((k, r) => k + (r.eur || 0) * (r.count || 1), 0), 0);
+  const first = T.length ? Math.min(...T.map(e => e.issued || Infinity)) : null;
+  [["Tickets", T.length], ["Tausche", trades], ["gebucht", booked], ["Karten bewegt", cards],
+   ["Wert der Abschlüsse", eur(value)], ["erstes Ticket", first ? new Date(first * 1000).toLocaleDateString("de-DE") : "–"]]
+    .forEach(([k, v]) => { const d = document.createElement("div"); d.className = "stat";
+      d.innerHTML = "<b></b><span></span>"; d.querySelector("b").textContent = v; d.querySelector("span").textContent = k;
+      document.getElementById("stats").appendChild(d); });
+  const tk = document.getElementById("tickets");
+  if (!T.length) tk.innerHTML = '<p class="empty">Noch keine Tickets – sobald du eins teilst oder einliest, liegt es hier.</p>';
+  T.forEach(e => tk.appendChild(item(e, e.dir)));
+  const vs = document.getElementById("versions");
+  (D.versions || []).slice().reverse().forEach(v => {
+    const box = item(Object.assign({}, v.sample || {}, {png: v.png}), v.dir);
+    box.querySelector(".meta").innerHTML = "<b>Bent°Corner " + v.version + "</b> · Aussehen " + v.render +
+      "<br>" + (v.note || "") + "<br>Code: " + (v.format_dir || "");
+    vs.appendChild(box);
+  });
+  if (!(D.versions || []).length) vs.innerHTML = '<p class="empty">Noch keine Muster.</p>';
+})();
+</script>
+</body>
+</html>

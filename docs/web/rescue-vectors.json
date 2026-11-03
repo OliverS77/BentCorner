@@ -1,0 +1,20 @@
+{
+ "about": "Test vectors for the rescue code (net/pairing.py, docs/SYNC-PLAN.md §2). Bytes as hex unless noted. code = 24 characters + check character Alphabet[(sum of (i+1)*index) mod 31]; key of both BLAKE2b = the 25 normalised characters as ASCII; data = base64(nonce + secretbox(JSON sorted, no spaces)).",
+ "alphabet": "23456789ABCDEFGHJKMNPQRSTUVWXYZ",
+ "code": "23456789ABCDEFGHJKMNPQRSE",
+ "code_shown": "23456-789AB-CDEFG-HJKMN-PQRSE",
+ "code_typed": "23456 789ab cdefg hjkmn pqrse",
+ "rid": "67a9d1dcf1dcde60e4a164486ca8f287",
+ "rk_hex": "fb70145534eec3d49bb9ff6e79bcc9dd478e50460e8a9312f399fc3566df60b7",
+ "seed_b64": "yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=",
+ "address": "8EA61A8426AB8A94",
+ "nonce_hex": "303132333435363738393a3b3c3d3e3f4041424344454647",
+ "envelope_json": "{\"code\":\"8EA61A8426AB8A94\",\"seed\":\"yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=\",\"v\":1}",
+ "data_b64": "MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHRpkOWfVbtNEgzDd4EaQblJm6ngmmUKW8/dcINYuCZ8L14dx+bF3YIufLP+obtoW9Xm6lYi/2tydHsb0hRkm23O7T823WrBBYx4XzurwmP19paJ5x+BNYfXUhAO6DUNc8PtAjT5a6Fg==",
+ "typo_rejected": "23436789ABCDEFGHJKMNPQRSE",
+ "swap_rejected": "23456798ABCDEFGHJKMNPQRSE",
+ "sign": {
+  "put": "rescue_put|<address>|<rid>|<sha256 hex of the data string (its base64 text as ASCII, as /v1/send)>|<t>",
+  "del": "rescue_del|<address>|<t>"
+ }
+}

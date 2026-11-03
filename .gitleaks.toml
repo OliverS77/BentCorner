@@ -1,0 +1,9 @@
+# Secret check (gitleaks): the default rules plus known false alarms.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Testvektoren – feste, erfundene Werte"
+# docs/web/pairing-vectors.json: key_hex / vault_key_hex sind aus dem erfundenen Code 7K3M9-QXA4H bzw. einem
+# Seed aus fortlaufenden Bytes abgeleitet (tests/test_pairing.py prüft genau diese Werte) – kein echter Schlüssel.
+paths = ['''docs/web/pairing-vectors\.json''']

@@ -1,0 +1,39 @@
+# Persönliche Daten und heruntergeladene Kartendaten (lädt das Programm selbst)
+data/
+settings.json
+*.log
+
+# Python-Umgebung und Zwischenstände
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Fingerabdruck-Index aller Karten (tools/build_fingerprints.py, ~80 MB) – wird beim Bauen in die .exe gepackt,
+# gehört aber nicht in die Versionsverwaltung
+models/fingerprints-all.npz
+# Magic-Namen in allen Sprachen fürs Datenpaket (tools/build_mtg_langs.py, ~18 MB)
+models/langs.tsv.gz
+# übersetzte Set-Namen fürs Magic-Datenpaket (tools/build_mtg_langs.py), kommt wie langs.tsv.gz über packs.py
+models/setnames.json
+
+# Gebaute Programmdatei (entsteht mit build.ps1)
+build/
+dist/
+*.spec
+
+# Betriebssystem / Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+models/dinov2-small-fp16.onnx
+# the public source has no models/: build.ps1 fetches the DINOv2 files from Hugging Face (sha256), cardback.npy is SCAN° data
+models/dinov2-small-q.onnx
+models/cardback.npy
+# license texts of the components, gathered by tools/collect_licenses.py for each build
+licenses/
+# each game's SCAN° index (data packs)
+models/*/
+models/LICENSES.txt

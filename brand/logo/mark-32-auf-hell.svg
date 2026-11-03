@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Bent°Corner Bildmarke 32 px: Lasche (1 px größer) + Punkt – für hellen Grund -->
+  <style>.c,.d{fill:#161618}.r{stroke:#161618}.b{fill:#8a8a8e}</style>
+  <g transform="rotate(-7 50 50)"><path class="c" d="M30 15 H51 L75 39 V80 Q75 85 70 85 H30 Q25 85 25 80 V20 Q25 15 30 15 Z"/><path class="b" d="M51 15 L75 39 H56 Q51 39 51 34 Z"/></g>
+  <circle class="d" cx="71.2" cy="11.4" r="7"/>
+</svg>

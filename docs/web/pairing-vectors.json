@@ -1,0 +1,19 @@
+{
+ "about": "Test vectors for the pairing code version 2 (format described in net/pairing.py). Bytes as hex unless noted.",
+ "version": 2,
+ "code": "7K3M9-QXA4H",
+ "picture_hex": "02008575cb329ec4",
+ "argon2id_hex": "5cdc3d692c2782dc0de809e66f4b735b2699acb7ae37f1941cbea640dd40649d",
+ "pid": "744d9ef118b05433132563e91d5b8dd1",
+ "key_hex": "dc67045dde27e04b0170f6023d94bdbb14e41d6b409356cd2181242949ed5f19",
+ "nonce_hex": "6465666768696a6b6c6d6e6f707172737475767778797a7b",
+ "seed_b64": "yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=",
+ "payload_json": "{\"code\":\"8EA61A8426AB8A94\",\"extra\":{\"friends\":{}},\"seed\":\"yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=\",\"v\":1}",
+ "sealed_b64": "ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7qiqEeGLZ/EYuV31DrAd4AuYTMT509NJkSk9N3wpt5vzjir3PEsJpzK5lV3n3hYIxBwG4eQB8o9EXjhRvrGIJhmnT03oZKKd4Ai2efSdrvqO5BGJW94wqnCd9M125FOB1S0ywABhS/4JhPNnqGH1OL9lttZ9c2rsSp5ET9iGA",
+ "code_of_seed": "8EA61A8426AB8A94",
+ "wrong_code": "7K3M9-QXA4J",
+ "vault_item_json": "{\"bookings\":[{\"id\":\"x_0\",\"n\":1,\"uid\":\"b1\"}],\"v\":1}",
+ "vault_key_hex": "ad2e5b1b5068bd48952436f338c44c876c9c46a481ebb1ab087394c351f4a0bd",
+ "vault_sealed_b64": "ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7/qjdP9mA0kJDNfK8cVPA4WjiGgihoheGWTx3ndH1ghl/6r7VwBaGltcaWlMo0HfMWBs7nQ7/HzXyyzvVIPierskM",
+ "code_note": "10 chars from 23456789ABCDEFGHJKMNPQRSTUVWXYZ, shown XXXXX-XXXXX; input normalized (uppercase, no dash/space) before Argon2id (salt = ASCII bentcorner-pair2, ops 2, mem 64 MiB)"
+}

@@ -1,0 +1,92 @@
+{
+ "about": "Test vectors for identity and signatures (net/identity.py, the rules of net/relay.py). Base64 standard alphabet with padding. address = SHA-256(Ed25519 public key) hex, first 16, upper case. Signatures: Ed25519 detached over the UTF-8 line. digest = sha256 hex of the base64 TEXT. parcel: open with seed B, sender = A (sealing is random: test it by a round trip). board: zlib output may differ per library – test opening the sample and a round trip.",
+ "ids": [
+  {
+   "seed_b64": "yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=",
+   "sign_pk_b64": "MrU+iC49qsGA16X2Ik1htkAbQ/kB2wnw5NhM5OSicYs=",
+   "address": "8EA61A8426AB8A94",
+   "box_pk_b64": "HciicyEJxTbs/eSX6GrLZJ//+yFgqsCkxulg4S957QQ=",
+   "box_sk_b64": "+BA2PhydabWbI0MGmVt5vOqrL+eSBwmFfePXDYqLfnM="
+  },
+  {
+   "seed_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "sign_pk_b64": "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+   "address": "56475AA75463474C",
+   "box_pk_b64": "RwHQhIhFH1RaQJ+1iuPlhYHKQKw/fxFGmM1x3qxzygE=",
+   "box_sk_b64": "OJTupJxYCu+BaTV2K+BJVZ1tFEDe3hLmoSXxhB//jm8="
+  }
+ ],
+ "digest": {
+  "data_b64": "ZGF0YQ==",
+  "sha256": "13d13f4b45061ce2c5267882afd3f4bfb62e26828efd5e59e2772609fe210b4d"
+ },
+ "signatures": [
+  {
+   "seed": "A",
+   "line": "register|8EA61A8426AB8A94|1793600000",
+   "sig_b64": "lt+rbYSOb/LQmF8N8B0OH0bzvpaW3mfmRgGpvwAccSmCK3KnM8RMJXZxc0tp3LpnIzlPGtLeC248Dx3K+Zu2AA=="
+  },
+  {
+   "seed": "A",
+   "line": "send|8EA61A8426AB8A94|56475AA75463474C|13d13f4b45061ce2c5267882afd3f4bfb62e26828efd5e59e2772609fe210b4d|1793600000",
+   "sig_b64": "hxX4MuiZT8g2ukBXm0bHFudDIt6FfbEe2T8NfZp6ozSwzkXzkIonRtJqo57Ln6FyxNtGIhZwRcl7MQH2AdqBBA=="
+  },
+  {
+   "seed": "A",
+   "line": "fetch|8EA61A8426AB8A94|1793600000",
+   "sig_b64": "hPLC8hO/37zYwEDu4wnUCvthUoa7LeBT0B9T8rl2Tdufv2T/edyPexnRocydI42n0EwTjSR73tC7YLQd5atWAQ=="
+  },
+  {
+   "seed": "A",
+   "line": "board_put|8EA61A8426AB8A94|mtg|lists|13d13f4b45061ce2c5267882afd3f4bfb62e26828efd5e59e2772609fe210b4d|1793600000",
+   "sig_b64": "ybCNDa4Jvu2rpBe/OkVhePR2agCA90w6BJHwNGDcLS8yKbSF5T2ddgI2QQUcYRnr92igjsxk2119Mt0dlR8PDQ=="
+  },
+  {
+   "seed": "A",
+   "line": "pair_put|8EA61A8426AB8A94|00000000000000000000000000000000|13d13f4b45061ce2c5267882afd3f4bfb62e26828efd5e59e2772609fe210b4d|1793600000",
+   "sig_b64": "tdxVis/LJwgaEAuC2e4B3b2qlEAaBigDdOTnlAifkrIOI5/Guk70pFPhlZqF8qLW331iElIwFLUpabSROMLpBw=="
+  },
+  {
+   "seed": "A",
+   "line": "umlaut äöü °",
+   "sig_b64": "LWx0gh1eo+tzDkZqh8cSjpu61bdojtBOaC96YXSaBOvHJLFDJgtCsxjz4MrglfbTiB5IiFZ7ujWbN7HYIupDDw=="
+  }
+ ],
+ "bad_signature": {
+  "seed": "A",
+  "line": "register|8EA61A8426AB8A94|1793600000x",
+  "sig_b64": "lt+rbYSOb/LQmF8N8B0OH0bzvpaW3mfmRgGpvwAccSmCK3KnM8RMJXZxc0tp3LpnIzlPGtLeC248Dx3K+Zu2AA=="
+ },
+ "parcel": {
+  "from": "A",
+  "to": "B",
+  "env": {
+   "v": 1,
+   "kind": "friend",
+   "game": "mtg",
+   "from": "8EA61A8426AB8A94",
+   "to": "56475AA75463474C",
+   "t": 1793600000,
+   "body": {
+    "name": "Anna – Ä",
+    "pid": ""
+   }
+  },
+  "data_b64": "j+DveDz+Cqi9onM5QpR2E4DUKj9OZEtM/PBVHoWt4QywcYASslQXXsof8JRBq0cCT+kb1TGEjkZdVoUZes5ibp+xpzneBl6/LhCcivmhfsCBJcJgUdU2Gc0aVJU//V+LBJiRoQtZH0tN8C8yBPx92qmPSg6jg6aIV45FyaSuSmVxs0cFiXlLrVybBuTiOX6/OuOM1bb8ZW2DWfZamVhkxjKNfloK8gCyZQ5QPoeype8Yc0v36XdvM2eNssdE/AS73yddVO5MsJZbXpX5mwrsJlJkQbup5lGnHccEhx4KvshvS/ie/nZ+yiRZweXa10xiog=="
+ },
+ "board": {
+  "key_b64": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8=",
+  "nonce_hex": "606162636465666768696a6b6c6d6e6f7071727374757677",
+  "payload": {
+   "c": [
+    [
+     "x_0",
+     2
+    ]
+   ],
+   "w": [],
+   "title": "Tausch – Ä"
+  },
+  "data_b64": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ36PZR3LjpExsY/ihu7eUxuJuUNo4uls25bA44F0GqRYu8Y8CC2lYVBmGBjUJiicBTpIkFZHBp9E3OaOImyOhn0vnyESwL"
+ }
+}

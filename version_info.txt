@@ -1,0 +1,29 @@
+# Versionsinfos der .exe (PyInstaller --version-file). Windows zeigt sie im Task-Manager, bei „Öffnen mit“ und unter
+# Eigenschaften → Details – dort darf der Name das ° enthalten, der Dateiname bleibt BentCorner.exe.
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(0, 9, 7, 33),
+    prodvers=(0, 9, 7, 33),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040704B0',
+        [StringStruct('CompanyName', 'OliverS77'),
+         StringStruct('FileDescription', 'Bent°Corner – TCG Tracker'),
+         StringStruct('FileVersion', '0.9.7.33'),
+         StringStruct('InternalName', 'BentCorner'),
+         StringStruct('LegalCopyright', '© 2026 Oliver Schunn · GPL-3.0'),
+         StringStruct('OriginalFilename', 'BentCorner.exe'),
+         StringStruct('ProductName', 'Bent°Corner'),
+         StringStruct('ProductVersion', '0.9.7.33')])
+    ]),
+    VarFileInfo([VarStruct('Translation', [1031, 1200])])
+  ]
+)

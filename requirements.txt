@@ -1,0 +1,51 @@
+# Fest genagelt auf die getesteten Versionen (Stand 0.9.6, 31.10.2026): eine frisch angelegte .venv baut so genau
+# dieselbe exe. Ohne Versionen zog eine neue .venv nach dem Umzug PySide6 6.12 statt 6.11.2 (ungetestet).
+# Ein Upgrade (vor allem Qt) nur gezielt: Versionen hier ändern, bauen, testen, Bilder – nie nebenbei.
+# PySide6 6.11.2 auch in tools\qsb-venv (pyside6-addons, siehe qml/shaders/README.md).
+
+opencv-python==4.14.0.94
+numpy==2.5.3
+requests==2.34.2
+PySide6-Essentials==6.11.2
+rapidocr_onnxruntime==1.4.4
+rapidfuzz==3.14.6
+
+# Windows: Kamera über DirectShow (Enumeration, Bildregler) + SCAN° (Erkennung) auf der Grafikkarte via DirectML.
+# macOS/Linux: Kamera läuft über AVFoundation/V4L2 direkt in OpenCV, SCAN° über das von
+# rapidocr_onnxruntime mitgebrachte CPU-onnxruntime - keine der drei Zeilen wird dort installiert.
+pygrabber==0.2; sys_platform == "win32"
+cv2_enumerate_cameras==1.4.0; sys_platform == "win32"
+onnxruntime-directml==1.24.4; sys_platform == "win32"  # build.ps1 ersetzt damit das CPU-Paket
+pynacl==1.5.0
+segno==1.6.6          # QR-Code fürs Handy als Kamera
+cryptography==50.0.2  # selbst erstelltes Zertifikat (Handy-Kamera nur über https)
+
+# nur zum Bauen der exe (build.ps1)
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.7
+
+# mitgezogen von den Paketen oben – mitgenagelt, weil sie in der exe landen
+shiboken6==6.11.2
+certifi==2026.10.23
+charset-normalizer==3.5.1
+idna==3.20
+urllib3==2.8.0
+cffi==2.1.1
+pycparser==3.11
+pillow==12.3.0
+shapely==2.1.2
+pyclipper==1.4.0
+PyYAML==6.0.3
+six==1.17.0
+tqdm==4.70.1
+flatbuffers==25.12.19
+protobuf==7.36.2
+sympy==1.14.0
+mpmath==1.3.0
+packaging==26.3
+setuptools==84.0.0
+altgraph==0.17.5
+colorama==0.4.6; sys_platform == "win32"
+comtypes==1.4.17; sys_platform == "win32"
+pefile==2024.8.26; sys_platform == "win32"
+pywin32-ctypes==0.2.3; sys_platform == "win32"

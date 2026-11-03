@@ -1,0 +1,1414 @@
+{
+ "about": "Test vectors of the sync change protocol (collection/syncops.py, docs/SYNC-PLAN.md §3). Apply the ops of a case in ANY order (each op possibly twice): view and sum must be exactly these. sum = sha256 hex of the view as JSON with sorted keys and no spaces (UTF-8, not ASCII-escaped). clock/ops/diffs/compact/snap: the other functions step by step (fake wall clock from T0).",
+ "groups": {
+  "deckcards": [
+   [
+    "print",
+    [
+     "id",
+     "foil",
+     "lang",
+     "finish"
+    ]
+   ]
+  ],
+  "listcards": [
+   [
+    "print",
+    [
+     "id",
+     "foil",
+     "lang",
+     "finish"
+    ]
+   ]
+  ]
+ },
+ "counted": {
+  "deckcards": "n",
+  "listcards": "n"
+ },
+ "t0": 1793600000000,
+ "tomb_days": 90,
+ "skew_ms": 300000,
+ "cases": [
+  {
+   "name": "different_fields",
+   "about": "two devices change different fields of one entry: both stay",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "a": 1,
+     "s": {
+      "name": "Elves",
+      "format": "commander"
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "s": {
+      "name": "Elves!"
+     }
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "s": {
+      "format": "modern"
+     }
+    }
+   ],
+   "view": {
+    "mtg/decks": {
+     "d1": {
+      "format": "modern",
+      "name": "Elves!"
+     }
+    }
+   },
+   "sum": {
+    "mtg/decks": "1125a4ac5143dc2584a170029b537cfa74d8b4408c5455ee62a8f2fd1d8adf4b"
+   }
+  },
+  {
+   "name": "same_field_tie",
+   "about": "same field, same ms and counter: the device id decides (bbbb > aaaa)",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "a": 1,
+     "s": {
+      "name": "A"
+     }
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "s": {
+      "name": "from B"
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "s": {
+      "name": "from A"
+     }
+    }
+   ],
+   "view": {
+    "mtg/decks": {
+     "d1": {
+      "name": "from B"
+     }
+    }
+   },
+   "sum": {
+    "mtg/decks": "0c0f9e60457763a9679857c158b9083ced9586514dfcea347f4600936a0e4ac7"
+   }
+  },
+  {
+   "name": "counter_adds",
+   "about": "+1 on two devices = +2",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "a": 1,
+     "s": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null
+     },
+     "d": {
+      "n": 2
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "d": {
+      "n": 1
+     }
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "d": {
+      "n": 1
+     }
+    }
+   ],
+   "view": {
+    "mtg/deckcards": {
+     "d1|s1|main": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null,
+      "n": 4
+     }
+    }
+   },
+   "sum": {
+    "mtg/deckcards": "74dba8d5087ee9e69e6bd06a4f03aea107b9c46374c6f32dcb6d5f60798ddac9"
+   }
+  },
+  {
+   "name": "delete_vs_add",
+   "about": "A deletes (saw 1), B adds 1 at the same time: 1 left",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "a": 1,
+     "s": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null
+     },
+     "d": {
+      "n": 1
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "x": 1
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "d": {
+      "n": 1
+     }
+    }
+   ],
+   "view": {
+    "mtg/deckcards": {
+     "d1|s1|main": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null,
+      "n": 1
+     }
+    }
+   },
+   "sum": {
+    "mtg/deckcards": "1f2603e4b8fe5264bc7d857fd8d5c1b6bb34fcaea59d65137a08f2156610e632"
+   }
+  },
+  {
+   "name": "print_is_one_field",
+   "about": "print + foil + language + finish change together: the later op wins whole",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k",
+     "a": 1,
+     "s": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null
+     },
+     "d": {
+      "n": 1
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k",
+     "s": {
+      "id": "y_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null
+     }
+    },
+    {
+     "o": "bbbb.1793600001001.0",
+     "h": [
+      1793600001001,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k",
+     "s": {
+      "id": "x_0",
+      "foil": true,
+      "lang": "de",
+      "finish": "foil"
+     }
+    }
+   ],
+   "view": {
+    "mtg/deckcards": {
+     "k": {
+      "id": "x_0",
+      "foil": true,
+      "lang": "de",
+      "finish": "foil",
+      "n": 1
+     }
+    }
+   },
+   "sum": {
+    "mtg/deckcards": "2304d48cdbd69323d7b1def69b68d830d89822367882ae8f90d6f34f7b6f554b"
+   }
+  },
+  {
+   "name": "later_clock_wins",
+   "about": "delete vs change: the later clock wins (b1 back, b2 gone)",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/binders",
+     "k": "b1",
+     "a": 1,
+     "s": {
+      "name": "Trade"
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/binders",
+     "k": "b1",
+     "x": 1
+    },
+    {
+     "o": "bbbb.1793600002000.0",
+     "h": [
+      1793600002000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/binders",
+     "k": "b1",
+     "s": {
+      "name": "Trade 2"
+     }
+    },
+    {
+     "o": "aaaa.1793600002000.0",
+     "h": [
+      1793600002000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/binders",
+     "k": "b2",
+     "a": 1,
+     "s": {
+      "name": "Old"
+     }
+    },
+    {
+     "o": "bbbb.1793600003000.0",
+     "h": [
+      1793600003000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/binders",
+     "k": "b2",
+     "s": {
+      "name": "Older"
+     }
+    },
+    {
+     "o": "aaaa.1793600003001.0",
+     "h": [
+      1793600003001,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/binders",
+     "k": "b2",
+     "x": 1
+    }
+   ],
+   "view": {
+    "mtg/binders": {
+     "b1": {
+      "name": "Trade 2"
+     }
+    }
+   },
+   "sum": {
+    "mtg/binders": "9b1e404a3dc356535f55e70993677f39494f271a3c34d634689c0f9231f9b559"
+   }
+  },
+  {
+   "name": "no_half_entry",
+   "about": "a change on a key whose create never came stays invisible",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/lists",
+     "k": "l9",
+     "s": {
+      "name": "half"
+     }
+    }
+   ],
+   "view": {
+    "mtg/lists": {}
+   },
+   "sum": {
+    "mtg/lists": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   }
+  }
+ ],
+ "clock": [
+  {
+   "do": "tick",
+   "h": [
+    1793600000000,
+    0,
+    "aaaa"
+   ],
+   "now": 1793600000000,
+   "after": [
+    1793600000000,
+    0,
+    0
+   ]
+  },
+  {
+   "do": "tick",
+   "h": [
+    1793600000000,
+    1,
+    "aaaa"
+   ],
+   "now": 1793600000000,
+   "after": [
+    1793600000000,
+    1,
+    0
+   ]
+  },
+  {
+   "do": "tick",
+   "h": [
+    1793600000000,
+    2,
+    "aaaa"
+   ],
+   "now": 1793599998000,
+   "after": [
+    1793600000000,
+    2,
+    0
+   ]
+  },
+  {
+   "do": "tick",
+   "h": [
+    1793600003000,
+    0,
+    "aaaa"
+   ],
+   "now": 1793600003000,
+   "after": [
+    1793600003000,
+    0,
+    0
+   ]
+  },
+  {
+   "do": "server",
+   "server": 1793603603000,
+   "now": 1793600003000,
+   "after": [
+    1793600003000,
+    0,
+    300000
+   ]
+  },
+  {
+   "do": "tick",
+   "h": [
+    1793600303000,
+    0,
+    "aaaa"
+   ],
+   "now": 1793600003000,
+   "after": [
+    1793600303000,
+    0,
+    300000
+   ]
+  },
+  {
+   "do": "server",
+   "server": 1793600002000,
+   "now": 1793600003000,
+   "after": [
+    1793600303000,
+    0,
+    -1000
+   ]
+  },
+  {
+   "do": "seen",
+   "seen": [
+    1793601003000,
+    7,
+    "bbbb"
+   ],
+   "now": 1793600003000,
+   "after": [
+    1793601003000,
+    7,
+    -1000
+   ]
+  },
+  {
+   "do": "tick",
+   "h": [
+    1793601003000,
+    8,
+    "aaaa"
+   ],
+   "now": 1793600003000,
+   "after": [
+    1793601003000,
+    8,
+    -1000
+   ]
+  },
+  {
+   "do": "seen",
+   "seen": [
+    1,
+    0,
+    "cccc"
+   ],
+   "now": 1793600003000,
+   "after": [
+    1793601003000,
+    8,
+    -1000
+   ]
+  }
+ ],
+ "ops": [
+  {
+   "args": {
+    "kind": "mtg/decks",
+    "key": "d1",
+    "s": {
+     "name": "Ä ° 🃏"
+    },
+    "create": true
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/decks",
+    "k": "d1",
+    "a": 1,
+    "s": {
+     "name": "Ä ° 🃏"
+    }
+   }
+  },
+  {
+   "args": {
+    "kind": "mtg/deckcards",
+    "key": "d1|s1|main",
+    "d": {
+     "n": 2,
+     "x": 0
+    }
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/deckcards",
+    "k": "d1|s1|main",
+    "d": {
+     "n": 2
+    }
+   }
+  },
+  {
+   "args": {
+    "kind": "mtg/deckcards",
+    "key": "k",
+    "d": {
+     "n": 0
+    }
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/deckcards",
+    "k": "k",
+    "d": {}
+   }
+  },
+  {
+   "args": {
+    "kind": "mtg/binders",
+    "key": "b1",
+    "delete": true
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "b1",
+    "x": 1
+   }
+  },
+  {
+   "args": {
+    "kind": "mtg/deckcards",
+    "key": "k",
+    "delete": 0
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/deckcards",
+    "k": "k",
+    "x": 0
+   }
+  },
+  {
+   "args": {
+    "kind": "mtg/deckcards",
+    "key": "k",
+    "delete": 3,
+    "s": {}
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/deckcards",
+    "k": "k",
+    "x": 3
+   }
+  },
+  {
+   "args": {
+    "kind": "profile",
+    "key": "me",
+    "delete": false,
+    "s": {
+     "name": null
+    }
+   },
+   "op": {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "profile",
+    "k": "me",
+    "s": {
+     "name": null
+    }
+   }
+  }
+ ],
+ "diffs": [
+  {
+   "about": "new, gone, unchanged",
+   "kind": "mtg/decks",
+   "old": {
+    "a": {
+     "name": "A"
+    },
+    "b": {
+     "name": "B"
+    }
+   },
+   "new": {
+    "b": {
+     "name": "B"
+    },
+    "c": {
+     "name": "C",
+     "format": "modern"
+    }
+   },
+   "fields": null,
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "a",
+     "x": 1
+    },
+    {
+     "o": "aaaa.1793600000000.1",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "c",
+     "a": 1,
+     "s": {
+      "name": "C",
+      "format": "modern"
+     }
+    }
+   ]
+  },
+  {
+   "about": "a changed field and a field set to null",
+   "kind": "mtg/decks",
+   "old": {
+    "a": {
+     "name": "A",
+     "format": "x",
+     "note": "n"
+    }
+   },
+   "new": {
+    "a": {
+     "name": "A2",
+     "format": "x",
+     "note": null
+    }
+   },
+   "fields": null,
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "a",
+     "s": {
+      "name": "A2",
+      "note": null
+     }
+    }
+   ]
+  },
+  {
+   "about": "derived fields stay out",
+   "kind": "mtg/decks",
+   "old": {
+    "a": {
+     "name": "A",
+     "price": 3
+    }
+   },
+   "new": {
+    "a": {
+     "name": "A",
+     "price": 4
+    },
+    "b": {
+     "name": "B",
+     "price": 1
+    }
+   },
+   "fields": [
+    "name"
+   ],
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "b",
+     "a": 1,
+     "s": {
+      "name": "B"
+     }
+    }
+   ]
+  },
+  {
+   "about": "counted: create with count, delta, delete with the count seen",
+   "kind": "mtg/deckcards",
+   "old": {
+    "k1": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null,
+     "n": 2
+    },
+    "k2": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null,
+     "n": 1
+    },
+    "k3": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null,
+     "n": 4
+    }
+   },
+   "new": {
+    "k1": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null,
+     "n": 5
+    },
+    "k3": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "de",
+     "finish": null,
+     "n": 4
+    },
+    "k4": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null,
+     "n": 1
+    }
+   },
+   "fields": null,
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k1",
+     "d": {
+      "n": 3
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.1",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k2",
+     "x": 1
+    },
+    {
+     "o": "aaaa.1793600000000.2",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k3",
+     "s": {
+      "lang": "de",
+      "id": "x_0",
+      "foil": false,
+      "finish": null
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.3",
+     "h": [
+      1793600000000,
+      3,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "k4",
+     "a": 1,
+     "s": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null
+     },
+     "d": {
+      "n": 1
+     }
+    }
+   ]
+  },
+  {
+   "about": "counted: count down, foil only -> the whole print",
+   "kind": "mtg/listcards",
+   "old": {
+    "k": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null,
+     "n": 3
+    }
+   },
+   "new": {
+    "k": {
+     "id": "x_0",
+     "foil": true,
+     "lang": "en",
+     "finish": null,
+     "n": 1
+    }
+   },
+   "fields": null,
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/listcards",
+     "k": "k",
+     "s": {
+      "foil": true,
+      "id": "x_0",
+      "lang": "en",
+      "finish": null
+     },
+     "d": {
+      "n": -2
+     }
+    }
+   ]
+  },
+  {
+   "about": "counted: created with no count",
+   "kind": "mtg/listcards",
+   "old": {},
+   "new": {
+    "k": {
+     "id": "x_0",
+     "foil": false,
+     "lang": "en",
+     "finish": null
+    }
+   },
+   "fields": null,
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/listcards",
+     "k": "k",
+     "a": 1,
+     "s": {
+      "id": "x_0",
+      "foil": false,
+      "lang": "en",
+      "finish": null
+     },
+     "d": {}
+    }
+   ]
+  },
+  {
+   "about": "keys in code point order",
+   "kind": "mtg/lists",
+   "old": {},
+   "new": {
+    "é": {
+     "name": 1
+    },
+    "z": {
+     "name": 2
+    },
+    "Z": {
+     "name": 3
+    },
+    "🃏": {
+     "name": 4
+    },
+    "￿": {
+     "name": 5
+    }
+   },
+   "fields": null,
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/lists",
+     "k": "Z",
+     "a": 1,
+     "s": {
+      "name": 3
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.1",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "c": "mtg/lists",
+     "k": "z",
+     "a": 1,
+     "s": {
+      "name": 2
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.2",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "c": "mtg/lists",
+     "k": "é",
+     "a": 1,
+     "s": {
+      "name": 1
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.3",
+     "h": [
+      1793600000000,
+      3,
+      "aaaa"
+     ],
+     "c": "mtg/lists",
+     "k": "￿",
+     "a": 1,
+     "s": {
+      "name": 5
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.4",
+     "h": [
+      1793600000000,
+      4,
+      "aaaa"
+     ],
+     "c": "mtg/lists",
+     "k": "🃏",
+     "a": 1,
+     "s": {
+      "name": 4
+     }
+    }
+   ]
+  }
+ ],
+ "compact": {
+  "ops": [
+   {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "old",
+    "a": 1,
+    "s": {
+     "name": "x"
+    }
+   },
+   {
+    "o": "aaaa.1793600000000.1",
+    "h": [
+     1793600000000,
+     1,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "half",
+    "s": {
+     "name": "y"
+    }
+   },
+   {
+    "o": "aaaa.1793600000000.2",
+    "h": [
+     1793600000000,
+     2,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "old",
+    "x": 1
+   },
+   {
+    "o": "aaaa.1794464000000.0",
+    "h": [
+     1794464000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "new",
+    "a": 1,
+    "s": {
+     "name": "z"
+    }
+   },
+   {
+    "o": "aaaa.1794464000000.1",
+    "h": [
+     1794464000000,
+     1,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "keep",
+    "a": 1,
+    "s": {
+     "name": "k"
+    }
+   },
+   {
+    "o": "aaaa.1794464000000.2",
+    "h": [
+     1794464000000,
+     2,
+     "aaaa"
+    ],
+    "c": "mtg/binders",
+    "k": "new",
+    "x": 1
+   }
+  ],
+  "now": 1801808000000,
+  "dropped": 2,
+  "kept": [
+   "keep",
+   "new"
+  ],
+  "view": {
+   "keep": {
+    "name": "k"
+   }
+  }
+ },
+ "snap": {
+  "before": [
+   {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/decks",
+    "k": "d1",
+    "a": 1,
+    "s": {
+     "name": "A"
+    }
+   },
+   {
+    "o": "bbbb.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "bbbb"
+    ],
+    "c": "mtg/decks",
+    "k": "d2",
+    "a": 1,
+    "s": {
+     "name": "B"
+    }
+   }
+  ],
+  "snap": {
+   "v": 1,
+   "kinds": {
+    "mtg/decks": {
+     "d1": {
+      "f": {
+       "name": [
+        [
+         1793600000000,
+         0,
+         "aaaa"
+        ],
+        {
+         "name": "A"
+        }
+       ]
+      },
+      "cnt": {},
+      "made": true,
+      "alive": [
+       1793600000000,
+       0,
+       "aaaa"
+      ],
+      "dead": null,
+      "gone": 0
+     },
+     "d2": {
+      "f": {
+       "name": [
+        [
+         1793600000000,
+         0,
+         "bbbb"
+        ],
+        {
+         "name": "B"
+        }
+       ]
+      },
+      "cnt": {},
+      "made": true,
+      "alive": [
+       1793600000000,
+       0,
+       "bbbb"
+      ],
+      "dead": null,
+      "gone": 0
+     }
+    }
+   },
+   "top": {
+    "aaaa": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "bbbb": [
+     1793600000000,
+     0,
+     "bbbb"
+    ]
+   }
+  },
+  "after": [
+   {
+    "o": "aaaa.1793600001000.0",
+    "h": [
+     1793600001000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/decks",
+    "k": "d1",
+    "s": {
+     "name": "A2"
+    }
+   },
+   {
+    "o": "cccc.1793600001000.0",
+    "h": [
+     1793600001000,
+     0,
+     "cccc"
+    ],
+    "c": "mtg/decks",
+    "k": "d3",
+    "a": 1,
+    "s": {
+     "name": "C"
+    }
+   }
+  ],
+  "applied": [
+   false,
+   false,
+   true,
+   true
+  ],
+  "view": {
+   "d1": {
+    "name": "A2"
+   },
+   "d2": {
+    "name": "B"
+   },
+   "d3": {
+    "name": "C"
+   }
+  },
+  "top": {
+   "aaaa": [
+    1793600001000,
+    0,
+    "aaaa"
+   ],
+   "bbbb": [
+    1793600000000,
+    0,
+    "bbbb"
+   ],
+   "cccc": [
+    1793600001000,
+    0,
+    "cccc"
+   ]
+  }
+ }
+}

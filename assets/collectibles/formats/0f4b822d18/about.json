@@ -1,0 +1,11 @@
+{
+ "render": "0f4b822d18",
+ "since": "0.8.3",
+ "ticket_format": "1",
+ "files": [
+  "offer_image.py",
+  "rscode.py",
+  "ticket.py"
+ ],
+ "note": "Code, der das Ticket schreibt (ticket.new/bits), liest (decode_*, read_image) und zeichnet (offer_image). Zum Einlesen alter Tickets: ticket.py + rscode.py reichen."
+}
