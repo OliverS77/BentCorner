@@ -6,6 +6,7 @@ When scanning: fingerprint of the camera image, most similar cards via dot produ
 confirmed by image matching (keypoints).
 """
 import hashlib
+import json
 import logging
 import os
 import pathlib
@@ -345,7 +346,7 @@ def up_to_date(code, cards):
     if not f.exists():
         return False
     try:
-        with np.load(f) as z:
+        with np.load(f, allow_pickle=False) as z:
             have = set(z["ids"].tolist())
     except (OSError, ValueError, KeyError):
         return False
@@ -364,7 +365,7 @@ class Index:
             f = fp_path(code)
             if not f.exists():
                 continue
-            with np.load(f) as z:
+            with np.load(f, allow_pickle=False) as z:
                 ids, vecs = list(z["ids"]), z["vecs"].astype(np.float32)
             keep = [i for i, cid in enumerate(ids) if cid in cards_by_id]
             self.ids += [ids[i] for i in keep]
@@ -373,7 +374,7 @@ class Index:
         self.n_sets = len(self.ids)
         self.n_global = 0
         if global_file is not None:
-            with np.load(global_file) as z:
+            with np.load(global_file, allow_pickle=False) as z:
                 gids, gvecs = z["ids"].tolist(), z["vecs"]
             keep = [i for i, cid in enumerate(gids) if cid not in seen]
             self.ids += [gids[i] for i in keep]
@@ -381,7 +382,7 @@ class Index:
             self.n_global = len(keep)
         self.mat = np.concatenate(mats) if mats else np.zeros((0, 384), np.float32)
         self._drop_card_backs()
-        self.mat = _mapped(self.ids, self.mat)
+        self.mat = _mapped(self.ids, self.mat, _index_tag(global_file) if global_file is not None else "")
         self.cards = dict(cards_by_id)
 
     def _drop_card_backs(self):
@@ -393,7 +394,7 @@ class Index:
         f = packs.path_of("mtg", CARDBACK) if "mtg" in packs.PACKS else None
         if f is None or not len(self.ids):
             return
-        back = np.load(f).astype(np.float32)
+        back = np.load(f, allow_pickle=False).astype(np.float32)
         keep = (self.mat @ back) < 0.9
         if keep.all():
             return
@@ -494,16 +495,38 @@ class Index:
         return out
 
 
-def _mapped(ids, mat):
+def _index_tag(path):
+    """What makes a bundled index file this one: size + sha256 of the file and – if the index names them – model,
+    batch and versions (built since 0.9.7). Read once when the index loads (Magic ~83 MB: well under a second)."""
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for block in iter(lambda: f.read(1 << 20), b""):
+                h.update(block)
+        tag = f"{pathlib.Path(path).stat().st_size}:{h.hexdigest()}"
+        with np.load(path, allow_pickle=False) as z:
+            meta = json.loads(str(z["meta"])) if "meta" in z.files else {}
+        return tag + "".join(f":{meta[k]}" for k in ("model", "batch", "versions") if k in meta)
+    except (OSError, ValueError) as e:
+        log.info("AI index tag: %s", e)
+        return ""
+
+
+def _mapped(ids, mat, tag=""):
     """Fingerprint matrix as a file (data/cache/fp/), only memory-mapped (mmap) instead of held in RAM:
     Windows keeps it in the file cache and can release it at any time – the app needs ~170 MB less
     private memory (Magic, 113,000 cards). Just as fast: after the first search the pages are in memory.
-    Same cards = same file (name derived from the IDs); old files of the same game are deleted."""
+    Same cards and vectors = same file (name from the IDs, the bundled index file's tag – _index_tag – and a sample of
+    the vectors): a rebuilt index with the same cards (0.9.7, batch-1 index) never reuses the old matrix, also when
+    only a few rows changed; old files of the same game are deleted."""
     if len(ids) < 2000:
         return mat
     import games
     try:
-        h = hashlib.sha1("\n".join(ids).encode("utf-8")).hexdigest()[:16]
+        h = hashlib.sha1("\n".join(ids).encode("utf-8"))
+        h.update(tag.encode("utf-8"))
+        h.update(np.ascontiguousarray(mat[::max(1, len(mat) // 512)], np.float32).tobytes())   # ~512 rows, a few KB
+        h = h.hexdigest()[:16]
         folder = DATA / "cache" / "fp"
         folder.mkdir(parents=True, exist_ok=True)
         key = games.current().key
@@ -519,7 +542,7 @@ def _mapped(ids, mat):
                         old.unlink()
                     except OSError:
                         pass   # still mapped (second game in memory) – next time
-        m = np.load(path, mmap_mode="r")
+        m = np.load(path, mmap_mode="r", allow_pickle=False)
         if m.shape != mat.shape:
             return mat
         return m

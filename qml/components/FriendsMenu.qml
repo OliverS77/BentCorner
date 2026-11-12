@@ -58,93 +58,142 @@ Item {
                                color: T.dim; font.family: T.font; font.pixelSize: 12 }
                     }
                     Btn { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; width: 36; height: 32
+                          visible: shell.friendsOn
                           text: "+"; active: ask.open; tip: shell.text("Add friend")
                           onClicked: ask.open ? ask.cancel() : (ask.justClosed() ? undefined
                                      : ask.start("add", "", shell.text("Add friend"), "", shell.text("OK"))) }
                 }
-                InlineAsk {
-                    id: ask
+                PriceVeil {   // Core and Near Orbit: friends live in Full Orbit (Oliver 06.11.) – the menu is the note
+                    visible: !shell.friendsOn
+                    note: shell.text("Friends are available in Full Orbit.")
+                    width: parent.width; height: 150
+                }
+                Column {   // everything about friends: Full Orbit only
+                    visible: shell.friendsOn
                     width: parent.width
-                    placeholder: shell.text("ID, e.g. 7F3A-21C9-0B44-E1D2")
-                    property string err: ""
-                    onAccepted: function (mode, ident, text) { ask.err = fm.pp.addFriend(text) }
-                    Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line; visible: ask.height > 1 }
-                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: T.line; visible: ask.height > 1 }
-                }
-                Text { visible: ask.err !== ""; width: parent.width; wrapMode: Text.Wrap; text: ask.err
-                       color: "#d48a8a"; font.family: T.font; font.pixelSize: 12 }
-                FmLink { text: shell.text("Your ID and profile →"); onClicked: fm.go("profile") }
-
-                // ---------- received requests ----------
-                Repeater {
-                    model: fm.pp.requests
-                    Item {
-                        required property var modelData
-                        visible: modelData.dir === "in"
-                        width: inner.width; height: visible ? 46 : 0
-                        Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line }
-                        Column { anchors.verticalCenter: parent.verticalCenter
-                                 Text { text: modelData.name; color: T.text; font.family: T.font; font.pixelSize: 13; font.bold: true }
-                                 Text { text: shell.text("wants to be your friend"); color: T.muted; font.family: T.font; font.pixelSize: 11 } }
-                        Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 4
-                              Btn { height: 28; compact: true; width: implicitWidth + 16; primary: true; text: shell.text("Accept")
-                                    onClicked: fm.pp.answer(modelData.code, 1) }
-                              Btn { height: 28; width: 30; compact: true; text: "✕"; tip: shell.text("Decline")
-                                    onClicked: fm.pp.answer(modelData.code, 0) } }
+                    spacing: 8
+                    InlineAsk {
+                        id: ask
+                        width: parent.width
+                        placeholder: shell.text("ID, e.g. 7F3A-21C9-0B44-E1D2")
+                        property string err: ""
+                        onAccepted: function (mode, ident, text) { ask.err = fm.pp.addFriend(text) }
+                        Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line; visible: ask.height > 1 }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: T.line; visible: ask.height > 1 }
                     }
-                }
+                    Text { visible: ask.open; width: parent.width; wrapMode: Text.Wrap   // what a request carries (legal 06.11.)
+                           text: shell.text("Whoever gets your request sees your name and your card back.")
+                           color: T.muted; font.family: T.font; font.pixelSize: 11 }
+                    Text { visible: ask.err !== ""; width: parent.width; wrapMode: Text.Wrap; text: ask.err
+                           color: "#d48a8a"; font.family: T.font; font.pixelSize: 12 }
+                    FmLink { text: shell.text("Your ID and profile →"); onClicked: fm.go("profile") }
 
-                // ---------- friends: a plain list – a click opens the friend in Trade (folders, notes … live there) ----------
-                Item {
-                    width: inner.width; height: 26
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: shell.text("FRIENDS"); color: T.dim
-                           font.family: T.font; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1.5 }
-                }
-                Text { visible: fm.tf.friends.length === 0; width: parent.width; wrapMode: Text.Wrap
-                       text: shell.text("No friends yet – tap + above and enter a friend's ID.")
-                       color: T.dim; font.family: T.font; font.pixelSize: 12 }
-                Repeater {
-                    model: fm.tf.friends
+                    // ---------- what I share: a lasting line while something goes out (legal 06.11., no pop-up) – „Change“
+                    // opens „Shared with friends“ in Orbit (the (c′) question lives there) ----------
                     Item {
-                        id: fe
-                        required property var modelData
-                        width: inner.width; height: 44
+                        id: libLine
+                        readonly property var ls: fm.pp.libShare
+                        visible: ls.kind === "on"
+                        width: parent.width; height: visible ? Math.max(44, libText.implicitHeight + 16) : 0
                         Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line }
-                        Image { anchors.verticalCenter: parent.verticalCenter; height: 34; width: 34 * 63 / 88
-                                source: fe.modelData.img || ""; sourceSize.height: 88; smooth: false }
-                        Column { x: 34; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 34
-                                 Text { width: parent.width; elide: Text.ElideRight; text: fe.modelData.name || ""
-                                        color: rh.hovered ? T.top : T.text; font.family: T.font; font.pixelSize: 13; font.bold: true }
-                                 Text { width: parent.width; elide: Text.ElideRight; text: fe.modelData.info || ""
-                                        color: T.muted; font.family: T.font; font.pixelSize: 11 } }
-                        HoverHandler { id: rh; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: { fm.open = false; shell.openBack("trade"); fm.tf.openFriend(fe.modelData.fid) } }
+                        Text { id: libText; anchors.verticalCenter: parent.verticalCenter; width: parent.width - libBtn.width - 10
+                               wrapMode: Text.Wrap; text: libLine.ls.text || ""
+                               color: T.text2; font.family: T.font; font.pixelSize: 12 }
+                        Btn { id: libBtn; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                              height: 32; compact: true; width: implicitWidth + 16; text: libLine.ls.action || ""
+                              onClicked: { fm.open = false; fm.pp.libShareAction() } }
                     }
-                }
-                FmLink { visible: fm.tf.friends.length > 0; text: shell.text("Folders, notes and more in Orbit →"); onClicked: fm.go("trade") }
 
-                // ---------- sent requests (only while there are any) ----------
-                Text {
-                    visible: { for (var i = 0; i < fm.pp.requests.length; i++) if (fm.pp.requests[i].dir === "out") return true; return false }
-                    text: shell.text("SENT REQUESTS"); color: T.dim; font.family: T.font; font.pixelSize: 11; font.bold: true
-                    font.letterSpacing: 1.5
-                }
-                Repeater {
-                    model: fm.pp.requests
-                    Rectangle {
-                        required property var modelData
-                        visible: modelData.dir === "out"
-                        width: inner.width; height: visible ? 46 : 0; radius: 9; color: "transparent"
-                        opacity: 0.5
-                        Rectangle { x: 6; anchors.verticalCenter: parent.verticalCenter; height: 38; width: 38 * 63 / 88; radius: 3
-                                    color: Qt.darker(T.surface, 1.2); border.width: 1; border.color: T.line2 }   // placeholder
-                        Column { x: 42; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 90
-                                 Text { width: parent.width; elide: Text.ElideRight; text: modelData.name
-                                        color: T.text; font.family: T.font; font.pixelSize: 13; font.bold: true }
-                                 Text { text: shell.text("waiting for an answer"); color: T.muted; font.family: T.font; font.pixelSize: 11 } }
-                        Btn { anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter
-                              width: 30; height: 26; compact: true; text: "✕"; tip: shell.text("Withdraw request")
-                              onClicked: fm.pp.retract(modelData.code) }
+                    // ---------- a friend has moved: two equal keys, nothing preselected (legal 07.11.) ----------
+                    Repeater {
+                        model: fm.pp.moves
+                        Item {
+                            required property var modelData
+                            width: inner.width; height: mvText.implicitHeight + mvKeys.height + 22
+                            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line }
+                            Text { id: mvText; y: 8; width: parent.width; wrapMode: Text.Wrap; text: modelData.text
+                                   color: T.text; font.family: T.font; font.pixelSize: 12 }
+                            Row { id: mvKeys; y: mvText.y + mvText.implicitHeight + 6; spacing: 6; height: 30
+                                  Btn { height: 30; compact: true; width: (inner.width - 6) / 2; text: shell.text("Accept")
+                                        objectName: "move-accept"; onClicked: fm.pp.moveAnswer(modelData.code, true) }
+                                  Btn { height: 30; compact: true; width: (inner.width - 6) / 2; text: shell.text("Decline")
+                                        objectName: "move-decline"; onClicked: fm.pp.moveAnswer(modelData.code, false) } }
+                        }
+                    }
+                    Text { visible: fm.pp.moveNote !== ""; width: inner.width; wrapMode: Text.Wrap; topPadding: 6
+                           text: fm.pp.moveNote; color: T.muted; font.family: T.font; font.pixelSize: 12 }
+
+                    // ---------- received requests ----------
+                    Repeater {
+                        model: fm.pp.requests
+                        Item {
+                            required property var modelData
+                            visible: modelData.dir === "in"
+                            width: inner.width; height: visible ? 46 : 0
+                            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line }
+                            Column { anchors.verticalCenter: parent.verticalCenter
+                                     Text { text: modelData.name; color: T.text; font.family: T.font; font.pixelSize: 13; font.bold: true }
+                                     Text { text: shell.text("wants to be your friend"); color: T.muted; font.family: T.font; font.pixelSize: 11 } }
+                            Row { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 4
+                                  Btn { height: 28; compact: true; width: implicitWidth + 16; primary: true; text: shell.text("Accept")
+                                        onClicked: fm.pp.answer(modelData.code, 1) }
+                                  Btn { height: 28; width: 30; compact: true; text: "✕"; tip: shell.text("Decline")
+                                        onClicked: fm.pp.answer(modelData.code, 0) } }
+                        }
+                    }
+
+                    // ---------- friends: a plain list – a click opens the friend in Trade (folders, notes … live there) ----------
+                    Item {
+                        width: inner.width; height: 26
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: shell.text("FRIENDS"); color: T.dim
+                               font.family: T.font; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1.5 }
+                    }
+                    Text { visible: fm.tf.friends.length === 0; width: parent.width; wrapMode: Text.Wrap
+                           text: shell.text("No friends yet – tap + above and enter a friend's ID.")
+                           color: T.dim; font.family: T.font; font.pixelSize: 12 }
+                    Repeater {
+                        model: fm.tf.friends
+                        Item {
+                            id: fe
+                            required property var modelData
+                            width: inner.width; height: 44
+                            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: T.line }
+                            Image { anchors.verticalCenter: parent.verticalCenter; height: 34; width: 34 * 63 / 88
+                                    source: fe.modelData.img || ""; sourceSize.height: 88; smooth: false }
+                            Column { x: 34; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 34
+                                     Text { width: parent.width; elide: Text.ElideRight; text: fe.modelData.name || ""
+                                            color: rh.hovered ? T.top : T.text; font.family: T.font; font.pixelSize: 13; font.bold: true }
+                                     Text { width: parent.width; elide: Text.ElideRight; text: fe.modelData.info || ""
+                                            color: T.muted; font.family: T.font; font.pixelSize: 11 } }
+                            HoverHandler { id: rh; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: { fm.open = false; shell.openBack("trade"); fm.tf.openFriend(fe.modelData.fid) } }
+                        }
+                    }
+                    FmLink { visible: fm.tf.friends.length > 0; text: shell.text("Folders, notes and more in Orbit →"); onClicked: fm.go("trade") }
+
+                    // ---------- sent requests (only while there are any) ----------
+                    Text {
+                        visible: { for (var i = 0; i < fm.pp.requests.length; i++) if (fm.pp.requests[i].dir === "out") return true; return false }
+                        text: shell.text("SENT REQUESTS"); color: T.dim; font.family: T.font; font.pixelSize: 11; font.bold: true
+                        font.letterSpacing: 1.5
+                    }
+                    Repeater {
+                        model: fm.pp.requests
+                        Rectangle {
+                            required property var modelData
+                            visible: modelData.dir === "out"
+                            width: inner.width; height: visible ? 46 : 0; radius: 9; color: "transparent"
+                            opacity: 0.5
+                            Rectangle { x: 6; anchors.verticalCenter: parent.verticalCenter; height: 38; width: 38 * 63 / 88; radius: 3
+                                        color: Qt.darker(T.surface, 1.2); border.width: 1; border.color: T.line2 }   // placeholder
+                            Column { x: 42; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 90
+                                     Text { width: parent.width; elide: Text.ElideRight; text: modelData.name
+                                            color: T.text; font.family: T.font; font.pixelSize: 13; font.bold: true }
+                                     Text { text: shell.text("waiting for an answer"); color: T.muted; font.family: T.font; font.pixelSize: 11 } }
+                            Btn { anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter
+                                  width: 30; height: 26; compact: true; text: "✕"; tip: shell.text("Withdraw request")
+                                  onClicked: fm.pp.retract(modelData.code) }
+                        }
                     }
                 }
             }

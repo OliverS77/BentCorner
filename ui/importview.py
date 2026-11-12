@@ -61,6 +61,27 @@ GROUPS = [("YOUR COLLECTION", [_ALL[k] for k in ("collection", "coll_export", "s
           ("DECKS & LOGS",   # a session is a "log" since .73 (03.11.)
            [_ALL[k] for k in ("deck", "deck_export", "share_decks", "session_share")]),
           ("TAUSCH & FREUNDE", [_ALL[k] for k in ("friend_code", "friend", "friend_export", "wishlist", "offer")])]
+# the export for friends without a trade file (orbit.FILE_FRIENDS off): only the formats for other apps
+_EXPORT_PLAIN = ("friend_export", "⇄", "Exportieren", "CSV oder Textliste: deine Tauschlisten und auf Wunsch deine Bibliothek")
+
+
+def groups():
+    """GROUPS as shown now: friends by file only with orbit.FILE_FRIENDS (off since 06.11.); the ID and the trade offer
+    (ticket image) only in Full Orbit – friends and tickets live there (Oliver 06.11.)."""
+    from system import orbit
+    out = []
+    for g, tabs in GROUPS:
+        keep = []
+        for t in tabs:
+            if t[0] == "friend" and not orbit.FILE_FRIENDS:
+                continue
+            if t[0] in ("friend_code", "offer") and not orbit.friends_shown():
+                continue
+            keep.append(_EXPORT_PLAIN if t[0] == "friend_export" and not orbit.FILE_FRIENDS else t)
+        out.append((g, keep))
+    return out
+
+
 _NUM = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+)$")
 
 
@@ -162,9 +183,10 @@ class ImportPage(QtCore.QObject):
     def __init__(self, ctrl):
         super().__init__(ctrl)
         self.ctrl = ctrl
-        self.keys = [t[0] for _, tabs in GROUPS for t in tabs]
+        self.keys = [t[0] for _, tabs in GROUPS for t in tabs]   # all of them (groups() decides what is shown)
         self.current, self._ctx = "deck", {}
         self.offer_img, self._share_tries = None, 0
+        self.offer_ticket, self.offer_mail = None, None   # the ticket behind the image; mailbox: None/sending/sent/…
         # Share decks
         self.share_ids, self.share_img, self.share_info = set(), None, ""
         self.share_title = ""   # custom heading for the image (empty = "My Lineup" or the deck name)
@@ -236,6 +258,39 @@ class ImportPage(QtCore.QObject):
     def _changed(self):
         self.changed.emit()
 
+    # ---------- trade ticket through the mailbox (lead 06.11.: one click, never silently) ----------
+    def offer_partner(self):
+        """(mailbox address, name) of the shown ticket's partner if they are a mailbox friend – else None"""
+        t = self.offer_ticket
+        tp = getattr(self.ctrl, "trade_page", None)
+        if not t or tp is None or not hasattr(tp, "mail_friend"):
+            return None
+        from collection import ticket
+        from system import userprofile
+        me = userprofile.ensure(self.ctrl.settings).get("id")
+        if (t.get("f") or [""])[0] != me:   # only a ticket I issued (offer, counter-offer, closing) goes back to them
+            return None
+        sd = ticket.side(t, me)
+        if sd is None:
+            return None
+        code = tp.mail_friend(sd[2][0])
+        return (code, sd[2][1] or "?") if code else None
+
+    def send_offer_mail(self):
+        who = self.offer_partner()
+        if who is None or self.offer_mail == "sending":
+            return
+        self.offer_mail = "sending"
+        self.ctrl.relay_send_ticket(self.offer_ticket, who[0])
+        self._changed()
+
+    def mail_done(self, res):
+        t = self.offer_ticket
+        if not t or not res or res.get("x") != (t.get("x") or t["id"]):
+            return
+        self.offer_mail = "sent" if res.get("ok") else ("full" if res.get("status") == 507 else "failed")
+        self._changed()
+
     def show_tab(self, key, **ctx):
         """Open an entry – ctx: deck_ids (share decks), deck_id (decklist), sid (session), img (offer)."""
         if key not in self.keys:
@@ -243,6 +298,7 @@ class ImportPage(QtCore.QObject):
         self._ctx = ctx
         if "img" in ctx:
             self.offer_img = ctx["img"]
+            self.offer_ticket, self.offer_mail = ctx.get("ticket"), None
         self.current = key
         fill = {"share_decks": self.fill_share_decks, "deck_export": self.fill_deck_export,
                 "session_share": self.fill_session_share}.get(key)
@@ -422,6 +478,46 @@ class ImportPage(QtCore.QObject):
             QtGui.QGuiApplication.clipboard().setText("\n\n".join(f"// {d['name']}\n{t}" for d, t in items))
             self.dexp_info = tr(f"✓ {len(items)} decklists on the clipboard – Moxfield & co. import one deck at a time, so paste them one by one.")
 
+    def dexp_csv(self):
+        """The selected decks as our own CSV (decks.to_csv), with card text if switched on (settings export_text)."""
+        from collection import exporttext
+        sel = [d for d in self._decks() if d["id"] in self.dexp_ids]
+        if not sel:
+            return
+        game = games.current().key
+        text = None
+        if self.ctrl.settings.get("export_text") and exporttext.allowed(game):
+            loc = getattr(games.current(), "locale_print", None)
+            text = {"game": game, "locale": set()}
+        jobs = []
+        if len(sel) == 1:
+            path = qdialogs.save_file(tr("Export deck"), f"{sel[0]['name']}.csv", "CSV (*.csv)")
+            if not path:
+                return
+            jobs = [(sel[0], path)]
+        else:
+            folder = qdialogs.get_dir(tr("Folder for the decklists"))
+            if not folder:
+                return
+            import pathlib
+            base, used = pathlib.Path(folder), set()
+            for d in sel:
+                stem = re.sub(r'[<>:"/\\|?*]+', "", d["name"]).strip()[:80] or "deck"
+                path, n = base / f"{stem}.csv", 2
+                while path.exists() or path in used:
+                    path, n = base / f"{stem} ({n}).csv", n + 1
+                used.add(path)
+                jobs.append((d, str(path)))
+        for d, path in jobs:
+            rows = carddb.cards_by_ids(decks.all_ids(d)) if carddb.exists() else {}
+            if text is not None and loc is not None:
+                text["locale"] = {sid for sid in rows if loc(sid)}
+            decks.to_csv(d, rows, path, text)
+        if len(jobs) == 1:
+            self.dexp_info = tr("✓ Saved: ") + jobs[0][1]
+        else:
+            self.dexp_info = tr(f"✓ {len(jobs)} decklists saved in ") + str(base)
+
     def dexp_file(self):
         items = self._dexp_texts()
         if not items:
@@ -450,7 +546,8 @@ class ImportPage(QtCore.QObject):
 
     # --- For friends (trade file) ---
     def _friend_state(self):
-        return {"fmt": trade.TEXT_FORMATS[0][0], "send_lists": True,
+        from system import orbit
+        return {"fmt": trade.TEXT_FORMATS[0 if orbit.FILE_FRIENDS else 1][0], "send_lists": True,
                 "have": {x["id"] for x in trade.lists("have") if x["id"] == trade.MAIN_HAVE},
                 "all_cards": False, "wish": {x["id"] for x in trade.lists("wish") if not x.get("example")},
                 "decks": True, "cols": set(trade.PRESET_COLUMNS["excel"])}
@@ -472,6 +569,13 @@ class ImportPage(QtCore.QObject):
             return
         ctrl = self.ctrl
         prof = userprofile.ensure(ctrl.settings)
+        if fmt == "bentcorner" and not prof.get("name"):
+            # the name first, like the web (#/profile/name): friends see it with the file – otherwise it arrives as
+            # "Friend" (lead 06.11.). No window: the profile opens with the name field focused.
+            ctrl.focus_profile_name = True
+            ctrl.stream.show_page("profile", back=True)
+            ctrl.stream_toast(tr("Your name first – your friends see it with your file."))
+            return
         name = prof.get("name") or tr("Mine")
         ext = {"bentcorner": trade.EXT, "text": ".txt"}.get(fmt, ".csv")
         kind = {"all": tr("Collection"), "lists": tr("Trade cards"), "none": tr("Wishlist")}[what]
@@ -499,9 +603,11 @@ class ImportPage(QtCore.QObject):
                 elif fmt == "text":
                     n = trade.export_text(groups, path)
                 else:
-                    cols = [k for k, _ in trade.COLUMNS if k in st["cols"]] or ["count", "name"]
+                    game = games.current().key
+                    cols = [k for k, _ in trade.columns_for(game) if k in st["cols"]] or ["count", "name"]
                     db = carddb.cards_by_ids({g["sid"] for g in groups}) if carddb.exists() else {}
-                    n = trade.export_custom(groups, path, cols, db)
+                    loc = {g["sid"] for g in groups if getattr(games.current(), "locale_print", lambda s: False)(g["sid"])}
+                    n = trade.export_custom(groups, path, cols, db, game, loc)
         except OSError as e:
             qdialogs.warn(tr("Export"), tr(f"Couldn't save: {e}"))
             return
@@ -549,7 +655,7 @@ class ImportPage(QtCore.QObject):
         last = self.ctrl.settings.get("last_backup")
         when = time.strftime("%d.%m.%Y %H:%M", time.localtime(last)) if last else tr("never")
         snaps = datastore.snapshots()
-        auto = tr(f"{len(snaps)} silent backups") + (
+        auto = tr(f"{len(snaps)} crash backups") + (
             " · " + tr("last") + " " + time.strftime("%d.%m.%Y %H:%M", time.localtime(snaps[0].stat().st_mtime))
             if snaps else "")
         return tr(f"Your data: {n} cards · {size:.1f} MB · last backup: {when}"), auto
@@ -568,7 +674,8 @@ class ImportPage(QtCore.QObject):
         except OSError as e:
             self.bk_msg = tr(f"Couldn't back up: {e}")
             return
-        self.ctrl.settings["last_backup"] = time.time()
+        from system import wipe
+        wipe.remember_backup(self.ctrl.settings, dest)   # where and when – „Bent°Corner löschen“ names it
         self.ctrl.settings_changed()
         self.bk_msg = tr("✓ Backed up: ") + str(dest)
 
@@ -587,14 +694,23 @@ class ImportPage(QtCore.QObject):
             return
         info = datastore.backup_info(pathlib.Path(folder))
         if info is None:
+            datastore.drop_unpacked()
             self.bk_msg = tr("This is not a Bent°Corner backup (the my-data folder is missing).")
             return
         if not qdialogs.question(tr("Restore backup"),
                                  tr(f"Restore the backup with {info['cards']} cards and {info['sessions']} logs?\n\nYour current state is saved automatically first (data/backups/auto). Bent°Corner restarts afterwards.")):
+            datastore.drop_unpacked()   # nothing left behind (review 08.11. F3)
             return
         from ui.busy import busy
-        with busy(self.ctrl, tr("Restoring backup …")):
-            ok = datastore.restore_backup(pathlib.Path(folder))
+        try:
+            with busy(self.ctrl, tr("Restoring backup …")):
+                ok = datastore.restore_backup(pathlib.Path(folder))
+        except datastore.RestoreError:   # nothing changed (review 08.11. F4)
+            self.bk_msg = tr("Your current state couldn't be saved first – nothing was restored.")
+            return
+        except (OSError, ValueError):   # put back as it was
+            self.bk_msg = tr("The backup couldn't be restored – your previous state is back.")
+            return
         if ok:
             self.ctrl.restart_after_restore()
 
@@ -692,7 +808,7 @@ class ImportPage(QtCore.QObject):
             where = " · ".join(x for x in (m["set"], f"#{m['number']}" if m["number"] else "") if x)
             groups.setdefault(m["why"], []).append(
                 f"<b>{_esc(m['name'])}</b>"
-                + (f" <span style='color:#8e8e8e'>({_esc(where)}, {m['count']}×)</span>" if where else ""))
+                + (f" <span style='color:#8e8e8e'>({_esc(where)}, {_esc(str(m['count']))}×)</span>" if where else ""))
         lines = [", ".join(cards) + f"<br><span style='color:#b0b0b0'>{_esc(why)}</span>"
                  for why, cards in groups.items()]
         more = len(self.coll_missing) - 200
@@ -717,7 +833,8 @@ class ImportPage(QtCore.QObject):
         if not self._coll:
             return
         now = time.time()
-        sid = "import_" + time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now))
+        from collection import synclogs
+        sid = synclogs.new_id("import_" + time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now)))
         while (sessions.SESSIONS / f"{sid}.json").exists():
             sid += "b"
         entries = []
@@ -804,10 +921,13 @@ class ImportPage(QtCore.QObject):
         self.wish_text = ""
         self.wish_info = (f"<span style='color:#46d17a'>✓ {tr(f"{added} cards on the wishlist.")}</span>"
                           + (f"<br><span style='color:#ffb347'>{tr("Not found: ")}"
-                             f"{', '.join(missing[:12])}</span>" if missing else ""))
+                             f"{', '.join(_esc(str(x)) for x in missing[:12])}</span>" if missing else ""))
 
     # --- Friend ---
     def do_friend(self):
+        from system import orbit
+        if not orbit.FILE_FRIENDS:   # friends by file are off (the tile is hidden too)
+            return
         stream = self.ctrl.stream
         stream.ensure_page("trade")
         page = self.ctrl.trade_page

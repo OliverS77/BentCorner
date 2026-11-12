@@ -20,7 +20,9 @@ Item {
         Item {
             id: nameBox
             x: backB.width + 12; height: 38; z: 30
-            width: Math.max(200, head.width - x - rightRow.width - 12)
+            // what is left beside the keys – never more (lead 06.11.: at 1280 px a fixed 200 slid the name under the format
+            // key); the name then ends in „…“ (RenameField elides)
+            width: Math.max(0, head.width - x - rightRow.width - 12)
             RenameField {   // click on the name = rename, like everywhere (review .101)
                 x: 6; anchors.verticalCenter: parent.verticalCenter
                 width: Math.min(implicitWidth, parent.width - 12); height: 30
@@ -28,32 +30,41 @@ Item {
                 commit: function (v) { de.setName(v); return true }
             }
         }
+        // narrow window (lead 06.11.): Export, Versions and Delete move into one „⋯“ key when the name would get less
+        // than ~240 px. Measured from the keys' own widths (not the row's), so the choice never feeds back on itself.
+        readonly property real keysW: expB.implicitWidth + verB.implicitWidth + delB.implicitWidth + 3 * 8
+        readonly property real restW: 150 + sumT.implicitWidth + (de.dirty ? unsT.implicitWidth + disB.implicitWidth + 16 : 0)
+                                      + saveB.implicitWidth + builtB.implicitWidth + 4 * 8
+        readonly property bool compact: head.width - (backB.width + 12) - (restW + keysW) - 12 < 240
         Row {
             id: rightRow
             anchors.right: parent.right
             spacing: 8
             DropList { height: 38; width: 150; items: de.formats; current: de.format; onPicked: function (k) { de.setFormat(k) } }
             Text {
+                id: sumT
                 anchors.verticalCenter: parent.verticalCenter
                 text: de.summary; textFormat: Text.RichText
                 color: T.text; font.family: T.font; font.pixelSize: 13
                 HoverHandler { id: sumH
                     onHoveredChanged: if (hovered && de.summaryTip) { var p = parent.mapToItem(null, parent.width / 2, parent.height); shell.tip(de.summaryTip, p.x, p.y) } else shell.tip("", 0, 0) }
             }
-            Text { anchors.verticalCenter: parent.verticalCenter; visible: de.dirty; text: shell.text("● unsaved")
+            Text { id: unsT; anchors.verticalCenter: parent.verticalCenter; visible: de.dirty; text: shell.text("● unsaved")
                    color: "#d9b46a"; font.family: T.font; font.pixelSize: 13; font.bold: true }
-            Btn { height: 38; visible: de.dirty; danger: true; text: shell.text("Discard")
+            Btn { id: disB; height: 38; visible: de.dirty; danger: true; text: shell.text("Discard")
                   tip: shell.text("Undo all changes since the last save"); onClicked: de.discard() }
-            Btn { height: 38; text: shell.text("Save"); enabled: de.dirty; active: de.dirty
+            Btn { id: saveB; height: 38; text: shell.text("Save"); enabled: de.dirty; active: de.dirty
                   tip: shell.text("Save the deck changes (Ctrl+S)"); onClicked: de.save() }
-            Btn { height: 38; text: shell.text("Export") + "  ▾"; onClicked: de.exportMenu() }
-            Btn { height: 38; text: shell.text("Built"); checkable: true; checked: de.built
+            Btn { id: expB; height: 38; visible: !head.compact; text: shell.text("Export") + "  ▾"; onClicked: de.exportMenu() }
+            Btn { id: builtB; height: 38; text: shell.text("Built"); checkable: true; checked: de.built
                   tip: shell.text("I really built this deck – its cards are in use: they no longer count as free for suggestions, upgrades and other decks")
                   onClicked: de.toggleBuilt() }
-            Btn { height: 38; text: shell.text("Versions ▾")
+            Btn { id: verB; height: 38; visible: !head.compact; text: shell.text("Versions ▾")
                   tip: shell.text("Save as a new version, compare with another deck, put into a folder")
                   onClicked: de.versionsMenu() }
-            Btn { height: 38; danger: true; text: shell.text("Delete"); onClicked: de.deleteDeck() }
+            Btn { id: delB; height: 38; visible: !head.compact; danger: true; text: shell.text("Delete"); onClicked: de.deleteDeck() }
+            Btn { id: moreB; height: 38; width: 44; visible: head.compact; text: "⋯"
+                  tip: shell.text("Export, versions, delete"); onClicked: de.moreMenu() }
         }
     }
 
@@ -537,14 +548,17 @@ Item {
                         delegate: Item {
                             required property var modelData
                             required property int index
+                            // Orbit's Core: the price column stays (nothing moves), empty – its head is the way to the level
+                            readonly property bool veiled: index === 3 && !shell.pricesOn
                             x: listBox.colX(index); y: 4; width: listBox.colW(index); height: 28
                             Text { anchors.fill: parent; leftPadding: 4; rightPadding: 4
                                    horizontalAlignment: index === 3 ? Text.AlignRight : (index === 4 || index === 0 ? Text.AlignHCenter : Text.AlignLeft)
                                    verticalAlignment: Text.AlignVCenter
-                                   text: modelData + (de.listSort[0] === index ? (de.listSort[1] ? " ▾" : " ▴") : "")
-                                   color: chh2.hovered ? T.text : T.muted; font.family: T.font; font.pixelSize: 12; font.bold: true }
+                                   text: parent.veiled ? modelData + "  ›"
+                                         : modelData + (de.listSort[0] === index ? (de.listSort[1] ? " ▾" : " ▴") : "")
+                                   color: chh2.hovered ? T.text : T.muted; font.family: T.font; font.pixelSize: 12; font.bold: !parent.veiled }
                             HoverHandler { id: chh2; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: de.sortBy(index) }
+                            TapHandler { onTapped: parent.veiled ? shell.openOrbitSettings() : de.sortBy(index) }
                         }
                     }
                     Rectangle { y: 33; width: listBox.width; height: 1; color: T.line }
@@ -610,7 +624,10 @@ Item {
                                        horizontalAlignment: Text.AlignRight; text: lr.modelData.count || ""
                                        color: T.text2; font.family: T.font; font.pixelSize: 13 }
                                 // name (truncates first), followed in light grey by „(any)“ / „(SET #nr)“ and the pin
-                                readonly property real nameRoom: listBox.colW(1) - 8 - (useRow.width > 0 ? useRow.width + 6 : 0) - 26
+                                readonly property real nameRoom: Math.max(0, listBox.colW(1) - 8 - (useRow.width > 0 ? useRow.width + 6 : 0) - 26)
+                                // the deck chip only gets what is left after ~60 px of name (lead 06.11.: in a narrow list the
+                                // chip covered the name – a negative width stops eliding, the whole name was drawn under it)
+                                readonly property real chipRoom: listBox.colW(1) - 8 - 60 - 6 - 26
                                 Text { id: nameT; x: listBox.colX(1) + 4; height: parent.height
                                        width: Math.min(implicitWidth, parent.nameRoom)   // the name has priority
                                        verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; text: lr.modelData.name || ""
@@ -633,15 +650,24 @@ Item {
                                     x: listBox.colX(2) - width - 4; anchors.verticalCenter: parent.verticalCenter
                                     spacing: 3
                                     readonly property var uses: lr.modelData.inUse || []
+                                    // too narrow for a deck name: only „⚑ +n“, the names on hover
+                                    readonly property bool compact: parent.chipRoom < 80
                                     Rectangle {
                                         visible: useRow.uses.length > 0
-                                        height: 20; radius: 6; width: Math.min(110, ut.implicitWidth + 12)
+                                        height: 20; radius: 6
+                                        width: useRow.compact ? ut.implicitWidth + 12
+                                               : Math.max(34, Math.min(110, ut.implicitWidth + 12, parent.parent.chipRoom - (useRow.uses.length > 1 ? 24 : 0)))
                                         color: Qt.rgba(1, 1, 1, 0.06); border.width: 1; border.color: T.line2
-                                        Text { id: ut; anchors.centerIn: parent; width: Math.min(98, implicitWidth); elide: Text.ElideRight
-                                               text: useRow.uses.length ? "⚑ " + useRow.uses[0].deck : ""
+                                        Text { id: ut; anchors.centerIn: parent; width: Math.min(parent.width - 12, implicitWidth); elide: Text.ElideRight
+                                               text: !useRow.uses.length ? ""
+                                                     : useRow.compact ? "⚑" + (useRow.uses.length > 1 ? " +" + (useRow.uses.length - 1) : "")
+                                                     : "⚑ " + useRow.uses[0].deck
                                                color: T.text2; font.family: T.font; font.pixelSize: 11 }
+                                        HoverHandler {
+                                            onHoveredChanged: if (hovered) { var p = parent.mapToItem(null, parent.width / 2, parent.height)
+                                                shell.tip(useRow.uses.map(function (u) { return u.deck }).join(" · "), p.x, p.y) } else shell.tip("", 0, 0) }
                                     }
-                                    Text { visible: useRow.uses.length > 1; anchors.verticalCenter: parent.verticalCenter
+                                    Text { visible: !useRow.compact && useRow.uses.length > 1; anchors.verticalCenter: parent.verticalCenter
                                            text: "+" + (useRow.uses.length - 1); color: T.muted; font.family: T.font; font.pixelSize: 11; font.bold: true }
                                 }
                                 Row {   // mana cost (hidden in games without it)

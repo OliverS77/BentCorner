@@ -69,6 +69,65 @@ def new(me, friend, give, get, trade_id=None, version=1, kind="o", money=0.0):
             "g": g}
 
 
+# ---------- checking a ticket from outside (image, photo, mailbox) – review 08.11. (T1/T2/T5/T6) ----------
+MAX_CARDS = 2000      # cards per ticket (an image holds far fewer)
+MAX_COUNT = 999       # copies of one card
+_ID = __import__("re").compile(r"[A-Za-z0-9_-]{1,40}")
+_FIELD = __import__("re").compile(r"(?!.*\.\.)[^/\\:*?\"<>|\x00-\x1f]{0,24}")   # set, number, language: short, no path characters
+
+
+def _known_games():
+    import games
+    return {key for key, _name, _ready in games.GAMES}
+
+
+def _markup(s):
+    """A name with < or > could become rich text with links in a label (review 08.11. T3) – never in a ticket."""
+    return "<" in s or ">" in s
+
+
+def valid(t):
+    """Is a ticket from outside well-formed? The game names a known game (it becomes part of file paths), ids are
+    short tokens, names and fields have sane lengths, counts and amounts are in range. -> bool"""
+    try:
+        if not isinstance(t, dict) or t.get("v") != VERSION:
+            return False
+        if not _ID.fullmatch(str(t.get("id") or "")) or ("x" in t and not _ID.fullmatch(str(t.get("x") or ""))):
+            return False
+        known = _known_games()
+        if t.get("g") not in (None, "") and t.get("g") not in known:
+            return False
+        for side_ in ("f", "o"):
+            p = t.get(side_)
+            if not (isinstance(p, list) and len(p) == 2 and all(isinstance(x, str) for x in p)):
+                return False
+            if len(p[0]) > 64 or len(p[1]) > 80 or _markup(p[1]):
+                return False
+        cards = (t.get("a") or []) + (t.get("b") or [])
+        if not (isinstance(t.get("a", []), list) and isinstance(t.get("b", []), list)) or len(cards) > MAX_CARDS:
+            return False
+        for c in cards:
+            if not isinstance(c, list) or not 4 <= len(c) <= 7:
+                return False
+            if not all(isinstance(x, str) and _FIELD.fullmatch(x) for x in (str(c[0]), str(c[1]), str(c[2] or ""))):
+                return False
+            if c[3] not in (0, 1, True, False, None, ""):   # foil: a flag, nothing else (review 08.11., ports)
+                return False
+            if len(c) > 4 and not (isinstance(c[4], int) and 1 <= c[4] <= MAX_COUNT):
+                return False
+            if len(c) > 5 and not (isinstance(c[5], str) and len(c[5]) <= 200 and not _markup(c[5])):
+                return False
+            if len(c) > 6 and c[6] not in ("", None) and c[6] not in known:
+                return False
+        if not isinstance(t.get("n", 1), int) or not 1 <= t.get("n", 1) <= 1000:
+            return False
+        if t.get("k", "o") not in ("o", "f") or not isinstance(t.get("m", 0), int) or abs(t.get("m", 0)) > 10 ** 9:
+            return False
+        return True
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
 def _game():   # key of the open game (games.current_key) – a name of its own so tests can replace it
     import games
     return games.current_key()
@@ -126,7 +185,9 @@ def side(t, my_id):
     """From my point of view: -> ("give", "get", partner [ID, name]) or None if the ticket does not concern me."""
     def me(pid):
         pid = str(pid or "")
-        return bool(pid) and bool(my_id) and (my_id.startswith(pid) if len(pid) < len(my_id) else pid == my_id)
+        # a shortened ID only from the pixel code's length on (review 08.11. T5: never „a“ for anyone)
+        return bool(pid) and bool(my_id) and (my_id.startswith(pid) and len(pid) >= ID_LEN if len(pid) < len(my_id)
+                                              else pid == my_id)
     if me((t.get("o") or [""])[0]):
         return t.get("b") or [], t.get("a") or [], t.get("f") or ["", ""]
     if me((t.get("f") or [""])[0]):
@@ -204,19 +265,29 @@ def module_rect(i, img_h, lay=RECEIPT):
 
 
 # ---------- Reading ----------
-def _sample(gray, s, dy, start, count, lay):
+def _sample(gray, s, dy, start, count, lay, ii=None):
     """Mean values of blocks start … start+count (grayscale image as a numpy array)."""
+    import numpy as np
     h, w = gray.shape
     rad = max(1, int(lay.M * s * 0.22))
-    out = []
-    for i in range(start, start + count):
-        r, c = divmod(i, lay.COLS)
-        cx = int(round((lay.X0 + (c + 0.5) * lay.M) * s))
-        cy = int(round(h - (BOTTOM + (r + 0.5) * lay.M) * s + dy))
-        if not (rad <= cx < w - rad and rad <= cy < h - rad):
-            return None
-        out.append(float(gray[cy - rad:cy + rad + 1, cx - rad:cx + rad + 1].mean()))
-    return out
+    r, c = np.divmod(np.arange(start, start + count), lay.COLS)
+    cx = np.round((lay.X0 + (c + 0.5) * lay.M) * s).astype(np.int64)
+    cy = np.round(h - (BOTTOM + (r + 0.5) * lay.M) * s + dy).astype(np.int64)
+    if count and not ((cx >= rad).all() and (cx < w - rad).all() and (cy >= rad).all() and (cy < h - rad).all()):
+        return None
+    # the squares' means from the integral image – the same numbers as .mean() block by block, without the Python
+    # loop (a camera frame tries thousands of placements; 0.9.7.38)
+    if ii is None:
+        ii = _integral(gray)
+    y0, y1, x0, x1 = cy - rad, cy + rad + 1, cx - rad, cx + rad + 1
+    tot = ii[y1, x1] - ii[y0, x1] - ii[y1, x0] + ii[y0, x0]
+    return (tot.astype(np.float64) / float((2 * rad + 1) ** 2)).tolist()
+
+
+def _integral(gray):
+    import cv2
+    import numpy as np
+    return cv2.integral(np.ascontiguousarray(gray, np.uint8), sdepth=cv2.CV_32S)   # exact up to 8 Mpx
 
 
 def _bits_of(vals):
@@ -231,20 +302,21 @@ def _bytes(bitlist):
 
 def decode_gray(gray, layouts=LAYOUTS):
     """Pixel code from a grayscale image (numpy, ticket at full width) -> ticket (without card names) or None."""
+    ii = _integral(gray)   # once for every layout and offset
     for lay in layouts:
-        t = _decode_gray(gray, lay)
+        t = _decode_gray(gray, lay, ii)
         if t is not None:
             return t
     return None
 
 
-def _decode_gray(gray, lay):
+def _decode_gray(gray, lay, ii=None):
     h, w = gray.shape[:2]
     s = w / lay.W
     head_bits = (_HEAD + _HEAD_SYM) * 8
     for dy in (0, -0.35, 0.35, -0.7, 0.7):
         dy *= lay.M * s
-        vals = _sample(gray, s, dy, 0, head_bits, lay)
+        vals = _sample(gray, s, dy, 0, head_bits, lay, ii)
         if vals is None:
             continue
         b = [a ^ m for a, m in zip(_bits_of(vals), _mask(head_bits))]
@@ -256,7 +328,7 @@ def _decode_gray(gray, lay):
             continue
         sizes = _sizes((hi << 8) | lo, blocks)
         total = head_bits + sum((n + _nsym(n)) * 8 for n in sizes)
-        vals = _sample(gray, s, dy, 0, total, lay)
+        vals = _sample(gray, s, dy, 0, total, lay, ii)
         if vals is None:
             continue
         b = [a ^ m for a, m in zip(_bits_of(vals), _mask(total))]
@@ -276,9 +348,12 @@ def _decode_gray(gray, lay):
 
 
 def _expand(t):
-    """Pixel code -> ticket: attach the card games from "ga"/"gb" back onto the cards."""
+    """Pixel code -> ticket: attach the card games from "ga"/"gb" back onto the cards (a broken list: dropped)."""
     for key in ("a", "b"):
-        for i, g in t.pop("g" + key, None) or []:
+        extra = t.pop("g" + key, None) or []
+        if not isinstance(extra, list) or not all(isinstance(e, list) and len(e) == 2 for e in extra):
+            continue
+        for i, g in extra:
             cards = t.get(key) or []
             if 0 <= i < len(cards) and isinstance(cards[i], list):
                 c = cards[i]
@@ -310,8 +385,9 @@ def decode_photo(bgr):
     k = max(3, int(min(h, w) / 160))
     blob = cv2.morphologyEx(cv2.dilate(th, np.ones((k, k), np.uint8)), cv2.MORPH_CLOSE,
                             np.ones((2 * k + 1, 2 * k + 1), np.uint8))
-    cnts, _ = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for c in sorted(cnts, key=cv2.contourArea, reverse=True)[:6]:
+    cnts, _ = cv2.findContours(blob, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    mids = None
+    for n, c in enumerate(sorted(cnts, key=cv2.contourArea, reverse=True)[:6]):
         (cx, cy), (rw, rh), ang = cv2.minAreaRect(c)
         if min(rw, rh) < 6 or max(rw, rh) < w * 0.15:
             continue
@@ -320,33 +396,151 @@ def decode_photo(bgr):
         if rw / max(rh, 1) < 1.15:   # receipt: the code block is almost square
             continue
         box = _order(cv2.boxPoints(((cx, cy), (rw * 1.04, rh * 1.25), ang)))
-        tw = WIDE.COLS * 8
-        tht = max(8, int(round(tw * rh * 1.25 / (rw * 1.04))))
-        mat = cv2.getPerspectiveTransform(box, np.float32([[0, 0], [tw, 0], [tw, tht], [0, tht]]))
-        wg = cv2.warpPerspective(g, mat, (tw, tht), flags=cv2.INTER_LINEAR)
-        for img, lay in ((im, ly) for im in (wg, cv2.rotate(wg, cv2.ROTATE_180)) for ly in LAYOUTS):
-            _, bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            ys, xs = np.nonzero(bw)
-            if len(xs) < 50:
+        t = _read_box(g, box, rw, rh)
+        if t is not None:
+            return t
+        # held at an angle (one side nearer): the rectangle cuts the code askew – straighten by the block's own four
+        # corners (lead 03.11.2026; 8 px of perspective were enough to fail before). Second, not instead: on the
+        # synthetic test pictures each way reads some the other doesn't
+        if n >= 3:   # the code is among the three largest blobs; a camera frame without it must stay quick
+            continue
+        if mids is None:
+            mids = np.float32([x.reshape(-1, 2).mean(0) for x in cnts])
+        for pts in _pieces(cnts, mids, c):
+            q = _quad(pts)
+            if q is not None:
+                t = _read_box(g, q[0], q[1], q[2])
+                if t is not None:
+                    return t
+    return None
+
+
+def _pieces(cnts, mids, c):
+    """The points to fit the edges to: the blob alone, then – if others join – the blob with its neighbours."""
+    yield c.reshape(-1, 2)
+    p = _grow(cnts, mids, c)
+    if len(p) > len(c):
+        yield p
+
+
+def _rect(p):
+    """minAreaRect with the long side along -> (center, angle, length, height)."""
+    import cv2
+    (cx, cy), (rw, rh), ang = cv2.minAreaRect(p)
+    if rh > rw:
+        rw, rh, ang = rh, rw, ang + 90
+    return (cx, cy), ang, rw, rh
+
+
+def _grow(cnts, mids, c):
+    """The blob and its neighbours in the same strip -> its points. Held close the blocks are big, and a run of empty
+    ones splits the code into pieces side by side; a piece joins when it lies wholly within the block's height (+10 %)
+    and starts at most 0.15 heights past an end (three rounds; text lines above, the screen's frame and stray dots lie
+    outside)."""
+    import numpy as np
+    p = c.reshape(-1, 2)
+    for _ in range(3):
+        (cx, cy), ang, rw, rh = _rect(p)
+        a = np.radians(ang)
+        eu, ev = np.float32([np.cos(a), np.sin(a)]), np.float32([-np.sin(a), np.cos(a)])
+        o = np.float32([cx, cy])
+        keep = [c.reshape(-1, 2)]
+        for i in np.nonzero(np.abs((mids - o) @ ev) <= rh * 0.5)[0]:
+            if cnts[i] is c:
                 continue
-            x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
-            band = img[y0:y1, x0:x1]
-            bg = int(np.median(img[bw == 0])) if (bw == 0).any() else 10
-            for kl in range(3):
-                for kr in range(3):   # at the far left/right a column may be empty
-                    m = (x1 - x0) / (lay.COLS - kl - kr)
-                    s2 = m / lay.M
-                    rows = max(1, int(round((y1 - y0) / m)))
-                    cw, ch = int(round(lay.W * s2)), int(round((BOTTOM + rows * lay.M + 24) * s2))
-                    canvas = np.full((ch, cw), bg, np.uint8)
-                    bx = int(round((lay.X0 + kl * lay.M) * s2))
-                    by = int(round(ch - BOTTOM * s2)) - band.shape[0]
-                    if by < 0 or bx + band.shape[1] > cw:
-                        continue
-                    canvas[by:by + band.shape[0], bx:bx + band.shape[1]] = band
-                    t = decode_gray(canvas, (lay,))
-                    if t is not None:
-                        return t
+            q = cnts[i].reshape(-1, 2) - o
+            u = q @ eu
+            if np.abs(q @ ev).max() <= rh * 0.6 and u.min() <= rw / 2 + rh * 0.15 and u.max() >= -rw / 2 - rh * 0.15:
+                keep.append(cnts[i].reshape(-1, 2))
+        n, p = len(p), np.concatenate(keep)
+        if len(p) == n:
+            break
+    return p
+
+
+def _quad(p):
+    """The code block's four corners: each edge a robust line (Huber) through its outermost points strip by strip, the
+    corners where the lines meet. Not the hull's corners: the last block row is mostly only partly filled, a corner at
+    its end would tilt the whole edge by a block – here it is an outlier, or the line runs one row lower but parallel
+    (the band reading measures the height itself). Long side on top, widened like the rectangle (×1.04 along, ×1.25
+    across – in the quadrilateral's own coordinates) -> (box, rw, rh) or None."""
+    import cv2
+    import numpy as np
+    p = p.astype(np.float32)
+    center, ang, rw, rh = _rect(p)
+    if min(rw, rh) < 6 or rw / max(rh, 1) < 1.15:
+        return None
+    a = np.radians(ang)
+    eu, ev = np.float32([np.cos(a), np.sin(a)]), np.float32([-np.sin(a), np.cos(a)])
+    u, v = (p - center) @ eu, (p - center) @ ev
+
+    def outer(along, across, half, n, side):   # per strip along the edge the point farthest out
+        pts = []
+        for lo in np.linspace(-half * 0.85, half * 0.85, n, endpoint=False):
+            sel = np.nonzero((along >= lo) & (along < lo + half * 1.7 / n))[0]
+            if len(sel):
+                pts.append(p[sel[np.argmax(across[sel] * side)]])
+        return np.float32(pts) if len(pts) >= 4 else None
+
+    lines = []
+    for along, across, half, n, side in ((u, v, rw / 2, 24, -1), (v, u, rh / 2, 8, 1), (u, v, rw / 2, 24, 1),
+                                         (v, u, rh / 2, 8, -1)):   # top, right, bottom, left
+        pts = outer(along, across, half, n, side)
+        if pts is None:
+            return None
+        vx, vy, x0, y0 = cv2.fitLine(pts, cv2.DIST_HUBER, 0, 0.01, 0.01).ravel()
+        lines.append((np.float32([x0, y0]), np.float32([vx, vy])))
+    corners = []
+    for (p1, d1), (p2, d2) in zip(lines, lines[1:] + lines[:1]):
+        den = d1[0] * d2[1] - d1[1] * d2[0]
+        if abs(den) < 0.2:   # nearly parallel neighbours: no corner
+            return None
+        t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den
+        corners.append(p1 + t * d1)
+    q = _order(corners)
+    if np.linalg.norm(q[3] - q[0]) > np.linalg.norm(q[1] - q[0]):   # portrait: the long side to the top
+        q = np.float32([q[3], q[0], q[1], q[2]])
+    rw = (np.linalg.norm(q[1] - q[0]) + np.linalg.norm(q[2] - q[3])) / 2
+    rh = (np.linalg.norm(q[3] - q[0]) + np.linalg.norm(q[2] - q[1])) / 2
+    if min(rw, rh) < 6 or rw / max(rh, 1) < 1.15:
+        return None
+    m = cv2.getPerspectiveTransform(np.float32([[0, 0], [1, 0], [1, 1], [0, 1]]), q)
+    ex = np.float32([[[-0.02, -0.125], [1.02, -0.125], [1.02, 1.125], [-0.02, 1.125]]])
+    return cv2.perspectiveTransform(ex, m)[0].astype(np.float32), rw, rh
+
+
+def _read_box(g, box, rw, rh):
+    """The quadrilateral box (tl, tr, br, bl) straightened to WIDE.COLS·8 px, also turned by 180°; the bright band put
+    onto a clean "virtual ticket" of each layout and read -> ticket or None."""
+    import cv2
+    import numpy as np
+    tw = WIDE.COLS * 8
+    tht = max(8, int(round(tw * rh * 1.25 / (rw * 1.04))))
+    mat = cv2.getPerspectiveTransform(np.float32(box), np.float32([[0, 0], [tw, 0], [tw, tht], [0, tht]]))
+    wg = cv2.warpPerspective(g, mat, (tw, tht), flags=cv2.INTER_LINEAR)
+    for img, lay in ((im, ly) for im in (wg, cv2.rotate(wg, cv2.ROTATE_180)) for ly in LAYOUTS):
+        _, bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        ys, xs = np.nonzero(bw)
+        if len(xs) < 50:
+            continue
+        x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+        band = img[y0:y1, x0:x1]
+        bg = int(np.median(img[bw == 0])) if (bw == 0).any() else 10
+        for kl in range(3):
+            for kr in range(3):   # at the far left/right a column may be empty
+                m = (x1 - x0) / (lay.COLS - kl - kr)
+                s2 = m / lay.M
+                rows = max(1, int(round((y1 - y0) / m)))
+                cw, ch = int(round(lay.W * s2)), int(round((BOTTOM + rows * lay.M + 24) * s2))
+                canvas = np.full((ch, cw), bg, np.uint8)
+                bx = int(round((lay.X0 + kl * lay.M) * s2))
+                by = int(round(ch - BOTTOM * s2)) - band.shape[0]
+                if by < 0 or bx + band.shape[1] > cw:
+                    continue
+                canvas[by:by + band.shape[0], bx:bx + band.shape[1]] = band
+                t = decode_gray(canvas, (lay,))
+                if t is not None:
+                    return t
     return None
 
 
@@ -360,14 +554,15 @@ def read_image(path):
     if txt:
         try:
             t = json.loads(txt)
-            if isinstance(t, dict) and t.get("v") == VERSION:
+            if valid(t):
                 return t
         except ValueError:
             pass
     import numpy as np
     g = img.convertToFormat(QtGui.QImage.Format_Grayscale8)
     arr = np.frombuffer(g.constBits(), np.uint8, g.bytesPerLine() * g.height()).reshape(g.height(), g.bytesPerLine())
-    return decode_gray(arr[:, :g.width()].copy())
+    t = decode_gray(arr[:, :g.width()].copy())
+    return t if valid(t) else None
 
 
 def is_ticket_file(path):

@@ -1981,6 +1981,7 @@ for _k, _v in {
     "TAUSCHLISTEN": "TRADE LISTS", "WUNSCHLISTEN": "WISHLISTS", "←  Deine Listen": "←  Your lists",
     "− = eins weniger · ✕ = ganz aus der Liste": "− = one less · ✕ = remove from the list",
     "Was du suchst – Freunde sehen das, wenn du es mitschickst.": "What you're looking for – friends see it if you send it.",
+    "Was du suchst.": "What you're looking for.",   # Core/Near Orbit (no friends there)
     "Karten aus deiner Sammlung, die du hergeben würdest.": "Cards from your collection you'd give away.",
     "Karten rechts aus der Bibliothek hierher ziehen (oder doppelklicken). Zurück aufs Raster ziehen = aus der Liste "
     "nehmen.": "Drag cards here from the library on the right (or double-click). Drag back onto the grid = remove.",
@@ -2264,6 +2265,8 @@ TEXTS.update({  # Runde 208 (v0.4.0)
         'For friends',
     'Tausch-Datei: deine Tauschlisten, Wünsche und auf Wunsch deine Bibliothek':
         'Trade file: your trade lists, wants and, if you like, your library',
+    'CSV oder Textliste: deine Tauschlisten und auf Wunsch deine Bibliothek':   # without friends by file (06.11.)
+        'CSV or text list: your trade lists and, if you like, your library',
     'Log teilen':
         'Share log',
     'Recap eines Logs als Bild – Packs, Wert, beste Hits':

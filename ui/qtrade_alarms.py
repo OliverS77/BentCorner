@@ -4,7 +4,8 @@ import json
 
 from PySide6 import QtCore
 
-from ui.qtrade import carddb, db_image, db_image_of, eur, games_key, has_image, tr, trade   # shared helpers of the trade page
+from collection.tradelib import value as tradelib_value
+from ui.qtrade import carddb, db_image, db_image_of, eur, games_key, has_image, tr, trade, value   # shared helpers of the trade page
 
 
 class AlarmsBackend(QtCore.QObject):
@@ -66,7 +67,7 @@ class AlarmsBackend(QtCore.QObject):
                 rows.sort(key=lambda r: (r.get("eur") is None, r.get("eur") or 0))
                 f["prints"] = [{"id": r["id"], "set": (r.get("set_code") or "").upper(), "number": r.get("number") or "",
                                 "sname": r.get("set_name") or "",
-                                "img": db_image(r), "price": eur(r.get("eur") if r.get("eur") is not None else r.get("eur_foil")),
+                                "img": db_image(r), "price": value(r.get("eur") if r.get("eur") is not None else r.get("eur_foil")),
                                 "mark": "main" if r["id"] == (f["psid"] or f["sid"]) else "", "date": ""}
                                for r in rows[:400]]
             f["facts"] = alarms.price_facts(f["sid"])
@@ -295,7 +296,7 @@ class AlarmsBackend(QtCore.QObject):
                         "name": tr(x["name"]) if main else x["name"],
                         "where": f"{names.get(a['lkind'], '')} · " + tr(f"{len(entries)} cards")
                         + (f" · {alarms.opts_text(alarms.opts_of(a))}" if alarms.opts_text(alarms.opts_of(a)) else ""),
-                        "now": eur(value), "nowVal": value,
+                        "now": tradelib_value(value), "nowVal": value,
                         "rule": alarms.list_rule(a) + ((" · " + tr("triggered") + ": " + ", ".join(hits[:3])
                                                         + (f" +{nhit - 3}" if nhit > 3 else "")) if nhit else ""),
                         "hit": nhit > 0, "imgs": [art] if art else [], "draft": False})

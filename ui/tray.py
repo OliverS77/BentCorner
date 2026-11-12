@@ -4,7 +4,9 @@ If "Keep running in the system tray" is on, closing the window doesn't quit the 
 and AI off (frees the memory) and stays as a small icon. From there it fetches prices once a day and reports
 price alerts as Windows notifications. Optionally it starts with Windows, straight away invisible in the system tray.
 
-Single instance only: a second start sends "show" to the running one and quits (QLocalServer).
+Single instance only (per Windows user, Oliver 03.11.2026): a second start – starter, exe or shortcut – brings the
+running window to the front, also out of the tray, and quits (QLocalServer). The server listens from the very start
+(claim(), before the first-run setup); requests wait until the main window takes over (attach()).
 """
 import gc
 import logging
@@ -17,15 +19,16 @@ from system import datahome
 from system.i18n import tr
 
 def _server_name():
-    """One instance per data folder: two copies in different folders may run at the same time (e.g. for
-    testing the exchange on one PC), the same folder only once."""
+    """One instance per Windows user, whatever the data folder (lead 03.11.2026). Test runs (BC_STARTER_* test
+    folders, BC_HOME) get one per test folder instead: they never block the real program or bring its window up."""
+    import getpass
     import hashlib
-    try:
-        from system import datahome
-        home = str(datahome.HOME).lower()
-    except Exception:  # noqa: BLE001
-        home = ""
-    return "BentCorner-Instanz-" + hashlib.sha1(home.encode("utf-8")).hexdigest()[:10] if home else "BentCorner-Instanz"
+    import os
+    key = "user:" + (os.environ.get("USERNAME") or getpass.getuser()).lower()
+    # BC_HOME only counts where datahome follows it (from the source): in the exe it would only split the lock
+    if datahome.ISOLATED or (not datahome.FROZEN and os.environ.get("BC_HOME", "").strip()):
+        key = "test:" + str(datahome.HOME).lower()
+    return "BentCorner-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
 
 
 SERVER = _server_name()
@@ -36,20 +39,80 @@ CHECK_MS = 20 * 60 * 1000  # check every 20 minutes whether today's prices are a
 
 
 # ---------- single instance only ----------
+def _allow_foreground(pid):
+    """Windows only lets the process the user just started take the foreground – this one hands that right to the
+    running instance, so its window really comes to the front (also out of the tray)."""
+    if sys.platform == "win32" and pid:
+        try:
+            import ctypes
+            ctypes.windll.user32.AllowSetForegroundWindow(int(pid))
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def other_instance():
-    """Is Bent°Corner already running? Then have it show its window there -> True (this instance quits)."""
+    """Is Bent°Corner already running? Then have it show its window there -> True (this instance quits). The running
+    one answers with its process ID first (for AllowSetForegroundWindow), then gets "show"."""
     sock = QtNetwork.QLocalSocket()
     sock.connectToServer(SERVER)
-    if sock.waitForConnected(300):
-        sock.write(b"show")
-        sock.waitForBytesWritten(300)
-        sock.disconnectFromServer()
+    if not sock.waitForConnected(300):
+        return False
+    pid = 0
+    if sock.waitForReadyRead(500):
+        raw = bytes(sock.readAll()).decode("ascii", "ignore")
+        if raw.startswith("pid "):
+            pid = int(raw[4:].strip() or 0)
+    _allow_foreground(pid)
+    sock.write(b"show")
+    sock.waitForBytesWritten(300)
+    sock.disconnectFromServer()
+    return True
+
+
+_server = {"server": None, "on_show": None, "pending": False, "mutex": None}
+
+
+def acquire():
+    """Am I the first? A named mutex answers that atomically – two starts in the same moment (double click, two
+    starters) would otherwise both ask the pipe before either listens, and Windows lets both listen. -> True = first.
+    The mutex lives until release() or the end of the process."""
+    if sys.platform != "win32":
         return True
+    if _server["mutex"]:
+        return True
+    import ctypes
+    k32 = ctypes.windll.kernel32
+    k32.CreateMutexW.restype = ctypes.c_void_p
+    h = k32.CreateMutexW(None, False, "Local\\" + SERVER)
+    if k32.GetLastError() == 183:   # ERROR_ALREADY_EXISTS: another instance holds it
+        k32.CloseHandle(ctypes.c_void_p(h))
+        return False
+    _server["mutex"] = h
+    return True
+
+
+def show_other(seconds=5.0):
+    """Another instance holds the lock: ask it to show its window – it may still be starting, so try a few times."""
+    end = time.time() + seconds
+    while time.time() < end:
+        if other_instance():
+            return True
+        time.sleep(0.2)
     return False
 
 
-def listen(on_show):
-    """Server for later starts: they only ask to be shown."""
+def _show():
+    if _server["on_show"] is not None:
+        _server["on_show"]()
+    else:
+        _server["pending"] = True   # still in the first-run setup / starting: shown once the window is there
+
+
+def claim():
+    """Listen for later starts right away (before the first-run setup). -> the server (close() it before a restart)."""
+    import os
+    if _server["server"] is not None:
+        return _server["server"]
     QtNetwork.QLocalServer.removeServer(SERVER)  # leftovers of a crashed run
     server = QtNetwork.QLocalServer()
     server.setSocketOptions(QtNetwork.QLocalServer.UserAccessOption)
@@ -57,9 +120,33 @@ def listen(on_show):
     def incoming():
         sock = server.nextPendingConnection()
         if sock is not None:
-            sock.readyRead.connect(lambda: (sock.readAll(), on_show()))
+            sock.write(f"pid {os.getpid()}".encode("ascii"))
+            sock.readyRead.connect(lambda: (sock.readAll(), _show()))
     server.newConnection.connect(incoming)
     server.listen(SERVER)
+    _server["server"] = server
+    return server
+
+
+def release():
+    """Stop listening and give up the lock (before starting the next instance: restart, relaunch after the first-run
+    setup, moving the data folder)."""
+    if _server["server"] is not None:
+        _server["server"].close()
+        _server["server"] = None
+    if _server["mutex"]:
+        import ctypes
+        ctypes.windll.kernel32.CloseHandle(ctypes.c_void_p(_server["mutex"]))
+        _server["mutex"] = None
+
+
+def listen(on_show):
+    """The main window takes over: later starts call on_show (a request during the start is answered now)."""
+    server = claim()
+    _server["on_show"] = on_show
+    if _server["pending"]:
+        _server["pending"] = False
+        QtCore.QTimer.singleShot(0, on_show)
     return server
 
 
@@ -138,7 +225,10 @@ class Tray(QtCore.QObject):
 
     @property
     def enabled(self):
-        return bool(self.ctrl.settings.get("tray_mode")) and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable()
+        """Isolated test copies never stay in the tray: closing the window quits them (Oliver 05.11.2026 – a test
+        version ends when the user ends it, no Task Manager needed)."""
+        return (bool(self.ctrl.settings.get("tray_mode")) and not datahome.ISOLATED
+                and QtWidgets.QSystemTrayIcon.isSystemTrayAvailable())
 
     def apply(self):
         """Setting changed: show/hide the icon."""

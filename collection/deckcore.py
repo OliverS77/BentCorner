@@ -46,6 +46,9 @@ LOOSE = ""  # key for "No folder" (None = all decks)
 
 
 def eur(v):
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
+        return ""
     return currency.fmt(v)
 
 
@@ -1761,7 +1764,8 @@ class SuggestPage(QtCore.QObject):
             cov = round(idea["coverage"] * 100)
             if idea.get("online"):
                 info = (tr(f"You already have <b>{cov} %</b> of its typical deck ({idea['owned']} cards)")
-                        + "<br>" + tr(f"{len(idea['missing'])} cards missing, about {eur(idea['missing_eur'])}"))
+                        + "<br>" + (tr(f"{len(idea['missing'])} cards missing, about {eur(idea['missing_eur'])}")
+                                   if eur(idea['missing_eur']) else tr(f"{len(idea['missing'])} cards missing")))
             else:
                 info = tr(f"offline estimate: {idea['owned']} matching cards in its colors")
             return title, info, r
@@ -1805,7 +1809,7 @@ class CompareSide:
         br = f" · {tr('Bracket')} <b style='color:#ffb347'>{a['bracket']}</b>" if deck.get("format") == "commander" \
             else ""
         cm = [rows[s]["name"] for s in deck.get("commanders", []) if s in rows]
-        self.info = (f"<span style='color:#aab1c8'>{fmt} · {a['count']} {tr("Cards")} · {eur(a['price'])}{br}"
+        self.info = (f"<span style='color:#aab1c8'>{fmt} · {a['count']} {tr("Cards")}{' · ' + eur(a['price']) if eur(a['price']) else ''}{br}"
                      + (f"<br>{tr('Commander')}: <b>{' + '.join(cm)}</b>" if cm else "") + "</span>")
         by_name = {r["name"]: r for r in rows.values()}
         groups = {}

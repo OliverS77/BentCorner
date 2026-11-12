@@ -13,6 +13,10 @@ fake update with it. Without a valid signature or with a wrong checksum nothing 
 Download: in chunks (Range), pause/resume, continues after a restart. Fully downloaded -> data/updates/<file>.
 Install (Windows, a single .exe): the running exe is renamed (BentCorner.old.exe – Windows allows that), the
 new one is put in its place and restarted; the old one is deleted on the next start.
+Since the installer (labs/installer/PLAN.md): an installed program (unins000.exe next to it) fetches
+"windows_setup" and runs it silently (it closes the program, installs, starts it again); a program from the old
+starter does the same as soon as the manifest offers a setup – that is the move to the installer; a portable folder
+only gets the note "new version" with its download (it never replaces itself).
 """
 import base64
 import hashlib
@@ -34,6 +38,38 @@ BASE_URL = contacts.SERVER + "/dl"   # old address as a fallback: netpolite (sig
 PUBLIC_KEY = "vRwXq29AvUSAElFBfz1pTe7x+kaJiS2zoKi4IWIg6tk="
 CHUNK = 2 * 1024 * 1024
 CHECK_EVERY = 6 * 3600
+
+
+SETUP_ARGS = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/CURRENTUSER", "/CLOSEAPPLICATIONS", "/RESTARTAPP=1"]
+
+
+def distribution():
+    """How this copy runs: "installed" (Inno setup: unins000.exe next to the program), "starter" (the old single exe:
+    the launcher sets BENTCORNER_EXE), "starter-portable" (the old single exe with its data next to it – a USB stick,
+    a folder of its own), "portable" (the program folder from the ZIP) or "source"."""
+    if not getattr(sys, "frozen", False) or platform_key() != "windows":
+        return "source"
+    here = pathlib.Path(sys.executable).resolve().parent
+    if (here / "unins000.exe").exists():
+        return "installed"
+    if os.environ.get("BENTCORNER_EXE"):
+        from system import datahome
+        return "starter-portable" if datahome.has_data(datahome.APP_DIR) else "starter"
+    return "portable"
+
+
+def entry_key(manifest, dist=None):
+    """Which file of the manifest this copy takes: installed (and the old starter, once a setup is offered) the setup,
+    portable the ZIP, the old starter otherwise its single exe. A starter with its data next to it never moves to the
+    installer – the installed program would not find that data (datahome: data next to the .exe) and start empty;
+    it keeps replacing its single exe as before."""
+    dist = dist or distribution()
+    plats = (manifest or {}).get("platforms") or {}
+    if dist in ("installed", "starter") and plats.get("windows_setup"):
+        return "windows_setup"
+    if dist == "portable":
+        return "windows_portable"
+    return platform_key()
 
 
 def platform_key():
@@ -101,9 +137,12 @@ def fetch_manifest(base=BASE_URL):
     if not verify(r.content, s.text):
         raise UpdateError(tr("Invalid update signature – not used"))
     try:
-        return json.loads(r.content.decode("utf-8"))
+        m = json.loads(r.content.decode("utf-8"))
     except ValueError:
         raise UpdateError(tr("Manifest unreadable")) from None
+    from cards import datakeys
+    datakeys.remember_release(r.content, s.text)   # the only source of the data keys (cards/datakeys.py)
+    return m
 
 
 def folder():
@@ -121,7 +160,7 @@ class Updater:
         self.base = base
         self.news = news   # -> False: "Messages from the team" switched off – then no request for news either
         self.state, self.progress, self.error = "idle", 0.0, ""
-        self.manifest, self.entry = None, None
+        self.manifest, self.entry, self.key = None, None, platform_key()
         self.on_change = on_change or (lambda: None)
         self._pause = threading.Event()
         self._thread = None
@@ -155,7 +194,8 @@ class Updater:
             except UpdateError as e:
                 self._set("error", error=str(e))
                 return
-            e = (m.get("platforms") or {}).get(platform_key())
+            self.key = entry_key(m)
+            e = (m.get("platforms") or {}).get(self.key)
             if self.base.endswith("/dl") and self.news():   # news from the team lives in the mailbox next door
                 from net import teamnews
                 m["news"] = list(m.get("news") or []) + teamnews.fetch_news(self.base[:-3])
@@ -169,7 +209,7 @@ class Updater:
                 self._set("ready", progress=1.0)
                 return
             self._set("available", progress=0.0)
-            if auto_download:
+            if auto_download and not self.manual:
                 self._download()
         threading.Thread(target=work, daemon=True).start()
 
@@ -200,7 +240,7 @@ class Updater:
                     self._set("paused")
                     return
                 end = have + CHUNK - 1 if not size else min(size - 1, have + CHUNK - 1)
-                r = netpolite.get(f"{self.base}/{platform_key()}/{e['file']}", timeout=60,
+                r = netpolite.get(f"{self.base}/{self.key}/{e['file']}", timeout=60,
                                   headers={"Range": f"bytes={have}-{end}"})
                 if r.status_code == 200 and have:   # server cannot do chunks: start over
                     part.unlink(missing_ok=True)
@@ -231,16 +271,31 @@ class Updater:
         return h.hexdigest() == (self.entry or {}).get("sha256")
 
     # ---------- install ----------
+    @property
+    def manual(self):
+        """Portable folder: never replaced by the program – the UI shows the download link instead."""
+        return self.key == "windows_portable"
+
+    def download_url(self):
+        return f"{self.base}/{self.key}/{self.entry['file']}" if self.entry else ""
+
     def can_install(self):
-        return self.state == "ready" and getattr(sys, "frozen", False) and platform_key() == "windows"
+        return (self.state == "ready" and getattr(sys, "frozen", False) and platform_key() == "windows"
+                and not self.manual)
 
     def install(self):
-        """Put the new exe in place of the running one. -> path of the new exe (restart afterwards)."""
+        """Install the downloaded update. -> "setup" (the installer runs now: quit the program, it starts it again)
+        or the path of the new exe (old starter: restart afterwards)."""
         if not self.can_install():
             raise UpdateError(tr("Installing only works in the finished Windows exe"))
         new = self.target()
         if not self._sha_ok(new):
             raise UpdateError(tr("Checksum mismatch"))
+        if self.key == "windows_setup":   # signed manifest + sha256 checked above – then the setup does the rest
+            import subprocess
+            flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            subprocess.Popen([str(new), *SETUP_ARGS], creationflags=flags, close_fds=True)
+            return "setup"
         from system import datahome
         exe = datahome.EXE   # the launcher (i.e. the exe you start) – not the unpacked program
         old = exe.with_name(exe.stem + ".old" + exe.suffix)

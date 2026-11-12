@@ -8,6 +8,7 @@ If something changes live (color, background), look reports it to listeners (lis
 (theme.py) then recalculate.
 """
 import pathlib
+import re
 import shutil
 import sys
 import zipfile
@@ -259,6 +260,21 @@ def register_fonts():
     return _registered
 
 
+FONT_MAX = 20 * 1024 ** 2   # one font file (review 08.11., Gordon B6)
+_FONT_NAME = re.compile(r"[\w .()+-]{1,120}\.(ttf|otf)", re.I)
+
+
+def _font_target(base):
+    """Where a font from a ZIP may go: a plain file name right in FONT_DIR (never „D:evil.ttf“, never another
+    folder), not overwriting a font that is already there. -> path or None"""
+    if not _FONT_NAME.fullmatch(base) or ":" in base:
+        return None
+    out = FONT_DIR / base
+    if out.resolve().parent != FONT_DIR.resolve() or out.exists():
+        return None
+    return out
+
+
 def import_fonts(paths):
     """Copy font files (.ttf/.otf, also inside .zip) to data/schriften and load them. -> new families."""
     FONT_DIR.mkdir(parents=True, exist_ok=True)
@@ -268,11 +284,17 @@ def import_fonts(paths):
         targets = []
         if p.suffix.lower() == ".zip":
             with zipfile.ZipFile(p) as z:
-                for name in z.namelist():
+                for info in z.infolist():
+                    name = info.filename
                     base = name.rsplit("/", 1)[-1]
                     if base.lower().endswith((".ttf", ".otf")) and "__MACOSX" not in name:
-                        out = FONT_DIR / base
-                        out.write_bytes(z.read(name))
+                        out = _font_target(base)
+                        if out is None or info.file_size > FONT_MAX:
+                            continue
+                        data = z.read(info)
+                        if len(data) > FONT_MAX:
+                            continue
+                        out.write_bytes(data)
                         targets.append(out)
         elif p.suffix.lower() in (".ttf", ".otf"):
             out = FONT_DIR / p.name

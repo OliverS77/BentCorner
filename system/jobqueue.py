@@ -162,6 +162,11 @@ class JobQueue:
                 self.settings["first_setup"] = False
                 self.settings_changed()
             self.update_fingerprints(self.cards)
+        if kind in ("carddb", "pack"):   # "Load card database …" in the Library goes once it is there (an empty
+            shell = getattr(self, "shell", None)   # collection right after the setup changes nothing else there)
+            b = shell.backends.get("library") if shell is not None else None
+            if b is not None:
+                b.changed.emit()
         if kind == "carddb":
             self.refresh_db_info()
             self.reprice_collection()

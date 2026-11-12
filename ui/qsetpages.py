@@ -147,16 +147,19 @@ def page_scan(ui, b):
                 tr("This is what the stream looks like right now – clicks work like on the Scanning page (e.g. ⚙ on the info blocks).")),
     ], spacing=8)
 
-    timing = ui.group(tr("Hits and cards"), [ui.form([
+    # Orbit's Core: no prices – no "Hit from … €" and no € in the sound tip (lead 03.11., like the web)
+    from system import orbit as _orbit
+    priced = _orbit.prices_on(s)
+    timing = ui.group(tr("Hits and cards"), [ui.form(([
         (tr("Hit from"), _spin(ui, ctrl, "hit", 0.5, 1000, step=1, suffix=" €", decimals=2,
-                             tip="Hit animation from this price")),
+                             tip="Hit animation from this price"))] if priced else []) + [
         (tr("Keep card visible"), _spin(ui, ctrl, "hold", 1, 60, suffix=" s", enabled=not s["hold_forever"],
                                           tip="So lange bleibt die letzte Karte stehen, nachdem sie aus dem Rahmen "
                                               "genommen wurde")),
         (None, _check(ui, ctrl, "permanently (until the next card)", "hold_forever")),
         (None, _check(ui, ctrl, "Sounds while scanning", "scan_sounds",
                       tip="Ein kurzer Ton bei jeder gescannten Karte, ein anderer bei einem Hit (ab „Hit ab“) "
-                          "und ein besonderer ab 50 €")),
+                          "und ein besonderer ab 50 €" if priced else "")),
     ])])
     # two columns that stack independently (no gaps): left preview + camera + recognition, right hits and cards
     return ui.col([
@@ -890,7 +893,10 @@ def _updates_group(ui, ctrl):
                           enabled=u.state not in ("checking", "downloading"))]
         if u.state == "downloading":
             btns.append(ui.button(tr("Pause"), u.pause))
-        if u.state in ("available", "paused", "error") and u.entry:
+        if u.manual and u.entry and u.state == "available":   # portable folder: never replaces itself
+            rows.append(ui.note(tr("This is a portable copy: Bent°Corner doesn't replace itself here. Download the new version and unpack it over this folder – your data next to it stays.")))
+            btns.append(ui.button(tr("Download"), lambda: _web(u.download_url()), active=True))
+        elif u.state in ("available", "paused", "error") and u.entry:
             btns.append(ui.button(tr("Resume download") if u.state == "paused" else tr("Load"), u.download))
         if u.state == "ready":
             btns.append(ui.button(tr("Update now"), ctrl.update_install, active=True,
@@ -943,6 +949,8 @@ def page_privacy(ui, b):
         b.orbit_leave = lv if orbit.leaving(s, lv) else None
         # up to Full Orbit without the age confirmation: the line under the slider first, the level stays
         b.orbit_join = lv == "full" and not orbit.age_ok(s) and orbit.level(s) != "full"
+        if lv == "full" and orbit.level(s) != "full":   # every turning on: the terms line until the page is left
+            b.orbit_terms_visit = getattr(b, "visit", 0)
         if b.orbit_leave is None and not b.orbit_join:
             orbit.set_level(ctrl, lv)
         b.form.soon()
@@ -969,14 +977,20 @@ def page_privacy(ui, b):
     orbit_items = [ui.orbit(orbit.LEVELS.index(leave) if leave else (2 if joining else orbit.index(s)), pick, compact=True,
                             leave=tr(orbit.LEAVE) if orbit.level(s) == "full" else "", decide=decide)]
     # the age line (legal 03.11.): when moving up to Full Orbit – and once for those already there
-    if joining or (orbit.level(s) == "full" and not orbit.age_ok(s)):
+    ask_age = joining or (orbit.level(s) == "full" and not orbit.age_ok(s))
+    # the terms right above it (legal 04.11., § 305 (2) BGB): at every turning on – also back to Full Orbit with the
+    # age confirmed long ago (then without the age line) – and they stay until the page is left; not all the time
+    turned_on = orbit.level(s) == "full" and getattr(b, "orbit_terms_visit", None) == getattr(b, "visit", 0)
+    if ask_age or turned_on:
+        orbit_items.append(ui.note(tr(orbit.TERMS_LINE).replace("{url}", SITE + "/nutzung.html")))
+    if ask_age:
         orbit_items += [ui.check(tr(orbit.AGE), False, confirm), ui.note(tr(orbit.AGE_NOTE))]
     orbit_group = ui.group(tr("Bent°Corner Orbit"), orbit_items)
     friends = ui.group(tr("Friends"), [
-        ui.check(tr("Share library with friends (visible to friends, encrypted)"),
+        ui.check(tr("Share library with friends – your friends see your whole library (all cards and counts)"),
                  s.get("share_library") is True,
-                 lambda v: (s.update(share_library=bool(v)), ctrl.settings_changed(),
-                            relay.enabled(s) and ctrl.relay_send_lists(quiet=True)),
+                 lambda v: (s.update(share_library=bool(v), share_library_confirmed=True), ctrl.settings_changed(),
+                            relay.enabled(s) and (ctrl.relay_send_lists(quiet=True) if v else ctrl.relay_share_library_off())),
                  tip=tr("Friends see your whole collection of the open game. Lists are shared one by one – new lists always start private."),
                  enabled=full),
         ui.check(tr("Messages from the Bent°Corner team (news, questions about your contributions)"),
@@ -1018,7 +1032,32 @@ def phone_camera_group(ui, ctrl):
     return ui.group(tr("Phone as camera"), items)
 
 
+# legal 07.11.: with the online backup running AND a way back to it (another coupled device or a protection code) –
+# without either, a PC that breaks can't reach it, so the old sentence stays
+RISK_ONLINE = ("If the computer breaks, you get your data back from the online backup – through another coupled device or "
+               "with your protection code; a backup file is a second way back. The lamp goes off then.")
+
+
+def _online_way_back(ctrl):
+    eng = getattr(ctrl, "sync_engine", None)
+    if eng is None or not eng.on():
+        return False
+    try:
+        others = getattr(ctrl, "sync_switch_plan", lambda: "")() == "leave"   # performance: other devices are coupled
+        return bool(others or getattr(ctrl, "guard_on", lambda: False)())
+    except Exception:  # noqa: BLE001 – a tooltip is never worth an error
+        return False
+
+
 def auto_backup_group(ui, ctrl, refresh):
+    """Automatic backup as its own box (the setup and older callers) – Settings → Backup puts the items into
+    „Offline backups“ (PLAN-EINFACH C)."""
+    from system import autobackup
+    return ui.group(tr("Automatic backup"), auto_backup_items(ui, ctrl, refresh),
+                    lamp=autobackup.lamp(ctrl.settings))   # the hint may stay without the lamp
+
+
+def auto_backup_items(ui, ctrl, refresh):
     """Automatic backup (Settings → Backup): on/off, how often, up to three targets with status."""
     import html
     import time
@@ -1076,58 +1115,82 @@ def auto_backup_group(ui, ctrl, refresh):
             items.append(ui.row([ui.stretch(), ui.button(tr("I'm aware of the risks"),   # (wording: Oliver, review .101)
                                                         
                                                          lambda: risk(True),
-                                                         tip=tr("If the computer breaks, everything is gone – you'd have to scan everything again. The lamp goes off then."))]))
-    return ui.group(tr("Automatic backup"), items, lamp=autobackup.lamp(s))   # the hint above may stay without the lamp
+                                                         tip=tr(RISK_ONLINE if _online_way_back(ctrl) else
+                                                                "If the computer breaks, everything is gone – you'd have to scan everything again. The lamp goes off then."))]))
+    return items
+
+
+# Einfach für Endnutzer (lead/Oliver 07.11., PLAN-EINFACH C; legal 07.11.)
+# „What is on the server“ (legal 07.11.): one of the two per switch state; the device sentence only with B5 (the device
+# list on the server) – B5 waits for Oliver's decision
+SERVER_OFF = ("If “Online backup and sync” is off, only what you share is stored there – never your collection, logs, "
+              "decks, private lists or settings.")
+SERVER_ON = ("If “Online backup and sync” is on, your online backup is stored there too: your collection with logs, decks, "
+             "lists, binders, price alerts, trade offers, friends and your profile – end-to-end encrypted, we can't read "
+             "it.{devices} Settings stay on the device. If you turn the switch off, we delete the online backup; the same "
+             "happens if none of your devices accesses it for 183 days.")
+SERVER_DEVICES = "Plus, per device, a random device ID and its public keys, no names."
+B5_DEVICES = True   # B5 decided (Oliver 07.11.) and built: the device list is on the server
+OFFLINE_GROUP = "Offline backups"
+CRASH_TITLE = "Crash backup"   # was „Silent backups“
+# legal 07.11. (new: the old one was wrong in Full Orbit and said „below“; the numbers = autobackup.KEEP/_prune)
+WHY = ("Your collection is stored on this computer. If it breaks, gets lost or is set up anew, it is gone without a backup "
+       "– we don't have a copy we could read. The crash backup only helps after a crash. That's why: a place outside – a "
+       "USB stick, an external drive or a cloud folder. Bent°Corner backs up there by itself, as often as you set it above, "
+       "keeps your last 5 backups (at most one per hour) and catches up as soon as the stick is back. In Full Orbit the "
+       "online backup also helps – but you can only get to it through another of your devices or with your protection "
+       "code. Treat every backup file like a key.")
+CRASH_LINE = ("Bent°Corner also keeps a copy in its data folder at every start (at most every 6 hours, the last 7). It "
+              "helps after a crash – not if the computer breaks.")
 
 
 def page_backup(ui, b):
-    """Settings → Backup – the only place for backups: automatic backup, one-off backup and restore, silent backups,
-    what is lost without a backup, what is on the server, moving."""
+    """Settings → Backup – the only place for backups (PLAN-EINFACH C): two boxes. „Online backup“ (switch, protection
+    code; What is on the server and Moving folded) and „Offline backups“ (automatic, by hand, crash backup; Why folded)."""
     ctrl = b.ctrl
 
     def refresh():
         b.form.refresh() if hasattr(b, "form") else None
 
-    from system import datastore
+    from system import autobackup, datastore
+    from ui import backupui
+    folds = b.__dict__.setdefault("backup_folds", {})
     ip = ctrl.import_page   # logic of the one-off backup (importview.ImportPage) – shown only here
     info, silent = ip.backup_info()
-    once = ui.group(tr("Back up once, by hand"), [
+    from system import orbit   # legal 07.11.: the server's content per switch state – only ONE of the two
+    online_on = orbit.level(ctrl.settings) == "full" and ctrl.settings.get("sync_backup") is True
+    server = backupui.fold(ui, folds, "server", tr("What is on the server"), [ui.note(tr(
+            "Only what you share with friends: shared lists, your library (if you share it) and shared binders – encrypted, only your friends can read it. It stays for 6 months after you last shared it (while you use the app, it re-shares regularly); if you take something back, it's gone at once.")),
+            ui.note(tr(SERVER_ON).format(devices=" " + tr(SERVER_DEVICES) if B5_DEVICES else "") if online_on
+                    else tr(SERVER_OFF)), ui.note(tr(
+            "Your ID is like an address: anyone who knows it can send you a friend request, but can't read anything – so it's fine to pass it on. The key to your ID lives in your settings and therefore in every backup. Without a backup a new installation gets a new ID: your friends have to add you again, and what you shared before expires after 6 months."))], refresh)
+    moving = backupui.fold(ui, folds, "moving", tr("Moving to another PC"), [ui.note(tr(
+            "Restore a backup on the new PC (Settings → Backup) – then everything is back, including your ID and your friends. Two PCs at the same time with the same backup doesn't work: both would have the same ID and overwrite each other's shared lists. If your data folder is in a cloud folder you can use it on two PCs – but only one at a time, never open on both at once."))], refresh)
+    online = backupui.settings_items(ui, ctrl, b, refresh, more=server + moving)
+    if not online:   # without the sync built in: the two folded parts in a box of their own
+        online = [ui.group(tr("What is on the server"), server + moving)]
+    why = backupui.fold(ui, folds, "why", tr("Why is this important?"), [ui.note(tr(WHY))], refresh)
+    offline = ui.group(tr(OFFLINE_GROUP), [
+        ui.label(f"<b>{tr("Automatic backup")}</b>", rich=True),
+        *auto_backup_items(ui, ctrl, refresh),
+        ui.line(),
+        ui.label(f"<b>{tr("Back up once, by hand")}</b>", rich=True),
         ui.note(tr("A backup contains everything personal: collection, logs, decks, friends, lists and settings. Card images and card data are downloaded again when needed – they don't need to come along. Handy before moving to a new PC: just restore it there.")),
         ui.label(info),
-        ui.row([ui.button(tr("Create backup …"), lambda: (ip.make_backup(), refresh()),
+        ui.row([ui.button(tr("Create backup …"), lambda: (ip.make_backup(), ctrl.autobackup_badge(), refresh()),
                           tip=tr("Choose a folder, e.g. a USB stick – a folder “BentCorner backup <date>” is created there")),
                 ui.button(tr("Restore backup …"), lambda: (ip.restore_backup(), refresh()),
                           tip=tr("Bring back a backup – your current state is saved automatically first")),
                 ui.button(tr("Open data folder"), lambda: _open_folder(datastore.DATA)), ui.stretch()]),
         ui.note(ip.bk_msg) if ip.bk_msg else None,
+        *backupui.removed_items(ui, ctrl, b.__dict__.setdefault("removed_back", {}), refresh),   # D (lead 12.11.)
         ui.line(),
-        ui.label(f"<b>{tr("Silent backups")}</b><br>" + tr(
-            "On top of that, Bent°Corner puts a copy into the data folder under data/backups/auto on start (at most every 6 hours) – the last 7 are kept. That protects against crashes, not against a broken drive: that's what the backup above is for."), rich=True),
+        ui.label(f"<b>{tr(CRASH_TITLE)}</b><br>" + tr(CRASH_LINE), rich=True),
         ui.note(silent),
-    ])
-    why_open = bool(getattr(b, "backup_why", False))
-
-    def why():
-        b.backup_why = not why_open
-        refresh()
-    why = [ui.button(tr("Why is this important?") + (" ‹" if why_open else " ›"), why)]
-    if why_open:
-        why.append(ui.note(tr(
-            "Bent°Corner has no server for your collection: it lives only on this computer. If the computer breaks, gets "
-            "lost or is set up anew, it is gone without a backup – we can't restore it either. The copies Bent°Corner "
-            "makes on this computer at start only help with errors. That's why: a place outside – a USB stick, an external "
-            "drive or a cloud folder. Bent°Corner backs up there by itself, as often as you set it below, keeps the last 7 "
-            "and one per week for four weeks, and catches up as soon as the stick is back.")))
-    return ui.col([
-        ui.col([ui.row(why[:1] + [ui.stretch()])] + why[1:], spacing=6),
-        auto_backup_group(ui, ctrl, refresh),
-        once,
-        ui.group(tr("What is on the server"), [ui.note(tr(
-            "Only what you share with friends: shared lists, your library (if you share it) and shared binders – encrypted, only your friends can read it. It stays for 6 months after you last shared it (while you use the app, it re-shares regularly); if you take something back, it's gone at once. This is not a backup: logs, decks, private lists and settings are never there.")), ui.note(tr(
-            "Your ID is like an address: anyone who knows it can send you a friend request, but can't read anything – so it's fine to pass it on. The key to your ID lives in your settings and therefore in every backup. Without a backup a new installation gets a new ID: your friends have to add you again, and what you shared before expires after 6 months."))]),
-        ui.group(tr("Moving to another PC"), [ui.note(tr(
-            "Restore a backup on the new PC (Settings → Backup) – then everything is back, including your ID and your friends. Two PCs at the same time with the same backup doesn't work: both would have the same ID and overwrite each other's shared lists. If your data folder is in a cloud folder you can use it on two PCs – but only one at a time, never open on both at once."))]),
-    ], spacing=12)
+        ui.line(),
+        *why,
+    ], lamp=autobackup.lamp(ctrl.settings))
+    return ui.col(online + [offline], spacing=12)
 
 
 LICENSE_FILES = ("THIRD_PARTY_NOTICES.md", "LICENSE", "LICENSE-ASSETS.md")   # bundled next to the program (build.ps1)
@@ -1308,4 +1371,5 @@ PAGES = {"scan": page_scan, "collection": page_collection, "sets": page_sets, "d
          "backup": page_backup,
          "appearance": page_appearance, "offline": page_sets, "general": page_general,
          "updates": page_updates, "privacy": page_privacy, "legal": page_legal, "game": page_game,
-         "about": page_about}
+         "about": page_about, "delete": lambda ui, b: __import__("ui.qforget", fromlist=["page"]).page(ui, b),
+         "devices": lambda ui, b: __import__("ui.qsync", fromlist=["page"]).page(ui, b)}

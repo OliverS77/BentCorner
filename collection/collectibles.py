@@ -81,8 +81,12 @@ def _rows(cards):
 
 
 def _path(t):
+    """Where a ticket is kept – always inside TICKETS (review 08.11., Gordon B1: a safety net behind ticket.valid)."""
     from collection import ticket
-    return TICKETS / ticket.game_of(t) / str(t.get("x") or t.get("id")) / f"{t.get('id')}.json"
+    p = TICKETS / ticket.game_of(t) / str(t.get("x") or t.get("id")) / f"{t.get('id')}.json"
+    if not p.resolve().is_relative_to(TICKETS.resolve()):
+        raise ValueError("ticket path outside the archive")
+    return p
 
 
 def archive(t, event, img=None, info=None):
@@ -204,7 +208,11 @@ def backfill():
             offers = []
         for o in offers:
             for v in o.get("versions") or []:
-                if not _path(v).exists():
+                try:
+                    there = _path(v).exists()
+                except (ValueError, TypeError):   # an old offer with a bad id: never archived outside (review 08.11.)
+                    continue
+                if not there:
                     archive(v, "found", info={"status": o.get("status"), "partner": o.get("partner")})
         try:
             raw = json.loads((mine / "bookings.json").read_text("utf-8"))

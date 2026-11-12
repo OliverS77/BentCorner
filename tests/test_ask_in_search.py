@@ -247,6 +247,34 @@ class QuestionStays(unittest.TestCase):
         self.assertFalse(self.look(r, recognizer, self.card_frame(np)))
         self.assertIsNotNone(r.pending)
 
+    def test_answered_while_looking(self):
+        # Oliver's log 06.11. (0.9.7.45): picked in the window while the background look ran -> "ERROR AI scan"
+        # ('NoneType' object has no attribute 'get'); now: nothing to drop, no error
+        r, recognizer, np = self.rec()
+
+        def step(*a, **k):
+            r.pending = None   # the UI thread's resolve()
+            return {"status": "ok", "entry": {"name": "Pikachu"}, "strength": 150, "how": ""}
+        r.live = types.SimpleNamespace(step=step)
+        self.assertFalse(self.look(r, recognizer, self.card_frame(np)))
+        self.assertIsNone(r.question_dropped)
+
+    def test_new_question_while_looking_stays(self):
+        r, recognizer, np = self.rec()
+        other = {"cands": [], "r": {"name": "Eevee"}, "thumb": None, "lang": None, "ai": True}
+
+        def step(*a, **k):
+            r.pending = other   # answered and a new question opened meanwhile: that one is not dropped
+            return {"status": "ok", "entry": {"name": "Pikachu"}, "strength": 150, "how": ""}
+        r.live = types.SimpleNamespace(step=step)
+        self.assertFalse(self.look(r, recognizer, self.card_frame(np)))
+        self.assertIs(r.pending, other)
+
+    def test_no_question_left(self):
+        r, recognizer, np = self.rec()
+        r.pending = None
+        self.assertFalse(self.look(r, recognizer, self.card_frame(np)))
+
     def test_other_card_ends_it(self):
         r, recognizer, np = self.rec({"status": "ok", "entry": {"name": "Pikachu"}, "strength": 150, "how": ""})
         self.assertTrue(self.look(r, recognizer, self.card_frame(np)))

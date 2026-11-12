@@ -46,9 +46,10 @@ static class Launcher
     {
         AppDomain.CurrentDomain.UnhandledException += (s, e) => Log("Absturz: " + e.ExceptionObject);
         Application.ThreadException += (s, e) => Log("Absturz (Fenster): " + e.Exception);
-        ApplyTestEnv();
         string self = Process.GetCurrentProcess().MainModule.FileName;
         string appDir = Path.GetDirectoryName(self);
+        ApplyTestMarker(Path.Combine(appDir, TEST_MARKER));
+        ApplyTestEnv();
         bool test = Array.IndexOf(args, "--first-run-test") >= 0;
         bool tray = Array.IndexOf(args, "--tray") >= 0;
         string home = test ? LocalHome() : DataHome(appDir);
@@ -80,7 +81,13 @@ static class Launcher
         string id = BuildInfo.Id;
 
         Application.EnableVisualStyles();
+        // Two starters at once (double click): only one unpacks, the other waits (at most 60 s) and then starts the
+        // program normally – which finds the running one and brings its window to the front (ui/tray.py).
+        var gate = new Mutex(false, @"Local\BentCorner-Starter");
+        bool held = false;
+        try { held = gate.WaitOne(60000); } catch (AbandonedMutexException) { held = true; }
         Splash splash = null;
+        try {
         if (!Ready(essentials, id))
         {
             splash = new Splash();
@@ -103,7 +110,10 @@ static class Launcher
                 return 1;
             }
         }
+        }
+        finally { if (held) gate.ReleaseMutex(); gate.Dispose(); }
         string inner = Activate(essentials, id);
+        CopyTestMarker(essentials);
         Cleanup(essentials, id);
         RememberAndForgetOld(essentials, appDir, home);
 
@@ -284,6 +294,62 @@ static class Launcher
         string local = EnvDir("BC_STARTER_LOCAL"), roaming = EnvDir("BC_STARTER_ROAMING");
         if (local != null) LocalOverride = local;
         if (roaming != null) RoamingOverride = roaming;
+    }
+
+    // Eine Testkopie bleibt Testkopie, egal wie sie gestartet wird (Oliver 05.11.2026: Doppelklick auf die Test-exe nahm
+    // das echte %LOCALAPPDATA% und die echte Einzelinstanz-Sperre und blockierte seine App). Erststart.cmd/Start.cmd
+    // legen bc-testkopie.txt (SCHLÜSSEL=Wert) neben den Starter; fehlen alle BC_STARTER_*, setzt der Starter sie daraus
+    // – die App erbt sie. Gleiche Schlüssel wie datahome.py (MARKER_KEYS). Ohne Datei (jede echte Installation): nichts.
+    internal const string TEST_MARKER = "bc-testkopie.txt";
+    static readonly string[] MarkerKeys = { "BC_STARTER_LOCAL", "BC_STARTER_ROAMING", "BC_STARTER_DOCUMENTS",
+                                            "BC_LOCAL_DL", "BC_CHECK", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY" };
+
+    static bool IsTestRun()
+    {
+        return EnvDir("BC_STARTER_LOCAL") != null || EnvDir("BC_STARTER_ROAMING") != null || EnvDir("BC_STARTER_DOCUMENTS") != null;
+    }
+
+    // -> true, wenn die Datei angewendet wurde. Ordner müssen absolut sein, alle drei BC_STARTER_* da – sonst gar nichts.
+    internal static bool ApplyTestMarker(string file)
+    {
+        if (IsTestRun() || !File.Exists(file)) return false;
+        var found = new Dictionary<string, string>();
+        try
+        {
+            foreach (string raw in File.ReadAllLines(file, Encoding.UTF8))
+            {
+                int eq = raw.IndexOf('=');
+                if (eq <= 0) continue;
+                string key = raw.Substring(0, eq).Trim(), value = raw.Substring(eq + 1).Trim();
+                if (Array.IndexOf(MarkerKeys, key) < 0) continue;
+                if ((key.StartsWith("BC_STARTER_") || key == "BC_LOCAL_DL") && !(value.Length > 0 && Path.IsPathRooted(value) && value.Contains(":")))
+                    return false;
+                found[key] = value;
+            }
+        }
+        catch (Exception) { return false; }
+        if (!found.ContainsKey("BC_STARTER_LOCAL") || !found.ContainsKey("BC_STARTER_ROAMING") || !found.ContainsKey("BC_STARTER_DOCUMENTS"))
+            return false;
+        foreach (var kv in found) Environment.SetEnvironmentVariable(kv.Key, kv.Value);
+        return true;
+    }
+
+    // Testlauf: die Datei auch nach „Essentials“ legen – dann bleibt auch ein Doppelklick direkt auf das Programm dort
+    // (ohne Starter) im Testordner (datahome.apply_marker sucht neben der exe und einen Ordner höher).
+    internal static void CopyTestMarker(string essentials)
+    {
+        if (!IsTestRun()) return;
+        try
+        {
+            var sb = new StringBuilder();
+            foreach (string key in MarkerKeys)
+            {
+                string v = Environment.GetEnvironmentVariable(key);
+                if (v != null) sb.Append(key).Append('=').Append(v.Trim()).Append("\r\n");
+            }
+            File.WriteAllText(Path.Combine(essentials, TEST_MARKER), sb.ToString(), new UTF8Encoding(false));
+        }
+        catch (Exception) { }
     }
 
     static string EnvDir(string name)

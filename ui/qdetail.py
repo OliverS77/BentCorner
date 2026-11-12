@@ -13,6 +13,7 @@ from ui import qform
 from ui import quickimages
 from system.i18n import tr
 from cards import library
+from system import orbit
 from ui.librarycore import FOLDS, THUMBS, eur
 from ui.searchbox import merged_order
 
@@ -578,7 +579,8 @@ class DetailBackend(QtCore.QObject):
                     boxes, html = "\x01".join(parts), ""
             out.append({"key": key, "title": tr(titles[key]), "sub": f.head.sub or "",
                         "closedSub": getattr(f.head, "closed_sub", "") or "", "open": bool(f.is_open),
-                        "html": html, "chart": key == "prices" and not p.price_chart.isHidden(), "boxes": boxes})
+                        "html": html, "boxes": boxes,
+                        "chart": key == "prices" and not p.price_chart.isHidden() and orbit.prices_shown()})
         return out
 
     @QtCore.Property("QVariantList", notify=changed)
@@ -703,7 +705,7 @@ class DetailBackend(QtCore.QObject):
     def phHint(self):
         """No chart: why not – and whether the history can be loaded from here."""
         from cards import pricehist
-        if not self.p.price_chart.isHidden():
+        if not self.p.price_chart.isHidden() or not orbit.prices_shown():   # Core: the PriceVeil says it
             return {}
         eta = self.ctrl.ph_eta() if hasattr(self.ctrl, "ph_eta") else None
         return pricehist.hint(self.ctrl.settings, eta)

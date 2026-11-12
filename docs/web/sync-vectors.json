@@ -1,32 +1,355 @@
 {
  "about": "Test vectors of the sync change protocol (collection/syncops.py, docs/SYNC-PLAN.md §3). Apply the ops of a case in ANY order (each op possibly twice): view and sum must be exactly these. sum = sha256 hex of the view as JSON with sorted keys and no spaces (UTF-8, not ASCII-escaped). clock/ops/diffs/compact/snap: the other functions step by step (fake wall clock from T0).",
- "groups": {
-  "deckcards": [
-   [
-    "print",
+ "schema": {
+  "lists": {
+   "file": "lists.json",
+   "explode": "wish[] / have[] / custom[] -> one entry per list",
+   "key": "id",
+   "fields": [
+    "kind",
+    "name",
+    "shared",
+    "pos",
+    "rule"
+   ],
+   "derived": [
+    "example"
+   ]
+  },
+  "havecards": {
+   "file": "lists.json",
+   "explode": "have[].items {uid: n} and have[].prints {printkey: n}",
+   "key": "<list>|u|<uid>  /  <list>|p|<set|number|lang|foil>",
+   "counted": "n",
+   "derived": [
+    "print_names"
+   ]
+  },
+  "wishcards": {
+   "file": "wishlist.json",
+   "explode": "items[] -> one entry per wish",
+   "key": "<list>|<wish_key>",
+   "fields": [
+    "note"
+   ],
+   "counted": "n",
+   "create_only": [
+    "added",
+    "name",
+    "set",
+    "number",
+    "lang",
+    "foil"
+   ]
+  },
+  "decks": {
+   "file": "decks.json",
+   "explode": "decks[] (web: one deck per document) -> one entry per deck",
+   "key": "id",
+   "fields": [
+    "name",
+    "format",
+    "notes",
+    "folder",
+    "built",
+    "cover",
+    "version_of",
+    "commanders",
+    "pinned",
+    "tokens"
+   ],
+   "create_only": [
+    "created"
+   ],
+   "local": [
+    "updated"
+   ]
+  },
+  "deckcards": {
+   "file": "decks.json",
+   "explode": "decks[].cards[] (web: the deck document's cards[]) -> one per row",
+   "key": "<deck>|<sid>|<board>",
+   "counted": "n"
+  },
+  "binders": {
+   "file": "binders.json",
+   "explode": "binders[] -> one entry per binder",
+   "key": "id",
+   "fields": [
+    "name",
+    "cols",
+    "rows",
+    "pos"
+   ],
+   "create_only": [
+    "created"
+   ],
+   "local": [
+    "updated"
+   ]
+  },
+  "binderslots": {
+   "file": "binders.json",
+   "explode": "binders[].slots[i] (only filled ones)",
+   "key": "<binder>|<i>",
+   "groups": [
     [
-     "id",
-     "foil",
+     "card",
+     [
+      "sid",
+      "lang",
+      "foil"
+     ]
+    ]
+   ],
+   "derived": [
+    "set",
+    "number",
+    "name"
+   ]
+  },
+  "friends": {
+   "file": "settings.json relay.friends",
+   "explode": "{address: friend}",
+   "key": "address",
+   "fields": [
+    "status",
+    "hide_back"
+   ],
+   "groups": [
+    [
+     "peer",
+     [
+      "name",
+      "back",
+      "pid",
+      "sign_pk"
+     ]
+    ]
+   ],
+   "local": [
+    "t",
+    "last_list",
+    "last_change",
+    "boards"
+   ],
+   "after_pairing": true
+  },
+  "friendlibs": {
+   "file": "my-data/friends/<pid>.json",
+   "explode": "{pid: file} -> one entry per friend",
+   "key": "pid",
+   "fields": [
+    "name",
+    "folder"
+   ],
+   "local": [
+    "cards",
+    "wants",
+    "library",
+    "imported",
+    "previous",
+    "date",
+    "what",
+    "source"
+   ],
+   "after_pairing": true
+  },
+  "friendnotes": {
+   "file": "settings.json friend_notes",
+   "explode": "{pid: note}",
+   "key": "pid",
+   "fields": [
+    "note"
+   ],
+   "global": true,
+   "after_pairing": true
+  },
+  "friendfolders": {
+   "file": "settings.json friend_folders",
+   "explode": "the folder list as one entry",
+   "key": "me",
+   "fields": [
+    "folders"
+   ],
+   "global": true,
+   "after_pairing": true
+  },
+  "profile": {
+   "file": "settings.json profile",
+   "explode": "the one profile",
+   "key": "me",
+   "fields": [
+    "name",
+    "back"
+   ],
+   "create_only": [
+    "id"
+   ],
+   "global": true
+  },
+  "offers": {
+   "file": "offers.json",
+   "explode": "offers[] -> one entry per trade",
+   "key": "id",
+   "fields": [
+    "status",
+    "partner",
+    "versions",
+    "updated"
+   ],
+   "create_only": [
+    "created"
+   ],
+   "purge": true,
+   "after_pairing": true
+  },
+  "pending": {
+   "file": "pending-trades.json",
+   "explode": "pending[] -> one entry per ticket",
+   "key": "ticket id",
+   "fields": [
+    "doc"
+   ],
+   "purge": true,
+   "after_pairing": true
+  },
+  "friendboards": {
+   "file": "settings.json relay.friends[].boards",
+   "explode": "{address: {boards: {game/slot: …}}}",
+   "key": "<address>|<game>/<slot>",
+   "groups": [
+    [
+     "board",
+     [
+      "key",
+      "t",
+      "title",
+      "until"
+     ]
+    ]
+   ],
+   "max": [
+    "fetched"
+   ],
+   "global": true,
+   "purge": true,
+   "after_pairing": true
+  },
+  "inbox": {
+   "file": "settings.json inbox",
+   "explode": "inbox[] -> one entry per message",
+   "key": "id",
+   "create_only": [
+    "t",
+    "title",
+    "text",
+    "via"
+   ],
+   "max": [
+    "read"
+   ],
+   "global": true
+  },
+  "alarms": {
+   "file": "settings.json price_alarms",
+   "explode": "price_alarms[] -> one entry per alarm",
+   "key": "<game>|<kind>|<name>|<set>|<sid>|<foil>|<psid>",
+   "fields": [
+    "below",
+    "above",
+    "src",
+    "basis",
+    "finish"
+   ],
+   "local": [
+    "hit"
+   ],
+   "global": true
+  },
+  "listalarms": {
+   "file": "settings.json list_alarms",
+   "explode": "list_alarms[] -> one entry per list alarm",
+   "key": "<game>|<lkind>|<lid>",
+   "fields": [
+    "drop",
+    "rise",
+    "src",
+    "basis",
+    "finish"
+   ],
+   "local": [
+    "base",
+    "hit"
+   ],
+   "global": true
+  },
+  "devices": {
+   "file": "sync meta (each device its own entry)",
+   "explode": "{dev: {name, kind, seen}}",
+   "key": "dev",
+   "fields": [
+    "name",
+    "kind"
+   ],
+   "max": [
+    "seen"
+   ],
+   "global": true
+  }
+ },
+ "snap_ops": 500,
+ "local_settings": [
+  "friend_folders_closed",
+  "friend_sort",
+  "friend_sort_rev",
+  "setup",
+  "backup_last",
+  "backup_risk_ok",
+  "sync_dev",
+  "sync_clock",
+  "sync_ops",
+  "pending_trades",
+  "orbit_age"
+ ],
+ "groups": {
+  "binderslots": [
+   [
+    "card",
+    [
+     "sid",
      "lang",
-     "finish"
+     "foil"
     ]
    ]
   ],
-  "listcards": [
+  "friends": [
    [
-    "print",
+    "peer",
     [
-     "id",
-     "foil",
-     "lang",
-     "finish"
+     "name",
+     "back",
+     "pid",
+     "sign_pk"
+    ]
+   ]
+  ],
+  "friendboards": [
+   [
+    "board",
+    [
+     "key",
+     "t",
+     "title",
+     "until"
     ]
    ]
   ]
  },
  "counted": {
-  "deckcards": "n",
-  "listcards": "n"
+  "havecards": "n",
+  "wishcards": "n",
+  "deckcards": "n"
  },
  "t0": 1793600000000,
  "tomb_days": 90,
@@ -160,12 +483,6 @@
      "c": "mtg/deckcards",
      "k": "d1|s1|main",
      "a": 1,
-     "s": {
-      "id": "x_0",
-      "foil": false,
-      "lang": "en",
-      "finish": null
-     },
      "d": {
       "n": 2
      }
@@ -200,16 +517,12 @@
    "view": {
     "mtg/deckcards": {
      "d1|s1|main": {
-      "id": "x_0",
-      "foil": false,
-      "lang": "en",
-      "finish": null,
       "n": 4
      }
     }
    },
    "sum": {
-    "mtg/deckcards": "74dba8d5087ee9e69e6bd06a4f03aea107b9c46374c6f32dcb6d5f60798ddac9"
+    "mtg/deckcards": "7603e966e59b48c0436658269f61b4320304b15e101d71c81cdcae6de0735404"
    }
   },
   {
@@ -226,12 +539,6 @@
      "c": "mtg/deckcards",
      "k": "d1|s1|main",
      "a": 1,
-     "s": {
-      "id": "x_0",
-      "foil": false,
-      "lang": "en",
-      "finish": null
-     },
      "d": {
       "n": 1
      }
@@ -264,21 +571,17 @@
    "view": {
     "mtg/deckcards": {
      "d1|s1|main": {
-      "id": "x_0",
-      "foil": false,
-      "lang": "en",
-      "finish": null,
       "n": 1
      }
     }
    },
    "sum": {
-    "mtg/deckcards": "1f2603e4b8fe5264bc7d857fd8d5c1b6bb34fcaea59d65137a08f2156610e632"
+    "mtg/deckcards": "6aee3e1728ef53242adda63e98e895d9ab47bd45074c0726b63a1bd3b8e59f69"
    }
   },
   {
-   "name": "print_is_one_field",
-   "about": "print + foil + language + finish change together: the later op wins whole",
+   "name": "card_is_one_field",
+   "about": "a binder pocket's card + language + foil change together: the later op wins whole",
    "ops": [
     {
      "o": "aaaa.1793600000000.0",
@@ -287,17 +590,13 @@
       0,
       "aaaa"
      ],
-     "c": "mtg/deckcards",
-     "k": "k",
+     "c": "mtg/binderslots",
+     "k": "b1|0",
      "a": 1,
      "s": {
-      "id": "x_0",
-      "foil": false,
+      "sid": "x_0",
       "lang": "en",
-      "finish": null
-     },
-     "d": {
-      "n": 1
+      "foil": false
      }
     },
     {
@@ -307,13 +606,12 @@
       0,
       "aaaa"
      ],
-     "c": "mtg/deckcards",
-     "k": "k",
+     "c": "mtg/binderslots",
+     "k": "b1|0",
      "s": {
-      "id": "y_0",
-      "foil": false,
+      "sid": "y_0",
       "lang": "en",
-      "finish": null
+      "foil": false
      }
     },
     {
@@ -323,29 +621,26 @@
       0,
       "bbbb"
      ],
-     "c": "mtg/deckcards",
-     "k": "k",
+     "c": "mtg/binderslots",
+     "k": "b1|0",
      "s": {
-      "id": "x_0",
-      "foil": true,
+      "sid": "x_0",
       "lang": "de",
-      "finish": "foil"
+      "foil": true
      }
     }
    ],
    "view": {
-    "mtg/deckcards": {
-     "k": {
-      "id": "x_0",
-      "foil": true,
+    "mtg/binderslots": {
+     "b1|0": {
+      "sid": "x_0",
       "lang": "de",
-      "finish": "foil",
-      "n": 1
+      "foil": true
      }
     }
    },
    "sum": {
-    "mtg/deckcards": "2304d48cdbd69323d7b1def69b68d830d89822367882ae8f90d6f34f7b6f554b"
+    "mtg/binderslots": "35b5bed1b767cad53607675c65bc849d86396260bc972c0fe419ee2b1f1e1d82"
    }
   },
   {
@@ -827,8 +1122,8 @@
      "c": "mtg/decks",
      "k": "a",
      "s": {
-      "name": "A2",
-      "note": null
+      "note": null,
+      "name": "A2"
      }
     }
    ]
@@ -877,47 +1172,23 @@
    "kind": "mtg/deckcards",
    "old": {
     "k1": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "en",
-     "finish": null,
      "n": 2
     },
     "k2": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "en",
-     "finish": null,
      "n": 1
     },
     "k3": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "en",
-     "finish": null,
      "n": 4
     }
    },
    "new": {
     "k1": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "en",
-     "finish": null,
      "n": 5
     },
     "k3": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "de",
-     "finish": null,
      "n": 4
     },
     "k4": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "en",
-     "finish": null,
      "n": 1
     }
    },
@@ -955,30 +1226,8 @@
       "aaaa"
      ],
      "c": "mtg/deckcards",
-     "k": "k3",
-     "s": {
-      "lang": "de",
-      "id": "x_0",
-      "foil": false,
-      "finish": null
-     }
-    },
-    {
-     "o": "aaaa.1793600000000.3",
-     "h": [
-      1793600000000,
-      3,
-      "aaaa"
-     ],
-     "c": "mtg/deckcards",
      "k": "k4",
      "a": 1,
-     "s": {
-      "id": "x_0",
-      "foil": false,
-      "lang": "en",
-      "finish": null
-     },
      "d": {
       "n": 1
      }
@@ -986,24 +1235,20 @@
    ]
   },
   {
-   "about": "counted: count down, foil only -> the whole print",
-   "kind": "mtg/listcards",
+   "about": "group: foil only -> the whole card",
+   "kind": "mtg/binderslots",
    "old": {
-    "k": {
-     "id": "x_0",
-     "foil": false,
+    "b|0": {
+     "sid": "x_0",
      "lang": "en",
-     "finish": null,
-     "n": 3
+     "foil": false
     }
    },
    "new": {
-    "k": {
-     "id": "x_0",
-     "foil": true,
+    "b|0": {
+     "sid": "x_0",
      "lang": "en",
-     "finish": null,
-     "n": 1
+     "foil": true
     }
    },
    "fields": null,
@@ -1015,31 +1260,22 @@
       0,
       "aaaa"
      ],
-     "c": "mtg/listcards",
-     "k": "k",
+     "c": "mtg/binderslots",
+     "k": "b|0",
      "s": {
       "foil": true,
-      "id": "x_0",
-      "lang": "en",
-      "finish": null
-     },
-     "d": {
-      "n": -2
+      "sid": "x_0",
+      "lang": "en"
      }
     }
    ]
   },
   {
    "about": "counted: created with no count",
-   "kind": "mtg/listcards",
+   "kind": "mtg/havecards",
    "old": {},
    "new": {
-    "k": {
-     "id": "x_0",
-     "foil": false,
-     "lang": "en",
-     "finish": null
-    }
+    "k": {}
    },
    "fields": null,
    "ops": [
@@ -1050,15 +1286,9 @@
       0,
       "aaaa"
      ],
-     "c": "mtg/listcards",
+     "c": "mtg/havecards",
      "k": "k",
      "a": 1,
-     "s": {
-      "id": "x_0",
-      "foil": false,
-      "lang": "en",
-      "finish": null
-     },
      "d": {}
     }
    ]
@@ -1157,6 +1387,1035 @@
      }
     }
    ]
+  }
+ ],
+ "explode": [
+  {
+   "kind": "lists",
+   "doc": {
+    "wish": [
+     {
+      "id": "main",
+      "name": "Wishlist"
+     }
+    ],
+    "have": [
+     {
+      "id": "trade",
+      "name": "Trade"
+     },
+     {
+      "id": "h1",
+      "name": "Bulk",
+      "shared": true,
+      "items": {
+       "u1": 2
+      },
+      "prints": {
+       "mh2|267|en|1": 1
+      },
+      "print_names": {
+       "mh2|267|en|1": "Counterspell"
+      }
+     }
+    ],
+    "custom": [
+     {
+      "id": "c1",
+      "name": "Ideas",
+      "example": true
+     }
+    ]
+   },
+   "entries": {
+    "main": {
+     "kind": "wish",
+     "name": "Wishlist",
+     "shared": false,
+     "pos": 0
+    },
+    "trade": {
+     "kind": "have",
+     "name": "Trade",
+     "shared": false,
+     "pos": 0
+    },
+    "h1": {
+     "kind": "have",
+     "name": "Bulk",
+     "shared": true,
+     "pos": 1
+    },
+    "c1": {
+     "kind": "custom",
+     "name": "Ideas",
+     "shared": false,
+     "pos": 0
+    }
+   }
+  },
+  {
+   "kind": "havecards",
+   "doc": {
+    "wish": [
+     {
+      "id": "main",
+      "name": "Wishlist"
+     }
+    ],
+    "have": [
+     {
+      "id": "trade",
+      "name": "Trade"
+     },
+     {
+      "id": "h1",
+      "name": "Bulk",
+      "shared": true,
+      "items": {
+       "u1": 2
+      },
+      "prints": {
+       "mh2|267|en|1": 1
+      },
+      "print_names": {
+       "mh2|267|en|1": "Counterspell"
+      }
+     }
+    ],
+    "custom": [
+     {
+      "id": "c1",
+      "name": "Ideas",
+      "example": true
+     }
+    ]
+   },
+   "entries": {
+    "h1|u|u1": {
+     "n": 2
+    },
+    "h1|p|mh2|267|en|1": {
+     "n": 1
+    }
+   }
+  },
+  {
+   "kind": "wishcards",
+   "doc": {
+    "version": 1,
+    "items": [
+     {
+      "name": "Lightning Bolt",
+      "count": 2,
+      "set": null,
+      "number": null,
+      "note": "any",
+      "added": 1793600000.5
+     },
+     {
+      "name": "Counterspell",
+      "count": 1,
+      "set": "MH2",
+      "number": "267",
+      "lang": "de",
+      "foil": true,
+      "note": "",
+      "added": 1793600001.25,
+      "list": "c1"
+     }
+    ]
+   },
+   "entries": {
+    "main|Lightning Bolt||": {
+     "n": 2,
+     "note": "any",
+     "added": 1793600000500,
+     "name": "Lightning Bolt"
+    },
+    "c1|Counterspell|mh2|267|de|1": {
+     "n": 1,
+     "note": "",
+     "added": 1793600001250,
+     "name": "Counterspell",
+     "set": "MH2",
+     "number": "267",
+     "lang": "de",
+     "foil": true
+    }
+   }
+  },
+  {
+   "kind": "decks",
+   "doc": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   },
+   "entries": {
+    "d1": {
+     "name": "Burn",
+     "format": "modern",
+     "notes": "",
+     "folder": "Modern",
+     "commanders": [],
+     "pinned": [
+      "s1",
+      "s2"
+     ],
+     "tokens": {
+      "goblin": 2
+     },
+     "created": 1793600000000
+    }
+   }
+  },
+  {
+   "kind": "deckcards",
+   "doc": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   },
+   "entries": {
+    "d1|s1|main": {
+     "n": 4
+    },
+    "d1|s2|side": {
+     "n": 2
+    }
+   }
+  },
+  {
+   "kind": "binders",
+   "doc": {
+    "version": 1,
+    "binders": [
+     {
+      "id": "b1",
+      "name": "Rares",
+      "cols": 3,
+      "rows": 3,
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "slots": [
+       null,
+       {
+        "sid": "s1",
+        "set": "m10",
+        "number": "146",
+        "lang": "de",
+        "foil": false,
+        "name": "Lightning Bolt"
+       },
+       null
+      ]
+     }
+    ]
+   },
+   "entries": {
+    "b1": {
+     "name": "Rares",
+     "cols": 3,
+     "rows": 3,
+     "pos": 0,
+     "created": 1793600000000
+    }
+   }
+  },
+  {
+   "kind": "binderslots",
+   "doc": {
+    "version": 1,
+    "binders": [
+     {
+      "id": "b1",
+      "name": "Rares",
+      "cols": 3,
+      "rows": 3,
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "slots": [
+       null,
+       {
+        "sid": "s1",
+        "set": "m10",
+        "number": "146",
+        "lang": "de",
+        "foil": false,
+        "name": "Lightning Bolt"
+       },
+       null
+      ]
+     }
+    ]
+   },
+   "entries": {
+    "b1|1": {
+     "sid": "s1",
+     "lang": "de",
+     "foil": false
+    }
+   }
+  },
+  {
+   "kind": "friends",
+   "doc": {
+    "0123456789ABCDEF": {
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk",
+     "status": "ok",
+     "t": 1793600000.0,
+     "boards": {
+      "mtg/lists": {},
+      "mtg/b-1": {
+       "key": "k1",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      }
+     }
+    }
+   },
+   "entries": {
+    "0123456789ABCDEF": {
+     "status": "ok",
+     "hide_back": false,
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk"
+    }
+   }
+  },
+  {
+   "kind": "friendlibs",
+   "doc": {
+    "p1": {
+     "id": "p1",
+     "name": "Max (club)",
+     "folder": "Club",
+     "cards": [
+      [
+       "m10",
+       "146"
+      ]
+     ],
+     "imported": 1.5
+    }
+   },
+   "entries": {
+    "p1": {
+     "name": "Max (club)",
+     "folder": "Club"
+    }
+   }
+  },
+  {
+   "kind": "friendnotes",
+   "doc": {
+    "p1": "met at the club",
+    "p2": ""
+   },
+   "entries": {
+    "p1": {
+     "note": "met at the club"
+    }
+   }
+  },
+  {
+   "kind": "friendfolders",
+   "doc": [
+    "Club",
+    "Family"
+   ],
+   "entries": {
+    "me": {
+     "folders": [
+      "Club",
+      "Family"
+     ]
+    }
+   }
+  },
+  {
+   "kind": "profile",
+   "doc": {
+    "id": "abc",
+    "name": "Oliver",
+    "back": "v3;y"
+   },
+   "entries": {
+    "me": {
+     "name": "Oliver",
+     "back": "v3;y",
+     "id": "abc"
+    }
+   }
+  },
+  {
+   "kind": "offers",
+   "doc": {
+    "offers": [
+     {
+      "id": "tr1",
+      "partner": [
+       "p1",
+       "Max"
+      ],
+      "status": "sent",
+      "created": 1793600000.0,
+      "updated": 1793600100.5,
+      "versions": [
+       {
+        "v": 1,
+        "give": [
+         [
+          "m10",
+          "146",
+          "en",
+          false
+         ]
+        ],
+        "get": [],
+        "eur": 1.5
+       }
+      ]
+     },
+     {
+      "id": "tr2",
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "status": "received",
+      "created": 1793500000.0,
+      "updated": 1793500000.0,
+      "versions": [
+       {
+        "v": 1,
+        "give": [],
+        "get": [
+         [
+          "sv1",
+          "1",
+          "en",
+          false
+         ]
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "entries": {
+    "tr1": {
+     "status": "sent",
+     "partner": [
+      "p1",
+      "Max"
+     ],
+     "versions": "[{\"eur\":1.5,\"get\":[],\"give\":[[\"m10\",\"146\",\"en\",false]],\"v\":1}]",
+     "updated": 1793600100500,
+     "created": 1793600000000
+    },
+    "tr2": {
+     "status": "received",
+     "partner": [
+      "p2",
+      "Eva"
+     ],
+     "versions": "[{\"get\":[[\"sv1\",\"1\",\"en\",false]],\"give\":[],\"v\":1}]",
+     "updated": 1793500000000,
+     "created": 1793500000000
+    }
+   }
+  },
+  {
+   "kind": "pending",
+   "doc": {
+    "version": 1,
+    "pending": [
+     {
+      "ticket": {
+       "id": "tk1",
+       "v": 2
+      },
+      "give": [],
+      "get": [
+       [
+        "sv1",
+        "1",
+        "en",
+        false
+       ]
+      ],
+      "partner": [
+       "p1",
+       "Max"
+      ],
+      "foreign": [],
+      "t": 1793600000.25
+     },
+     {
+      "ticket": {
+       "id": "tk2"
+      },
+      "give": [
+       [
+        "m10",
+        "146",
+        "en",
+        false
+       ]
+      ],
+      "get": [],
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "foreign": [
+       "pokemon"
+      ],
+      "t": 1793600001.0
+     }
+    ]
+   },
+   "entries": {
+    "tk1": {
+     "doc": "{\"foreign\":[],\"get\":[[\"sv1\",\"1\",\"en\",false]],\"give\":[],\"partner\":[\"p1\",\"Max\"],\"t\":1793600000.25,\"ticket\":{\"id\":\"tk1\",\"v\":2}}"
+    },
+    "tk2": {
+     "doc": "{\"foreign\":[\"pokemon\"],\"get\":[],\"give\":[[\"m10\",\"146\",\"en\",false]],\"partner\":[\"p2\",\"Eva\"],\"t\":1793600001.0,\"ticket\":{\"id\":\"tk2\"}}"
+    }
+   }
+  },
+  {
+   "kind": "friendboards",
+   "doc": {
+    "0123456789ABCDEF": {
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk",
+     "status": "ok",
+     "t": 1793600000.0,
+     "boards": {
+      "mtg/lists": {},
+      "mtg/b-1": {
+       "key": "k1",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      }
+     }
+    }
+   },
+   "entries": {
+    "0123456789ABCDEF|mtg/b-1": {
+     "key": "k1",
+     "t": 1793600000,
+     "title": "Rares",
+     "until": 1794800000,
+     "fetched": 1793600050
+    }
+   }
+  },
+  {
+   "kind": "inbox",
+   "doc": [
+    {
+     "id": "n1",
+     "t": 1793600000.5,
+     "title": "Hi",
+     "text": "Welcome",
+     "via": "news",
+     "read": false
+    },
+    {
+     "id": "n2",
+     "t": 1793500000.0,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    }
+   ],
+   "entries": {
+    "n1": {
+     "t": 1793600000500,
+     "title": "Hi",
+     "text": "Welcome",
+     "via": "news",
+     "read": false
+    },
+    "n2": {
+     "t": 1793500000000,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    }
+   }
+  },
+  {
+   "kind": "alarms",
+   "doc": [
+    {
+     "game": "mtg",
+     "kind": "wish",
+     "name": "Ragavan",
+     "set": null,
+     "foil": false,
+     "below": 45.5,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any",
+     "hit": true
+    },
+    {
+     "game": "pokemon",
+     "kind": "trade",
+     "name": "Pikachu",
+     "sid": "sv1-1",
+     "set": "SV1",
+     "foil": true,
+     "above": 12.0,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    }
+   ],
+   "entries": {
+    "mtg|wish|Ragavan|||0|": {
+     "below": 4550,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any"
+    },
+    "pokemon|trade|Pikachu|sv1|sv1-1|1|": {
+     "above": 1200,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    }
+   }
+  },
+  {
+   "kind": "listalarms",
+   "doc": [
+    {
+     "game": "mtg",
+     "lkind": "wish",
+     "lid": "main",
+     "drop": 10.0,
+     "rise": null,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any",
+     "base": {
+      "Bolt": 1.5
+     },
+     "hit": {
+      "Bolt": false
+     }
+    }
+   ],
+   "entries": {
+    "mtg|wish|main": {
+     "drop": 1000,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any"
+    }
+   }
+  },
+  {
+   "kind": "devices",
+   "doc": {
+    "a1b2": {
+     "name": "Olivers PC",
+     "kind": "pc",
+     "seen": 1793577600000
+    },
+    "c3d4": {
+     "name": "Pixel 8",
+     "kind": "phone",
+     "seen": 1793491200000
+    }
+   },
+   "entries": {
+    "a1b2": {
+     "name": "Olivers PC",
+     "kind": "pc",
+     "seen": 1793577600000
+    },
+    "c3d4": {
+     "name": "Pixel 8",
+     "kind": "phone",
+     "seen": 1793491200000
+    }
+   }
+  }
+ ],
+ "diff_doc": [
+  {
+   "kind": "decks",
+   "game": "mtg",
+   "old": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   },
+   "new": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn 2",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 3,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       },
+       {
+        "sid": "s9",
+        "count": 1,
+        "board": "maybe"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793800000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     },
+     {
+      "id": "d2",
+      "name": "New",
+      "format": "casual",
+      "commanders": [],
+      "cards": [],
+      "tokens": {},
+      "created": 1793800000.0,
+      "updated": 1793800000.0,
+      "notes": ""
+     }
+    ]
+   },
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "d1",
+     "s": {
+      "name": "Burn 2"
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.1",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "c": "mtg/decks",
+     "k": "d2",
+     "a": 1,
+     "s": {
+      "name": "New",
+      "format": "casual",
+      "notes": "",
+      "commanders": [],
+      "pinned": [],
+      "tokens": {},
+      "created": 1793800000000
+     }
+    }
+   ],
+   "snap": false
+  },
+  {
+   "kind": "deckcards",
+   "game": "mtg",
+   "old": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   },
+   "new": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn 2",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 3,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       },
+       {
+        "sid": "s9",
+        "count": 1,
+        "board": "maybe"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793800000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     },
+     {
+      "id": "d2",
+      "name": "New",
+      "format": "casual",
+      "commanders": [],
+      "cards": [],
+      "tokens": {},
+      "created": 1793800000.0,
+      "updated": 1793800000.0,
+      "notes": ""
+     }
+    ]
+   },
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s1|main",
+     "d": {
+      "n": -1
+     }
+    },
+    {
+     "o": "aaaa.1793600000000.1",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "c": "mtg/deckcards",
+     "k": "d1|s9|maybe",
+     "a": 1,
+     "d": {
+      "n": 1
+     }
+    }
+   ],
+   "snap": false
+  },
+  {
+   "kind": "profile",
+   "game": "pokemon",
+   "old": {
+    "id": "abc",
+    "name": "Oliver",
+    "back": "v3;y"
+   },
+   "new": {
+    "id": "abc",
+    "name": "Oli",
+    "back": "v3;y"
+   },
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "*/profile",
+     "k": "me",
+     "s": {
+      "name": "Oli"
+     }
+    }
+   ],
+   "snap": false
   }
  ],
  "compact": {
@@ -1410,5 +2669,2257 @@
     "cccc"
    ]
   }
+ },
+ "implode": [
+  {
+   "kind": "lists",
+   "doc": {
+    "wish": [
+     {
+      "id": "main",
+      "name": "Wishlist"
+     }
+    ],
+    "have": [
+     {
+      "id": "trade",
+      "name": "Trade"
+     },
+     {
+      "id": "h1",
+      "name": "Bulk",
+      "shared": true,
+      "items": {
+       "u1": 2
+      },
+      "prints": {
+       "mh2|267|en|1": 1
+      },
+      "print_names": {
+       "mh2|267|en|1": "Counterspell"
+      }
+     }
+    ],
+    "custom": [
+     {
+      "id": "c1",
+      "name": "Ideas",
+      "example": true
+     }
+    ]
+   },
+   "view": {
+    "main": {
+     "kind": "wish",
+     "name": "Wishlist",
+     "shared": false,
+     "pos": 0
+    },
+    "trade": {
+     "kind": "have",
+     "name": "Trade!",
+     "shared": false,
+     "pos": 0
+    },
+    "h1": {
+     "kind": "have",
+     "name": "Bulk",
+     "shared": true,
+     "pos": 1
+    },
+    "tradex": {
+     "kind": "have",
+     "name": "Trade!",
+     "shared": false,
+     "pos": 0
+    }
+   },
+   "out": {
+    "wish": [
+     {
+      "id": "main",
+      "name": "Wishlist"
+     }
+    ],
+    "have": [
+     {
+      "id": "trade",
+      "name": "Trade!"
+     },
+     {
+      "id": "tradex",
+      "items": {},
+      "prints": {},
+      "name": "Trade!",
+      "shared": false
+     },
+     {
+      "id": "h1",
+      "name": "Bulk",
+      "shared": true,
+      "items": {
+       "u1": 2
+      },
+      "prints": {
+       "mh2|267|en|1": 1
+      },
+      "print_names": {
+       "mh2|267|en|1": "Counterspell"
+      }
+     }
+    ],
+    "custom": []
+   }
+  },
+  {
+   "kind": "havecards",
+   "doc": {
+    "wish": [
+     {
+      "id": "main",
+      "name": "Wishlist"
+     }
+    ],
+    "have": [
+     {
+      "id": "trade",
+      "name": "Trade"
+     },
+     {
+      "id": "h1",
+      "name": "Bulk",
+      "shared": true,
+      "items": {
+       "u1": 2
+      },
+      "prints": {
+       "mh2|267|en|1": 1
+      },
+      "print_names": {
+       "mh2|267|en|1": "Counterspell"
+      }
+     }
+    ],
+    "custom": [
+     {
+      "id": "c1",
+      "name": "Ideas",
+      "example": true
+     }
+    ]
+   },
+   "view": {
+    "h1|u|u1": {
+     "n": 3
+    },
+    "h1|u|u1x": {
+     "n": 3
+    }
+   },
+   "out": {
+    "wish": [
+     {
+      "id": "main",
+      "name": "Wishlist"
+     }
+    ],
+    "have": [
+     {
+      "id": "trade",
+      "name": "Trade"
+     },
+     {
+      "id": "h1",
+      "name": "Bulk",
+      "shared": true,
+      "items": {
+       "u1": 3,
+       "u1x": 3
+      },
+      "prints": {},
+      "print_names": {
+       "mh2|267|en|1": "Counterspell"
+      }
+     }
+    ],
+    "custom": [
+     {
+      "id": "c1",
+      "name": "Ideas",
+      "example": true
+     }
+    ]
+   }
+  },
+  {
+   "kind": "wishcards",
+   "doc": {
+    "version": 1,
+    "items": [
+     {
+      "name": "Lightning Bolt",
+      "count": 2,
+      "set": null,
+      "number": null,
+      "note": "any",
+      "added": 1793600000.5
+     },
+     {
+      "name": "Counterspell",
+      "count": 1,
+      "set": "MH2",
+      "number": "267",
+      "lang": "de",
+      "foil": true,
+      "note": "",
+      "added": 1793600001.25,
+      "list": "c1"
+     }
+    ]
+   },
+   "view": {
+    "main|Lightning Bolt||": {
+     "n": 3,
+     "note": "any!",
+     "added": 1793600000500,
+     "name": "Lightning Bolt"
+    },
+    "main|Lightning Bolt II||": {
+     "n": 3,
+     "note": "any!",
+     "added": 1793600000500,
+     "name": "Lightning Bolt II"
+    }
+   },
+   "out": {
+    "version": 1,
+    "items": [
+     {
+      "name": "Lightning Bolt",
+      "count": 3,
+      "set": null,
+      "number": null,
+      "note": "any!",
+      "added": 1793600000.5
+     },
+     {
+      "name": "Lightning Bolt II",
+      "count": 3,
+      "note": "any!",
+      "added": 1793600000.5,
+      "list": "main"
+     }
+    ]
+   }
+  },
+  {
+   "kind": "decks",
+   "doc": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   },
+   "view": {
+    "d1": {
+     "name": "Burn!",
+     "format": "modern",
+     "notes": "",
+     "folder": "Modern",
+     "commanders": [],
+     "pinned": [
+      "s1",
+      "s2"
+     ],
+     "tokens": {
+      "goblin": 2
+     },
+     "created": 1793600000000
+    },
+    "d1x": {
+     "name": "Burn!",
+     "format": "modern",
+     "notes": "",
+     "folder": "Modern",
+     "commanders": [],
+     "pinned": [
+      "s1",
+      "s2"
+     ],
+     "tokens": {
+      "goblin": 2
+     },
+     "created": 1793600000000
+    }
+   },
+   "out": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn!",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     },
+     {
+      "id": "d1x",
+      "cards": [],
+      "created": 1793600000.0,
+      "updated": 1793600000.0,
+      "name": "Burn!",
+      "format": "modern",
+      "notes": "",
+      "folder": "Modern",
+      "commanders": [],
+      "pinned": [
+       "s1",
+       "s2"
+      ],
+      "tokens": {
+       "goblin": 2
+      }
+     }
+    ]
+   }
+  },
+  {
+   "kind": "deckcards",
+   "doc": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s1",
+        "count": 4,
+        "board": "main"
+       },
+       {
+        "sid": "s2",
+        "count": 2,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   },
+   "view": {
+    "d1|s2|side": {
+     "n": 3
+    },
+    "d1|s2x|side": {
+     "n": 3
+    }
+   },
+   "out": {
+    "decks": [
+     {
+      "id": "d1",
+      "name": "Burn",
+      "format": "modern",
+      "commanders": [],
+      "notes": "",
+      "cards": [
+       {
+        "sid": "s2",
+        "count": 3,
+        "board": "side"
+       },
+       {
+        "sid": "s3",
+        "count": 0,
+        "board": "main"
+       },
+       {
+        "sid": "s2x",
+        "board": "side",
+        "count": 3
+       }
+      ],
+      "tokens": {
+       "goblin": 2
+      },
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "pinned": [
+       "s2",
+       "s1"
+      ],
+      "folder": "Modern"
+     }
+    ]
+   }
+  },
+  {
+   "kind": "binders",
+   "doc": {
+    "version": 1,
+    "binders": [
+     {
+      "id": "b1",
+      "name": "Rares",
+      "cols": 3,
+      "rows": 3,
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "slots": [
+       null,
+       {
+        "sid": "s1",
+        "set": "m10",
+        "number": "146",
+        "lang": "de",
+        "foil": false,
+        "name": "Lightning Bolt"
+       },
+       null
+      ]
+     }
+    ]
+   },
+   "view": {
+    "b1": {
+     "name": "Rares!",
+     "cols": 3,
+     "rows": 3,
+     "pos": 0,
+     "created": 1793600000000
+    },
+    "b1x": {
+     "name": "Rares!",
+     "cols": 3,
+     "rows": 3,
+     "pos": 0,
+     "created": 1793600000000
+    }
+   },
+   "out": {
+    "version": 1,
+    "binders": [
+     {
+      "id": "b1",
+      "name": "Rares!",
+      "cols": 3,
+      "rows": 3,
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "slots": [
+       null,
+       {
+        "sid": "s1",
+        "set": "m10",
+        "number": "146",
+        "lang": "de",
+        "foil": false,
+        "name": "Lightning Bolt"
+       },
+       null
+      ]
+     },
+     {
+      "id": "b1x",
+      "slots": [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null
+      ],
+      "created": 1793600000.0,
+      "updated": 1793600000.0,
+      "name": "Rares!",
+      "cols": 3,
+      "rows": 3
+     }
+    ]
+   }
+  },
+  {
+   "kind": "binderslots",
+   "doc": {
+    "version": 1,
+    "binders": [
+     {
+      "id": "b1",
+      "name": "Rares",
+      "cols": 3,
+      "rows": 3,
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "slots": [
+       null,
+       {
+        "sid": "s1",
+        "set": "m10",
+        "number": "146",
+        "lang": "de",
+        "foil": false,
+        "name": "Lightning Bolt"
+       },
+       null
+      ]
+     }
+    ]
+   },
+   "view": {
+    "b1|1": {
+     "sid": "s1!",
+     "lang": "de",
+     "foil": false
+    },
+    "b1|8": {
+     "sid": "s1!",
+     "lang": "de",
+     "foil": false
+    }
+   },
+   "out": {
+    "version": 1,
+    "binders": [
+     {
+      "id": "b1",
+      "name": "Rares",
+      "cols": 3,
+      "rows": 3,
+      "created": 1793600000.0,
+      "updated": 1793700000.0,
+      "slots": [
+       null,
+       {
+        "sid": "s1!",
+        "lang": "de",
+        "foil": false
+       },
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       {
+        "sid": "s1!",
+        "lang": "de",
+        "foil": false
+       },
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "kind": "friends",
+   "doc": {
+    "0123456789ABCDEF": {
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk",
+     "status": "ok",
+     "t": 1793600000.0,
+     "boards": {
+      "mtg/lists": {},
+      "mtg/b-1": {
+       "key": "k1",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      }
+     }
+    }
+   },
+   "view": {
+    "0123456789ABCDEF": {
+     "status": "ok!",
+     "hide_back": false,
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk"
+    },
+    "0123456789ABCDEFx": {
+     "status": "ok!",
+     "hide_back": false,
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk"
+    }
+   },
+   "out": {
+    "0123456789ABCDEF": {
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk",
+     "status": "ok!",
+     "t": 1793600000.0,
+     "boards": {
+      "mtg/lists": {},
+      "mtg/b-1": {
+       "key": "k1",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      }
+     }
+    },
+    "0123456789ABCDEFx": {
+     "status": "ok!",
+     "hide_back": false,
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk"
+    }
+   }
+  },
+  {
+   "kind": "friendlibs",
+   "doc": {
+    "p1": {
+     "id": "p1",
+     "name": "Max (club)",
+     "folder": "Club",
+     "cards": [
+      [
+       "m10",
+       "146"
+      ]
+     ],
+     "imported": 1.5
+    }
+   },
+   "view": {
+    "p1": {
+     "name": "Max (club)!",
+     "folder": "Club"
+    },
+    "p1x": {
+     "name": "Max (club)!",
+     "folder": "Club"
+    }
+   },
+   "out": {
+    "p1": {
+     "id": "p1",
+     "name": "Max (club)!",
+     "folder": "Club",
+     "cards": [
+      [
+       "m10",
+       "146"
+      ]
+     ],
+     "imported": 1.5
+    },
+    "p1x": {
+     "name": "Max (club)!",
+     "folder": "Club"
+    }
+   }
+  },
+  {
+   "kind": "friendnotes",
+   "doc": {
+    "p1": "met at the club",
+    "p2": ""
+   },
+   "view": {
+    "p1": {
+     "note": "met at the club!"
+    },
+    "p1x": {
+     "note": "met at the club!"
+    }
+   },
+   "out": {
+    "p1": "met at the club!",
+    "p2": "",
+    "p1x": "met at the club!"
+   }
+  },
+  {
+   "kind": "friendfolders",
+   "doc": [
+    "Club",
+    "Family"
+   ],
+   "view": {
+    "me": {
+     "folders": [
+      "Club",
+      "Family",
+      "z"
+     ]
+    }
+   },
+   "out": [
+    "Club",
+    "Family",
+    "z"
+   ]
+  },
+  {
+   "kind": "profile",
+   "doc": {
+    "id": "abc",
+    "name": "Oliver",
+    "back": "v3;y"
+   },
+   "view": {
+    "me": {
+     "name": "Oliver!",
+     "back": "v3;y",
+     "id": "abc"
+    }
+   },
+   "out": {
+    "id": "abc",
+    "name": "Oliver!",
+    "back": "v3;y"
+   }
+  },
+  {
+   "kind": "offers",
+   "doc": {
+    "offers": [
+     {
+      "id": "tr1",
+      "partner": [
+       "p1",
+       "Max"
+      ],
+      "status": "sent",
+      "created": 1793600000.0,
+      "updated": 1793600100.5,
+      "versions": [
+       {
+        "v": 1,
+        "give": [
+         [
+          "m10",
+          "146",
+          "en",
+          false
+         ]
+        ],
+        "get": [],
+        "eur": 1.5
+       }
+      ]
+     },
+     {
+      "id": "tr2",
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "status": "received",
+      "created": 1793500000.0,
+      "updated": 1793500000.0,
+      "versions": [
+       {
+        "v": 1,
+        "give": [],
+        "get": [
+         [
+          "sv1",
+          "1",
+          "en",
+          false
+         ]
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "view": {
+    "tr2": {
+     "status": "received!",
+     "partner": [
+      "p2",
+      "Eva"
+     ],
+     "versions": "[{\"get\":[[\"sv1\",\"1\",\"en\",false]],\"give\":[],\"v\":1}]",
+     "updated": 1793500000000,
+     "created": 1793500000000
+    },
+    "tr2x": {
+     "status": "received!",
+     "partner": [
+      "p2",
+      "Eva"
+     ],
+     "versions": "[{\"get\":[[\"sv1\",\"1\",\"en\",false]],\"give\":[],\"v\":1}]",
+     "updated": 1793500000000,
+     "created": 1793500000000
+    }
+   },
+   "out": {
+    "offers": [
+     {
+      "id": "tr2",
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "status": "received!",
+      "created": 1793500000.0,
+      "updated": 1793500000.0,
+      "versions": [
+       {
+        "v": 1,
+        "give": [],
+        "get": [
+         [
+          "sv1",
+          "1",
+          "en",
+          false
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "tr2x",
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "status": "received!",
+      "versions": [
+       {
+        "get": [
+         [
+          "sv1",
+          "1",
+          "en",
+          false
+         ]
+        ],
+        "give": [],
+        "v": 1
+       }
+      ],
+      "created": 1793500000.0,
+      "updated": 1793500000.0
+     }
+    ]
+   }
+  },
+  {
+   "kind": "pending",
+   "doc": {
+    "version": 1,
+    "pending": [
+     {
+      "ticket": {
+       "id": "tk1",
+       "v": 2
+      },
+      "give": [],
+      "get": [
+       [
+        "sv1",
+        "1",
+        "en",
+        false
+       ]
+      ],
+      "partner": [
+       "p1",
+       "Max"
+      ],
+      "foreign": [],
+      "t": 1793600000.25
+     },
+     {
+      "ticket": {
+       "id": "tk2"
+      },
+      "give": [
+       [
+        "m10",
+        "146",
+        "en",
+        false
+       ]
+      ],
+      "get": [],
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "foreign": [
+       "pokemon"
+      ],
+      "t": 1793600001.0
+     }
+    ]
+   },
+   "view": {
+    "tk2": {
+     "doc": "{\"foreign\":[\"pokemon\"],\"get\":[],\"give\":[[\"m10\",\"146\",\"en\",false]],\"partner\":[\"p2\",\"Eva\"],\"t\":1793600001.0,\"ticket\":{\"id\":\"tk2\"},\"z\":1}"
+    },
+    "tk2x": {
+     "doc": "{\"foreign\":[\"pokemon\"],\"get\":[],\"give\":[[\"m10\",\"146\",\"en\",false]],\"partner\":[\"p2\",\"Eva\"],\"t\":1793600001.0,\"ticket\":{\"id\":\"tk2x\"},\"z\":1}"
+    }
+   },
+   "out": {
+    "version": 1,
+    "pending": [
+     {
+      "foreign": [
+       "pokemon"
+      ],
+      "get": [],
+      "give": [
+       [
+        "m10",
+        "146",
+        "en",
+        false
+       ]
+      ],
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "t": 1793600001.0,
+      "ticket": {
+       "id": "tk2"
+      },
+      "z": 1
+     },
+     {
+      "foreign": [
+       "pokemon"
+      ],
+      "get": [],
+      "give": [
+       [
+        "m10",
+        "146",
+        "en",
+        false
+       ]
+      ],
+      "partner": [
+       "p2",
+       "Eva"
+      ],
+      "t": 1793600001.0,
+      "ticket": {
+       "id": "tk2x"
+      },
+      "z": 1
+     }
+    ]
+   }
+  },
+  {
+   "kind": "friendboards",
+   "doc": {
+    "0123456789ABCDEF": {
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk",
+     "status": "ok",
+     "t": 1793600000.0,
+     "boards": {
+      "mtg/lists": {},
+      "mtg/b-1": {
+       "key": "k1",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      }
+     }
+    }
+   },
+   "view": {
+    "0123456789ABCDEF|mtg/b-1": {
+     "key": "k1!",
+     "t": 1793600000,
+     "title": "Rares",
+     "until": 1794800000,
+     "fetched": 1793600050
+    },
+    "0123456789ABCDEF|mtg/b-1x": {
+     "key": "k1!",
+     "t": 1793600000,
+     "title": "Rares",
+     "until": 1794800000,
+     "fetched": 1793600050
+    }
+   },
+   "out": {
+    "0123456789ABCDEF": {
+     "name": "Max",
+     "back": "v3;x",
+     "pid": "p1",
+     "sign_pk": "pk",
+     "status": "ok",
+     "t": 1793600000.0,
+     "boards": {
+      "mtg/lists": {},
+      "mtg/b-1": {
+       "key": "k1!",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      },
+      "mtg/b-1x": {
+       "key": "k1!",
+       "t": 1793600000,
+       "title": "Rares",
+       "until": 1794800000,
+       "fetched": 1793600050
+      }
+     }
+    }
+   }
+  },
+  {
+   "kind": "inbox",
+   "doc": [
+    {
+     "id": "n1",
+     "t": 1793600000.5,
+     "title": "Hi",
+     "text": "Welcome",
+     "via": "news",
+     "read": false
+    },
+    {
+     "id": "n2",
+     "t": 1793500000.0,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    }
+   ],
+   "view": {
+    "n2": {
+     "t": 1793500000000,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    },
+    "n2x": {
+     "t": 1793500000000,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    }
+   },
+   "out": [
+    {
+     "id": "n2",
+     "t": 1793500000.0,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    },
+    {
+     "id": "n2x",
+     "t": 1793500000.0,
+     "title": "Old",
+     "text": "x",
+     "via": "direct",
+     "read": true
+    }
+   ]
+  },
+  {
+   "kind": "alarms",
+   "doc": [
+    {
+     "game": "mtg",
+     "kind": "wish",
+     "name": "Ragavan",
+     "set": null,
+     "foil": false,
+     "below": 45.5,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any",
+     "hit": true
+    },
+    {
+     "game": "pokemon",
+     "kind": "trade",
+     "name": "Pikachu",
+     "sid": "sv1-1",
+     "set": "SV1",
+     "foil": true,
+     "above": 12.0,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    }
+   ],
+   "view": {
+    "pokemon|trade|Pikachu|sv1|sv1-1|1|": {
+     "above": 1201,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    },
+    "pokemon|trade|Pikachu|sv1|sv1-1|1|x": {
+     "above": 1201,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    }
+   },
+   "out": [
+    {
+     "game": "pokemon",
+     "kind": "trade",
+     "name": "Pikachu",
+     "sid": "sv1-1",
+     "set": "SV1",
+     "foil": true,
+     "above": 12.01,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    },
+    {
+     "game": "pokemon",
+     "kind": "trade",
+     "name": "Pikachu",
+     "set": "sv1",
+     "sid": "sv1-1",
+     "foil": true,
+     "psid": "x",
+     "above": 12.01,
+     "src": "both",
+     "basis": "avg7",
+     "finish": "f"
+    }
+   ]
+  },
+  {
+   "kind": "listalarms",
+   "doc": [
+    {
+     "game": "mtg",
+     "lkind": "wish",
+     "lid": "main",
+     "drop": 10.0,
+     "rise": null,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any",
+     "base": {
+      "Bolt": 1.5
+     },
+     "hit": {
+      "Bolt": false
+     }
+    }
+   ],
+   "view": {
+    "mtg|wish|main": {
+     "drop": 1001,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any"
+    },
+    "mtg|wish|mainx": {
+     "drop": 1001,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any"
+    }
+   },
+   "out": [
+    {
+     "game": "mtg",
+     "lkind": "wish",
+     "lid": "main",
+     "drop": 10.01,
+     "rise": null,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any",
+     "base": {
+      "Bolt": 1.5
+     },
+     "hit": {
+      "Bolt": false
+     }
+    },
+    {
+     "game": "mtg",
+     "lkind": "wish",
+     "lid": "mainx",
+     "drop": 10.01,
+     "src": "cm",
+     "basis": "day",
+     "finish": "any"
+    }
+   ]
+  },
+  {
+   "kind": "devices",
+   "doc": {
+    "a1b2": {
+     "name": "Olivers PC",
+     "kind": "pc",
+     "seen": 1793577600000
+    },
+    "c3d4": {
+     "name": "Pixel 8",
+     "kind": "phone",
+     "seen": 1793491200000
+    }
+   },
+   "view": {
+    "c3d4": {
+     "name": "Pixel 8!",
+     "kind": "phone",
+     "seen": 1793491200000
+    },
+    "c3d4x": {
+     "name": "Pixel 8!",
+     "kind": "phone",
+     "seen": 1793491200000
+    }
+   },
+   "out": {
+    "c3d4": {
+     "name": "Pixel 8!",
+     "kind": "phone",
+     "seen": 1793491200000
+    },
+    "c3d4x": {
+     "name": "Pixel 8!",
+     "kind": "phone",
+     "seen": 1793491200000
+    }
+   }
+  }
+ ],
+ "seed": {
+  "vault": [
+   {
+    "o": "aaaa.1793600000000.0",
+    "h": [
+     1793600000000,
+     0,
+     "aaaa"
+    ],
+    "c": "mtg/decks",
+    "k": "d1",
+    "a": 1,
+    "s": {
+     "name": "Burn",
+     "format": "modern",
+     "notes": "",
+     "folder": "Modern",
+     "commanders": [],
+     "pinned": [
+      "s1",
+      "s2"
+     ],
+     "tokens": {
+      "goblin": 2
+     },
+     "created": 1793600000000
+    }
+   },
+   {
+    "o": "aaaa.1793600000000.1",
+    "h": [
+     1793600000000,
+     1,
+     "aaaa"
+    ],
+    "c": "mtg/deckcards",
+    "k": "d1|s1|main",
+    "a": 1,
+    "d": {
+     "n": 4
+    }
+   },
+   {
+    "o": "aaaa.1793600000000.2",
+    "h": [
+     1793600000000,
+     2,
+     "aaaa"
+    ],
+    "c": "mtg/deckcards",
+    "k": "d1|s2|side",
+    "a": 1,
+    "d": {
+     "n": 2
+    }
+   }
+  ],
+  "cases": [
+   {
+    "kind": "decks",
+    "game": "mtg",
+    "doc": {
+     "decks": [
+      {
+       "id": "d1",
+       "name": "Burn (here)",
+       "format": "modern",
+       "commanders": [],
+       "notes": "",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 5,
+         "board": "main"
+        },
+        {
+         "sid": "s2",
+         "count": 2,
+         "board": "side"
+        },
+        {
+         "sid": "s3",
+         "count": 0,
+         "board": "main"
+        }
+       ],
+       "tokens": {
+        "goblin": 2
+       },
+       "created": 1793600000.0,
+       "updated": 1793700000.0,
+       "pinned": [
+        "s2",
+        "s1"
+       ],
+       "folder": "Modern"
+      },
+      {
+       "id": "d7",
+       "name": "Only here",
+       "format": "modern",
+       "commanders": [],
+       "notes": "",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 4,
+         "board": "main"
+        },
+        {
+         "sid": "s2",
+         "count": 2,
+         "board": "side"
+        },
+        {
+         "sid": "s3",
+         "count": 0,
+         "board": "main"
+        }
+       ],
+       "tokens": {
+        "goblin": 2
+       },
+       "created": 1793600000.0,
+       "updated": 1793700000.0,
+       "pinned": [
+        "s2",
+        "s1"
+       ],
+       "folder": "Modern"
+      }
+     ]
+    },
+    "ops": [
+     {
+      "o": "bbbb.1793600001000.0",
+      "h": [
+       1793600001000,
+       0,
+       "bbbb"
+      ],
+      "c": "mtg/decks",
+      "k": "d1",
+      "s": {
+       "name": "Burn (here)"
+      }
+     },
+     {
+      "o": "bbbb.1793600001000.1",
+      "h": [
+       1793600001000,
+       1,
+       "bbbb"
+      ],
+      "c": "mtg/decks",
+      "k": "d7",
+      "a": 1,
+      "s": {
+       "name": "Only here",
+       "format": "modern",
+       "notes": "",
+       "folder": "Modern",
+       "commanders": [],
+       "pinned": [
+        "s1",
+        "s2"
+       ],
+       "tokens": {
+        "goblin": 2
+       },
+       "created": 1793600000000
+      }
+     }
+    ],
+    "snap": false
+   },
+   {
+    "kind": "deckcards",
+    "game": "mtg",
+    "doc": {
+     "decks": [
+      {
+       "id": "d1",
+       "name": "Burn (here)",
+       "format": "modern",
+       "commanders": [],
+       "notes": "",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 5,
+         "board": "main"
+        },
+        {
+         "sid": "s2",
+         "count": 2,
+         "board": "side"
+        },
+        {
+         "sid": "s3",
+         "count": 0,
+         "board": "main"
+        }
+       ],
+       "tokens": {
+        "goblin": 2
+       },
+       "created": 1793600000.0,
+       "updated": 1793700000.0,
+       "pinned": [
+        "s2",
+        "s1"
+       ],
+       "folder": "Modern"
+      },
+      {
+       "id": "d7",
+       "name": "Only here",
+       "format": "modern",
+       "commanders": [],
+       "notes": "",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 4,
+         "board": "main"
+        },
+        {
+         "sid": "s2",
+         "count": 2,
+         "board": "side"
+        },
+        {
+         "sid": "s3",
+         "count": 0,
+         "board": "main"
+        }
+       ],
+       "tokens": {
+        "goblin": 2
+       },
+       "created": 1793600000.0,
+       "updated": 1793700000.0,
+       "pinned": [
+        "s2",
+        "s1"
+       ],
+       "folder": "Modern"
+      }
+     ]
+    },
+    "ops": [
+     {
+      "o": "bbbb.1793600001000.2",
+      "h": [
+       1793600001000,
+       2,
+       "bbbb"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "d": {
+       "n": 1
+      }
+     },
+     {
+      "o": "bbbb.1793600001000.3",
+      "h": [
+       1793600001000,
+       3,
+       "bbbb"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d7|s1|main",
+      "a": 1,
+      "d": {
+       "n": 4
+      }
+     },
+     {
+      "o": "bbbb.1793600001000.4",
+      "h": [
+       1793600001000,
+       4,
+       "bbbb"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d7|s2|side",
+      "a": 1,
+      "d": {
+       "n": 2
+      }
+     }
+    ],
+    "snap": false
+   }
+  ],
+  "counters": [
+   {
+    "name": "a_adds_2",
+    "base": [
+     {
+      "o": "aaaa.1793600000000.0",
+      "h": [
+       1793600000000,
+       0,
+       "aaaa"
+      ],
+      "c": "mtg/decks",
+      "k": "d1",
+      "a": 1,
+      "s": {
+       "name": "Burn",
+       "notes": "",
+       "commanders": [],
+       "pinned": [],
+       "tokens": {}
+      }
+     },
+     {
+      "o": "aaaa.1793600000000.1",
+      "h": [
+       1793600000000,
+       1,
+       "aaaa"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "a": 1,
+      "d": {
+       "n": 3
+      }
+     }
+    ],
+    "late": [
+     {
+      "o": "aaaa.1793600001000.0",
+      "h": [
+       1793600001000,
+       0,
+       "aaaa"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "d": {
+       "n": 2
+      }
+     }
+    ],
+    "doc": {
+     "decks": [
+      {
+       "id": "d1",
+       "name": "Burn",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 4,
+         "board": "main"
+        }
+       ]
+      }
+     ]
+    },
+    "seeded": [
+     {
+      "o": "bbbb.1793600001000.0",
+      "h": [
+       1793600001000,
+       0,
+       "bbbb"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "d": {
+       "n": 1
+      }
+     }
+    ],
+    "n": 6
+   },
+   {
+    "name": "a_deletes_seen_3",
+    "base": [
+     {
+      "o": "aaaa.1793600000000.0",
+      "h": [
+       1793600000000,
+       0,
+       "aaaa"
+      ],
+      "c": "mtg/decks",
+      "k": "d1",
+      "a": 1,
+      "s": {
+       "name": "Burn",
+       "notes": "",
+       "commanders": [],
+       "pinned": [],
+       "tokens": {}
+      }
+     },
+     {
+      "o": "aaaa.1793600000000.1",
+      "h": [
+       1793600000000,
+       1,
+       "aaaa"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "a": 1,
+      "d": {
+       "n": 3
+      }
+     }
+    ],
+    "late": [
+     {
+      "o": "aaaa.1793600001000.0",
+      "h": [
+       1793600001000,
+       0,
+       "aaaa"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "x": 3
+     }
+    ],
+    "doc": {
+     "decks": [
+      {
+       "id": "d1",
+       "name": "Burn",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 4,
+         "board": "main"
+        }
+       ]
+      }
+     ]
+    },
+    "seeded": [
+     {
+      "o": "bbbb.1793600001000.0",
+      "h": [
+       1793600001000,
+       0,
+       "bbbb"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "d": {
+       "n": 1
+      }
+     }
+    ],
+    "n": 1
+   },
+   {
+    "name": "nothing",
+    "base": [
+     {
+      "o": "aaaa.1793600000000.0",
+      "h": [
+       1793600000000,
+       0,
+       "aaaa"
+      ],
+      "c": "mtg/decks",
+      "k": "d1",
+      "a": 1,
+      "s": {
+       "name": "Burn",
+       "notes": "",
+       "commanders": [],
+       "pinned": [],
+       "tokens": {}
+      }
+     },
+     {
+      "o": "aaaa.1793600000000.1",
+      "h": [
+       1793600000000,
+       1,
+       "aaaa"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "a": 1,
+      "d": {
+       "n": 3
+      }
+     }
+    ],
+    "late": [],
+    "doc": {
+     "decks": [
+      {
+       "id": "d1",
+       "name": "Burn",
+       "cards": [
+        {
+         "sid": "s1",
+         "count": 4,
+         "board": "main"
+        }
+       ]
+      }
+     ]
+    },
+    "seeded": [
+     {
+      "o": "bbbb.1793600001000.0",
+      "h": [
+       1793600001000,
+       0,
+       "bbbb"
+      ],
+      "c": "mtg/deckcards",
+      "k": "d1|s1|main",
+      "d": {
+       "n": 1
+      }
+     }
+    ],
+    "n": 4
+   }
+  ]
+ },
+ "weg_a": [
+  {
+   "name": "max_fetched",
+   "about": "a board's fetched cursor: the larger value wins even against a later write",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "*/friendboards",
+     "k": "F1|mtg/lists",
+     "a": 1,
+     "s": {
+      "key": "k",
+      "t": 5,
+      "title": "",
+      "fetched": 100
+     }
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "*/friendboards",
+     "k": "F1|mtg/lists",
+     "s": {
+      "fetched": 300
+     }
+    },
+    {
+     "o": "aaaa.1793600002000.0",
+     "h": [
+      1793600002000,
+      0,
+      "aaaa"
+     ],
+     "c": "*/friendboards",
+     "k": "F1|mtg/lists",
+     "s": {
+      "fetched": 200
+     }
+    }
+   ],
+   "view": {
+    "*/friendboards": {
+     "F1|mtg/lists": {
+      "key": "k",
+      "t": 5,
+      "title": "",
+      "until": null,
+      "fetched": 300
+     }
+    }
+   },
+   "sum": {
+    "*/friendboards": "dcc214cbd1996ac9bab396fb37bbc3fd000c0e5c25d47394eb4409e1c56ee876"
+   },
+   "fields_kept": {
+    "*/friendboards": {
+     "F1|mtg/lists": {
+      "board": [
+       [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       {
+        "key": "k",
+        "t": 5,
+        "title": "",
+        "until": null
+       }
+      ],
+      "fetched": [
+       [
+        1793600001000,
+        0,
+        "bbbb"
+       ],
+       {
+        "fetched": 300
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "name": "max_read",
+   "about": "a message read on one device stays read everywhere",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "*/inbox",
+     "k": "n1",
+     "a": 1,
+     "s": {
+      "t": 1,
+      "title": "Hi",
+      "text": "x",
+      "via": "news",
+      "read": false
+     }
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "*/inbox",
+     "k": "n1",
+     "s": {
+      "read": true
+     }
+    },
+    {
+     "o": "aaaa.1793600002000.0",
+     "h": [
+      1793600002000,
+      0,
+      "aaaa"
+     ],
+     "c": "*/inbox",
+     "k": "n1",
+     "s": {
+      "read": false
+     }
+    }
+   ],
+   "view": {
+    "*/inbox": {
+     "n1": {
+      "read": true,
+      "t": 1,
+      "text": "x",
+      "title": "Hi",
+      "via": "news"
+     }
+    }
+   },
+   "sum": {
+    "*/inbox": "b444463016adf2478268c52af0670f4f46547c9402e84eab84688d589b73fbdc"
+   },
+   "fields_kept": {
+    "*/inbox": {
+     "n1": {
+      "t": [
+       [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       {
+        "t": 1
+       }
+      ],
+      "title": [
+       [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       {
+        "title": "Hi"
+       }
+      ],
+      "text": [
+       [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       {
+        "text": "x"
+       }
+      ],
+      "via": [
+       [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       {
+        "via": "news"
+       }
+      ],
+      "read": [
+       [
+        1793600001000,
+        0,
+        "bbbb"
+       ],
+       {
+        "read": true
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "name": "purge_delete",
+   "about": "a deleted offer keeps no values; B's older change arriving after the delete stays out",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/offers",
+     "k": "tr1",
+     "a": 1,
+     "s": {
+      "status": "sent",
+      "partner": [
+       "p1",
+       "Max"
+      ],
+      "versions": "[1]",
+      "updated": 1
+     }
+    },
+    {
+     "o": "bbbb.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/offers",
+     "k": "tr1",
+     "s": {
+      "status": "received"
+     }
+    },
+    {
+     "o": "aaaa.1793600002000.0",
+     "h": [
+      1793600002000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/offers",
+     "k": "tr1",
+     "x": 1
+    }
+   ],
+   "view": {
+    "mtg/offers": {}
+   },
+   "sum": {
+    "mtg/offers": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "fields_kept": {
+    "mtg/offers": {
+     "tr1": {}
+    }
+   }
+  },
+  {
+   "name": "purge_newer_change",
+   "about": "a change newer than the delete brings the entry back – with only its own values",
+   "ops": [
+    {
+     "o": "aaaa.1793600000000.0",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/pending",
+     "k": "tk1",
+     "a": 1,
+     "s": {
+      "doc": "{\"a\":1}"
+     }
+    },
+    {
+     "o": "aaaa.1793600001000.0",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "c": "mtg/pending",
+     "k": "tk1",
+     "x": 1
+    },
+    {
+     "o": "bbbb.1793600002000.0",
+     "h": [
+      1793600002000,
+      0,
+      "bbbb"
+     ],
+     "c": "mtg/pending",
+     "k": "tk1",
+     "s": {
+      "doc": "{\"b\":2}"
+     }
+    }
+   ],
+   "view": {
+    "mtg/pending": {
+     "tk1": {
+      "doc": "{\"b\":2}"
+     }
+    }
+   },
+   "sum": {
+    "mtg/pending": "66caf0ffb00f3288672b80c69cc1fea7e8314746a8760a99c32478f4f72049d1"
+   },
+   "fields_kept": {
+    "mtg/pending": {
+     "tk1": {
+      "doc": [
+       [
+        1793600002000,
+        0,
+        "bbbb"
+       ],
+       {
+        "doc": "{\"b\":2}"
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "max": {
+  "friendboards": [
+   "fetched"
+  ],
+  "inbox": [
+   "read"
+  ],
+  "devices": [
+   "seen"
+  ]
+ },
+ "purge": [
+  "friendboards",
+  "offers",
+  "pending"
+ ],
+ "vault": {
+  "add": {
+   "json": "{\"dev\":\"aaaa\",\"ops\":[{\"a\":1,\"c\":\"mtg/decks\",\"h\":[1793600000000,0,\"aaaa\"],\"k\":\"d1\",\"o\":\"aaaa.1793600000000.0\",\"s\":{\"name\":\"Elfen – grün\"}},{\"a\":1,\"c\":\"mtg/deckcards\",\"d\":{\"n\":4},\"h\":[1793600000000,1,\"aaaa\"],\"k\":\"d1|abc|main\",\"o\":\"aaaa.1793600000000.1\"}],\"sum\":{\"mtg/deckcards\":\"d3c40f7fd733481bdea15a7dca9ba58f47081dc7273ed3c754cdac939fe0ba3e\",\"mtg/decks\":\"f997e30e87ce29215c8f96c893abc83637eecc63c9049f038c4b8441495fe90a\"},\"t\":\"add\",\"top\":{\"aaaa\":[1793600000000,1,\"aaaa\"]},\"v\":1}",
+   "zlib_b64": "eNp1UUtOw0AMvUrldVRm6klmnD2nQCwcj6egkrRqC5s2EnfgOuy4CSfBKZVQUevte34f+wBZ36AFtoEK1psdtA8HYGh9BWJAv1/eZZXVztAnw3wkbNx5Klf9bj5WsDJy9pPGWW5+QZ07g0z8AAP3apT7l6LD7Pv9Y7bcfn0OMI7VNV/hbZ6882kV2jBey+H/5zhyJ8een4fbgTyMRt+99pPypZ0poARXYskRMSTfZWVfc8zC1HGdSogu+SxxEVGNG+sgmYWQirqOUc3273ItFKKo6DRF0QUtfC2pUCOJ0HImbDCqijQo5AIVh0lCl0Lwgeqi5Bis9X6qkbMp79ebKfOp8c1L2IY91o8/I6GFpA==",
+   "sealed_b64": "ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp72CRxb9waZgCTThsSaFVdR2saDTaFh72oMvIfQv/axppSrhjKHwmaqHSflOOmi1B1G2AoXw4xxQ33d09sUt9XeYMPYWLLzEE43Pw8ml3Mz8fESpbTtiOW6WMydEUvw5z5N0crygJoMvM/tb0iwarC/R4yNesKLG7ppRRAZCbdq5piIHoMuv3OScxd53egGdRFfW6UC0tvxJxaRWclB8neNYGvEJORxHCwDoX4WX5fIuYPd7vJ9gR0vkxLoPHkasPNU7Cnbc1r+oae7eyJ+GJwObjwR2tI8fsme0t+DAh7xWPNcahmZBCmzCADWwNDoxVS+h1FVRjgF4G6fbklpOVGZhl4YMBsprN62Sa4tjCjnAIXyR0r/C7t6kQInH+Up7E="
+  },
+  "snap": {
+   "json": "{\"dev\":\"aaaa\",\"kinds\":{\"mtg/deckcards\":{\"d1|abc|main\":{\"alive\":[1793600000000,1,\"aaaa\"],\"cnt\":{\"n\":4},\"dead\":null,\"f\":{},\"gone\":0,\"made\":true}},\"mtg/decks\":{\"d1\":{\"alive\":[1793600000000,0,\"aaaa\"],\"cnt\":{},\"dead\":null,\"f\":{\"name\":[[1793600000000,0,\"aaaa\"],{\"name\":\"Elfen – grün\"}]},\"gone\":0,\"made\":true}}},\"sum\":{\"mtg/deckcards\":\"d3c40f7fd733481bdea15a7dca9ba58f47081dc7273ed3c754cdac939fe0ba3e\",\"mtg/decks\":\"f997e30e87ce29215c8f96c893abc83637eecc63c9049f038c4b8441495fe90a\"},\"t\":\"snap\",\"top\":{\"aaaa\":[1793600000000,1,\"aaaa\"]},\"v\":1}",
+   "zlib_b64": "eNp1UkFuAjEM/AryOVITkt0ke+8rKg5ex0GI3YBg4QIr9Q/9Tm/9SV9Sb4FDK9YnZzT2jO1cIPEZGkAJULDdlHSE5gL9sH5JTFvCww1I5ootXXvclOmJ3ebM0LwZH22t76GMujVaKaAyTDwhu1GJCCZoyqnrFGTBBVrvijTQCnpMkgyHE48CP4TvovNa+r/WExko2E+Vs6UPBrx2mcvi+/1jsT58fRYYV3MWBT+e+ic7gmTJ6exz8ta6YFpxYyr0iTC2WIXsvA4mkV96y8L1laOEFG3MrFu0DH+mhxyjZ6s5eOJlXJqKQo41hWjlEMHW1jMT1ZaidjFrG8i1wTnjYpU5agRxKnuBY8G9tB52+99lToPP3k1K5DeY8Qccnp7x"
+  },
+  "pack_v": 1,
+  "add_max": 1000000,
+  "unpack_max": 64000000
  }
 }

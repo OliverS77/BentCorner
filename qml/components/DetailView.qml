@@ -588,7 +588,7 @@ Item {
                         textFormat: Text.RichText
                         wrapMode: Text.Wrap
                         color: T.text2; font.family: T.font; font.pixelSize: 13
-                        onLinkActivated: function (link) { Qt.openUrlExternally(link) }
+                        onLinkActivated: function (link) { if (/^(https:|mailto:)/i.test(link)) Qt.openUrlExternally(link) }
                     }
                 }
             }
@@ -606,8 +606,12 @@ Item {
                 }
                 HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
             }
+            PriceVeil {   // Orbit's Core: the note in place of the price rows, chart and hint (the marketplaces stay)
+                visible: fd.key === "prices" && !shell.pricesOn
+                width: parent.width
+            }
             Text {   // legal 02.11.: where the shop links come from – exactly one of the two, once, small
-                visible: fd.key === "prices" && d.det.shopNote !== ""   // only when a shop link is shown at the prices
+                visible: fd.key === "prices" && d.det.shopNote !== "" && shell.pricesOn   // only when a shop link is shown at the prices
                 width: parent.width
                 text: d.det.shopNote   // Scryfall's purchase_uris (Magic) – else our own links, no partner code
                 wrapMode: Text.Wrap
@@ -643,7 +647,7 @@ Item {
                 }
             }
             Text {   // legal 02.11.: prices are estimates – once, small, at the end of the prices (under the chart, if any)
-                visible: fd.key === "prices"
+                visible: fd.key === "prices" && shell.pricesOn
                 width: parent.width
                 text: shell.text("Prices are estimates from daily market data (Cardmarket, TCGplayer) – no guarantee. The shop has the final price.")
                 wrapMode: Text.Wrap

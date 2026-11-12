@@ -76,6 +76,21 @@ def _game_changed():
 
 
 def eur(v):
+    """A card value (market price) – "" in Orbit's Core. What the user typed in himself: money()."""
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
+        return ""
+    return money(v)
+
+
+def signed(v, plus="+"):
+    """A balance from card values with its sign ("+12,30 €" / "−4,00 €") – "" in Orbit's Core (no sign left alone)."""
+    s = eur(abs(v))
+    return s and (plus if v >= 0 else "−") + s
+
+
+def money(v):
+    """An amount the user entered himself (spent on packs) – no market value, shown in every Orbit level."""
     return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 

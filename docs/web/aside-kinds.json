@@ -1,0 +1,11 @@
+{
+ "version": 1,
+ "about": "Beiseitelegen und Zurückholen (legal/lead 07.11.2026, „Web = Desktop“): was mitgeht, was wiederkommt, was nur angesehen wird, was nie – Desktop (collection/syncaside.py, syncrun.NOT_ASIDE) und Web (logic/aside.js, store.takeBack, logic/sync.js NOT_ASIDE) testen beide gegen diese Datei. Fachliche Namen; jede Seite bildet sie in ihrem Test auf die eigenen Dateien/Sammlungen ab.",
+ "restore": ["decks", "lists", "wishlist", "binders", "collection", "logs", "bookings", "offers", "profile", "price_alarms", "list_alarms"],
+ "view_only": ["pending"],
+ "never": ["friends_shared", "friendboards", "friendlibs", "friendnotes", "friendfolders", "relay", "devices", "inbox"],
+ "compare_not": ["devices", "friends", "friendlibs", "friendnotes", "friendfolders", "friendboards", "inbox"],
+ "ticket_keep": ["id", "partner", "give", "get", "money", "t"],
+ "sync_after_restore": {"sync_on": false, "keeps_identity": true},
+ "web_keeps_not": ["price_alarms", "list_alarms"]
+}

@@ -71,9 +71,12 @@ class GplNotice(unittest.TestCase):
         self.assertIn("<a href='https://github.com/OliverS77/BentCorner'>", text)
 
     def test_source_line_with_link_once_set(self):
-        text = self._notice(source="https://example.org/bentcorner")
+        import version
+        with mock.patch.object(version, "VERSION", "0.9.8.3"):   # working version: plain link (a release links its tag)
+            text = self._notice(source="https://example.org/bentcorner")
+            de = self._notice("de", "https://example.org/bentcorner")
         self.assertIn("Source code: <a href='https://example.org/bentcorner'>", text)
-        self.assertIn("Quellcode: <a href='https://example.org/bentcorner'>", self._notice("de", "https://example.org/bentcorner"))
+        self.assertIn("Quellcode: <a href='https://example.org/bentcorner'>", de)
 
     def test_attribution_word_for_word_in_german_too(self):
         for lang in ("en", "de"):

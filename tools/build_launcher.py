@@ -29,9 +29,33 @@ OUT = DIST / "BentCorner.exe"
 # QML-Bausteine, die unsere Oberfläche nicht nutzt (sie importiert nur QtQuick, .Effects, .Shapes, .Window) – kleiner
 # und vor allem kürzere Pfade (die Bilder von QtQuick.Controls kommen sonst an Windows' 260-Zeichen-Grenze)
 # Qt Quick Timeline / Virtual Keyboard also as libraries: unused, and freely available only under the GPL (legal,
-# 0.9.7.5) – tools/check_package.py makes sure they stay out
-SKIP_QML = (r"/PySide6/(qml/(QtTest|QtQuick/(Controls|Dialogs|NativeStyle|Templates|VirtualKeyboard|"
-            r"Particles|Timeline|LocalStorage|tooling|VectorImage))/|Qt6(QuickTimeline|VirtualKeyboard)[^/]*\.dll$)")
+# 0.9.7.5) – tools/check_package.py makes sure they stay out.
+# Slim build (lead, 0.9.7.5x, −68 MB): the Controls/Dialogs/Layouts/Templates libraries and Qt.labs (no import in
+# qml/ or Python; only Qt.labs needs Templates2), every Qt translation but qtbase_de.qm (system/startup.py loads only
+# that one), Pillow's AVIF codec and OpenCV's FFmpeg (video files/streams only – the camera opens by index via
+# MSMF/DSHOW, images go through imdecode). QtOpenGL stays, DLL and .pyd: Qt6Quick.dll links the DLL, and the Python
+# module PySide6.QtQuick imports PySide6.QtOpenGL when it loads (tests/test_slim_build.py).
+# The ONE list for the onedir folder (prune), the starter and app-stage (setup + ZIP); check_package.py checks it.
+SKIP = (r"/(PySide6/(qml/(QtTest|Qt/labs|QtQuick/(Controls|Dialogs|Layouts|NativeStyle|Templates|VirtualKeyboard|"
+        r"Particles|Timeline|LocalStorage|tooling|VectorImage))/"
+        r"|Qt6(QuickTimeline|VirtualKeyboard|QuickControls2|QuickTemplates2|QuickDialogs2|QuickLayouts|Labs)[^/]*\.dll$"
+        r"|translations/(?!qtbase_de\.qm$))"
+        r"|PIL/_avif[^/]*\.pyd$|cv2/opencv_videoio_ffmpeg[^/]*\.dll$)")
+
+
+def prune(app=APP):
+    """Deletes the SKIP files from the PyInstaller folder right after the build (build.ps1), so that dist\\BentCorner
+    (and what goes from there into app\\) is as slim as the starter, setup and ZIP. -> (files, bytes)."""
+    n = size = 0
+    for p in sorted(app.rglob("*")):
+        if p.is_file() and re.search(SKIP, "/" + p.relative_to(app).as_posix()):
+            size += p.stat().st_size
+            p.unlink()
+            n += 1
+    for d in sorted((d for d in app.rglob("*") if d.is_dir()), key=lambda d: len(d.parts), reverse=True):
+        if not any(d.iterdir()):
+            d.rmdir()
+    return n, size
 
 
 def _write_lockup(path):
@@ -66,7 +90,7 @@ def main():
     build_id = os.environ.get("BC_BUILD_ID") or f"{version.VERSION}-{datetime.datetime.now().strftime('%y%m%d%H%M')}"
     if not (APP / build_id).is_dir():
         sys.exit(f"dist\\BentCorner\\{build_id} fehlt – PyInstaller mit --contents-directory {build_id} bauen (build.ps1)")
-    skip = re.compile("^" + re.escape(build_id) + SKIP_QML)
+    skip = re.compile("^" + re.escape(build_id) + SKIP)
     nums = (re.findall(r"\d+", version.VERSION) + ["0"] * 4)[:4]
     icon, card, has_brand = _brand()
     from ui import brand
@@ -119,4 +143,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--prune"]:
+        n, size = prune()
+        print(f"schlank: {n} Dateien ({size / 1e6:.1f} MB) aus dist\\BentCorner entfernt")
+    else:
+        main()

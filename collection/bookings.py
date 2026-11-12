@@ -115,7 +115,8 @@ def book_trade(coll, t, give, get, partner, prefer=None, cards_db=None, foreign=
     entries, missing = _entries(get, cards_db or {})
     if entries or foreign:
         now = time.time()
-        sid = "trade_" + time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now))
+        from collection import synclogs
+        sid = synclogs.new_id("trade_" + time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now)))
         while sessions.exists(sid):
             sid += "b"
         name = partner[1] if partner and len(partner) > 1 else ""

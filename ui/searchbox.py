@@ -45,6 +45,9 @@ def adv_hint(key):
 
 
 def eur(v):
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
+        return ""
     return "–" if v is None else f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -438,8 +441,11 @@ class RangeSection(Section):
             self.spins[key] = pair
 
     def ranges(self):
+        from system import orbit
         out = {}
         for key, (lo, hi) in self.spins.items():
+            if key == "price" and not orbit.prices_shown():   # Orbit's Core: the price range rests (value kept)
+                continue
             a = lo.value() if lo.value() >= 0 else None
             b = hi.value() if hi.value() >= 0 else None
             if a is not None or b is not None:
@@ -1082,7 +1088,8 @@ def apply_criterion(f, key, value, neg, op):
         f["color_mode"] = {"=": "exact", "<=": "atmost", "<": "atmost"}.get(op, "any")
     elif key in ("mv", "pow", "tou", "price", "year"):
         v = _to_float(value)
-        if v is None:
+        from system import orbit
+        if v is None or (key == "price" and not orbit.prices_shown()):   # Orbit's Core: no price filter
             return
         step = 0.01 if key == "price" else 1
         lo, hi = {">=": (v, None), ">": (v + step, None), "<=": (None, v), "<": (None, v - step)}.get(op, (v, v))

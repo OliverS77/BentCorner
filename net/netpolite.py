@@ -253,14 +253,110 @@ def log_stop():
     return out
 
 
+# Test switch for the first-start copy (lead 04.11.2026): BC_LOCAL_DL=<folder> answers every request from files in that
+# folder instead of the network – only in an isolated test run (BC_STARTER_* set, system/datahome.ISOLATED), ignored
+# otherwise. Everything above stays as it is (mirror, fallback, signature checks of the callers); only the transport is
+# local. Missing file = not reachable. Layout: <folder>/<host>/<path>, see local_name. tools/local_dl.py fills it.
+LOCAL_RATE = 12 << 20   # bytes/s (~100 Mbit/s, a usual connection): the setup's progress shows like at a user's
+_local_root = [None, False]   # (folder or None, decided)
+
+
+def local_dl():
+    """The folder of the test switch, or None (normal installations, or not an isolated test run)."""
+    if not _local_root[1]:
+        from system import datahome
+        v = os.environ.get("BC_LOCAL_DL", "").strip()
+        _local_root[0] = os.path.abspath(v) if v and datahome.ISOLATED else None
+        _local_root[1] = True
+        if _local_root[0]:
+            log.info("Test run: downloads from the local copy (BC_LOCAL_DL)")   # never the path
+    return _local_root[0]
+
+
+def local_name(method, url, body=None):
+    """Relative file of a request in the local copy: <host>/<path>, a query or a POST body as a hash suffix."""
+    import hashlib
+    u = urlparse(url)
+    parts = [p for p in (u.path or "/").split("/") if p not in ("", ".", "..")] or ["_index"]
+    extra = (u.query or "") + ("\0" + (body.decode("utf-8", "replace") if isinstance(body, bytes) else str(body))
+                               if method == "POST" else "")
+    if extra:
+        parts[-1] += "__" + hashlib.sha1(extra.encode("utf-8")).hexdigest()[:12]
+    return os.path.join((u.hostname or "").lower(), *parts)
+
+
+class _Paced:
+    """File reader at LOCAL_RATE (the setup's progress bar and time left work as with a real download)."""
+
+    def __init__(self, f, n):
+        self.f, self.left, self.t0, self.done = f, n, time.monotonic(), 0
+
+    def read(self, size=-1, **_kw):
+        if self.f.closed:
+            return b""
+        size = self.left if size is None or size < 0 else min(size, self.left)
+        b = self.f.read(size)
+        self.left -= len(b)
+        self.done += len(b)
+        if self.left <= 0 or not b:   # read to the end: close now (requests skips raw.close() once consumed)
+            self.f.close()
+        ahead = self.done / LOCAL_RATE - (time.monotonic() - self.t0)
+        if ahead > 0:
+            time.sleep(ahead)
+        return b
+
+    def close(self):
+        self.f.close()
+
+
+def _local_response(root, method, url, headers=None, data=None, json=None, stream=False, **_kw):
+    import json as _json
+    import mimetypes
+    body = _json.dumps(json) if json is not None else data
+    path = os.path.join(root, local_name(method, url, body))
+    if not os.path.isfile(path):
+        raise requests.ConnectionError("offline test: not in the local copy")
+    size = os.path.getsize(path)
+    start = 0
+    rng = next((v for k, v in (headers or {}).items() if k.lower() == "range"), "")
+    r = requests.Response()
+    r.url, r.status_code, r.encoding = url, 200, None
+    if rng.startswith("bytes="):
+        a, _, b = rng[6:].partition("-")
+        start = int(a or 0)
+        if start >= size:
+            r.status_code = 416
+            r.headers["Content-Range"] = f"bytes */{size}"
+            r._content = b""
+            return r
+        end = min(int(b), size - 1) if b else size - 1
+        r.status_code = 206
+        r.headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        size = end + 1
+    f = open(path, "rb")
+    f.seek(start)
+    r.headers["Content-Length"] = str(size - start)
+    r.headers["Content-Type"] = mimetypes.guess_type(path)[0] or "application/octet-stream"
+    r.raw = _Paced(f, size - start)
+    if method == "HEAD":
+        r.raw.close()
+        r._content = b""
+    elif not stream:
+        r._content = r.raw.read()
+        r.raw.close()
+    return r
+
+
 def _request(method, url, host, **kw):
     """requests.request – noted in the test log if it is on."""
+    root = local_dl()
+    send = (lambda m, u, **k: _local_response(root, m, u, **k)) if root else requests.request
     if _log is None:
-        return requests.request(method, url, **kw)
+        return send(method, url, **kw)
     t0 = time.monotonic()
     status = None
     try:
-        r = requests.request(method, url, **kw)
+        r = send(method, url, **kw)
         status = r.status_code
         return r
     finally:
@@ -285,6 +381,22 @@ def block_hosts(hosts):
 def unblock_hosts(hosts):
     """Emergency switch (games/offswitch.py) turned a game back on: its sources may be asked again."""
     BLOCKED.difference_update(h.lower() for h in hosts)
+
+
+BLOCKED_OWN = set()   # paths on our own server not to be asked at all (the image mirror of a withdrawn game)
+
+
+def block_own_paths(paths):
+    BLOCKED_OWN.update(paths)
+
+
+def _blocked(url, host):
+    if host in BLOCKED:
+        return True
+    if host in OWN and BLOCKED_OWN:
+        path = urlparse(url).path or "/"
+        return any(path.startswith(p) for p in BLOCKED_OWN)
+    return False
 
 
 def _gap(url, host):
@@ -376,8 +488,8 @@ def _send(method, url, headers=None, **kw):
 def _send_one(method, url, headers=None, **kw):
     kw.setdefault("timeout", 30)   # never without: a hanging request would hold a SERIAL host's lock forever
     host = _host(url)
-    if host in BLOCKED:
-        raise requests.RequestException(f"{host}: blocked (game unlocked only locally, no images)")
+    if _blocked(url, host):
+        raise requests.RequestException(f"{host}: blocked (game unlocked only locally, switched off or withdrawn)")
     mirror = MIRROR.get(host) if method == "GET" else None
     if mirror and not (urlparse(url).path or "/").startswith(MIRROR_PATH.get(host, "/")):
         mirror = None
@@ -507,3 +619,11 @@ def get_large(url, chunk=1_500_000, tries=4, headers=None, progress=None):
         if progress is not None and total:
             progress(pos, total)
     return bytes(out)
+
+
+def _block_withdrawn():   # when this module was imported before games/: games' own call at import had to wait
+    import games
+    games.block_withdrawn()
+
+
+_block_withdrawn()

@@ -13,14 +13,29 @@ Session cards removed from the collection end up in "hidden" so they don't reapp
 session is taken out of the collection and added again. Trades are booked by bookings.py.
 """
 import json
+import logging
 import threading
 import time
 import uuid
 
 from cards import conditions
 from scanner.common import MINE
+from system import orbit
 
 FILE = MINE / "collection.json"
+log = logging.getLogger("booster")
+
+
+def split_entries(raw):
+    """Entries from collection.json -> (usable, broken). Usable = a dict with an "id" (a damaged file – performance
+    06.11.: one entry without an id made the whole start fail). The broken ones are counted in the log and kept as they
+    are: they are written back unchanged on every save – nothing is changed or deleted without a word."""
+    good, broken = [], []
+    for it in raw if isinstance(raw, list) else []:
+        (good if isinstance(it, dict) and isinstance(it.get("id"), str) and it["id"] else broken).append(it)
+    if broken:
+        log.warning("Collection: %d entries without a card id skipped (kept unchanged in the file)", len(broken))
+    return good, broken
 CARD_KEYS = ("id", "name", "set", "number", "rarity", "finishes", "booster", "eur", "eur_foil", "img", "url")
 # display abbreviations as commonly used on Scryfall/Cardmarket
 ALL_LANGS = [("en", "EN", "English"), ("de", "DE", "Deutsch"), ("fr", "FR", "Français"), ("it", "IT", "Italiano"),
@@ -83,17 +98,19 @@ class Collection:
     def __init__(self):
         self.lock = threading.Lock()
         self.items, self.hidden, self.rev = [], set(), 0
+        self.broken = []   # entries without a card id: skipped, but kept in the file (split_entries)
         self.is_new = not FILE.exists()
         if not self.is_new:
             try:
                 data = json.loads(FILE.read_text("utf-8"))
-                self.items, self.hidden = data.get("items", []), set(data.get("hidden", []))
+                self.items, self.broken = split_entries(data.get("items", []))
+                self.hidden = set(data.get("hidden", []))
             except (OSError, ValueError):
                 pass
 
     def save(self):
         with self.lock:
-            data = {"version": 1, "saved": time.time(), "items": [dict(i) for i in self.items],
+            data = {"version": 1, "saved": time.time(), "items": [dict(i) for i in self.items] + list(self.broken),
                     "hidden": sorted(self.hidden)}
         MINE.mkdir(parents=True, exist_ok=True)
         from system import undo
@@ -114,7 +131,8 @@ class Collection:
         except (OSError, ValueError):
             return
         with self.lock:
-            self.items, self.hidden = data.get("items", []), set(data.get("hidden", []))
+            self.items, self.broken = split_entries(data.get("items", []))
+            self.hidden = set(data.get("hidden", []))
             self.rev += 1
 
     @staticmethod
@@ -301,23 +319,30 @@ MOXFIELD_LANG = {"en": "English", "de": "German", "fr": "French", "it": "Italian
                  "zhs": "Chinese Simplified", "zht": "Chinese Traditional"}
 
 
-def export_csv(groups, path, fmt, set_names=None):
-    """Collection (groups() or a selection of it) as CSV for ManaBox/Moxfield or Excel. -> number of rows"""
+def export_csv(groups, path, fmt, set_names=None, text=None):
+    """Collection (groups() or a selection of it) as CSV for ManaBox/Moxfield or Excel. -> number of rows
+    text: "mit Kartentext" for the Excel format only – {"game": key, "rows": {sid: card row}, "locale": {sids}}
+    (collection/exporttext.py: the allowed columns per game, "Quelle" last); None = the plain export as always."""
     import csv
     from cards import conditions
+    from collection import exporttext
     set_names = set_names or {}
+    if text and not (fmt == "excel" and exporttext.allowed(text.get("game"))):
+        text = None
     rarity = {"common": "common", "uncommon": "uncommon", "rare": "rare", "mythic": "mythic"}
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         if fmt == "excel":  # German Excel: semicolon, comma as decimal separator
             w = csv.writer(f, delimiter=";")
             w.writerow(["Anzahl", "Name", "Set", "Setname", "Nummer", "Sprache", "Foil", "Seltenheit", "Zustand",
-                        "Preis (€)", "Wert (€)", "Scryfall-ID"])
+                        "Preis (€)", "Wert (€)", "Scryfall-ID"] + (exporttext.headers(text["game"]) if text else []))
             for g in groups:
-                p = price(g)
+                p = price(g) if orbit.prices_shown() else None   # Orbit's Core: the price columns stay, empty
+                extra = exporttext.values(text["game"], text["rows"].get(g["sid"]),
+                                          g["sid"] in (text.get("locale") or ())) if text else []
                 w.writerow([g["count"], g["name"], g["set"], set_names.get(g["set"].lower(), ""), g["number"],
                             lang_short(g["lang"]), "ja" if g["foil"] else "", g.get("rarity") or "",
                             conditions.name(g), "" if p is None else f"{p:.2f}".replace(".", ","),
-                            "" if p is None else f"{p * g['count']:.2f}".replace(".", ","), g["sid"]])
+                            "" if p is None else f"{p * g['count']:.2f}".replace(".", ","), g["sid"]] + extra)
         elif fmt == "moxfield":
             w = csv.writer(f)
             w.writerow(["Count", "Tradelist Count", "Name", "Edition", "Condition", "Language", "Foil", "Tags",
@@ -333,7 +358,7 @@ def export_csv(groups, path, fmt, set_names=None):
                         "ManaBox ID", "Scryfall ID", "Purchase price", "Misprint", "Altered", "Condition",
                         "Language", "Purchase price currency"])
             for g in groups:
-                p = price(g)
+                p = price(g) if orbit.prices_shown() else None   # Orbit's Core: the price columns stay, empty
                 w.writerow([g["name"], g["set"], set_names.get(g["set"].lower(), ""), g["number"],
                             "foil" if g["foil"] else "normal", rarity.get(g.get("rarity"), g.get("rarity") or ""),
                             g["count"], "", g["sid"], "" if p is None else f"{p:.2f}", "false", "false",

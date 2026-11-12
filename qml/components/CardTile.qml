@@ -201,12 +201,12 @@ Item {
             color: "transparent"
             border.width: 2; border.color: T.accent
         }
-        // checkmark (trade offer): on = bright, off = card dimmed
+        // checkmark (trade offer): on = bright, off = card dimmed. Never over artist/copyright (legal 05.11.: nothing in
+        // the bottom 12 %, the right 12 % stay free for sideways cards): lower edge at 80 %, right edge at 87.5 %
         Rectangle {
             visible: t.checkable
-            anchors.right: parent.right; anchors.bottom: parent.bottom
-            anchors.margins: Math.max(6, t.cw * 0.05)
             width: Math.max(22, t.cw * 0.14); height: width; radius: width * 0.28
+            x: parent.width * 0.875 - width; y: parent.height * 0.80 - height
             color: t.checked ? "#f2f2f2" : Qt.rgba(0.055, 0.055, 0.063, 0.86)
             border.width: 2; border.color: Qt.rgba(0, 0, 0, 0.85)   // dark outline: stands out on bright cards
             Text { anchors.centerIn: parent; text: "✓"; visible: t.checked; color: "#111111"
@@ -254,12 +254,13 @@ Item {
                 }
             }
         }
-        // chips: right-aligned, stacked in the image area
+        // chips: right-aligned, stacked in the image area – 12.5 % from the right edge: planes and split cards carry
+        // artist and copyright along that edge (legal 05.11.)
         Column {
             readonly property int bpx: Math.max(10, Math.min(14, Math.round(t.cw / 16)))
             id: chipCol
             anchors.right: parent.right
-            anchors.rightMargin: t.cw * 0.098
+            anchors.rightMargin: t.cw * 0.125
             y: t.ch * 0.125
             spacing: 3
             Repeater {

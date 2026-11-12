@@ -1,0 +1,32 @@
+{
+ "about": "The key change's note to a friend (net/rekey.py). data/tampered are samples (SealedBox is random): data must open with the friend's seed and pass every check; tampered must be refused (sig_old). The protection code: docs/web/code-vectors-v2.json.",
+ "rekey": {
+  "body": {
+   "new": "24F6ED6ACBFE1009",
+   "new_sign_pk": "Kay64UG8yvCyLhqU000LxzYeUm0L/hLIl5S8kyKWbdc=",
+   "old": "56475AA75463474C",
+   "sig_old": "ShhrmdKHd/mQxLMZWkSqfxDmnKI5aEa+9tsHDUQolKmcJVfjwCPnt/GXCcsAQZ/KxxUJAgyfbB813pNHDQ2ZAw==",
+   "t": 1793600000
+  },
+  "by": {
+   "name": "Olivers PC",
+   "sealed": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4CuqD63pC/MJM96UazpiawB8xqdReUpBaUPCLUrBJa5wz9K3I09kFFIXg==",
+   "sha256": "0c3e66b470a1efc56e0e932010099e8969b51397c99536ffc399f7e7bac45ce6"
+  },
+  "codes": {
+   "friend": "03396219237F75A6",
+   "new": "24F6ED6ACBFE1009",
+   "old": "56475AA75463474C"
+  },
+  "data": "GhOhGef20kQA709aAAwq5puJUtDddsXQa0CM24baNXY5kesIqb7OdswUszI4ZjZKzjlyrH8SmMAwJlXx3SI3C4w4BVt2y65mJ8NUEOycqjw1bf23MTkbFHfyrkGBgmDoTp5Ko7pMPPjEHs3vFoCVX8C3LHHOe1Wvz39R8Qb0SDvfs4Zj6PfO2bIMOB7lg6XsNFISs/EWSL6J/FrPC2n+swMEo5f+jYF5UpLP1brvLE9BzcVLLxeuy0xdDXztz5PTGXkzgolarYFEictNeJykt6QrXUnOhWQViyXi3K0W6V3yJdZlRDlP7labLa9rml5wTBJLnADexpNPfeyOUdQMH/P3Aa2JzVhNDGi7XNw960JXcgOExJSXyMRR6FVLn6n1n4ow3ZrVOMwWfS4NHh7QB2AhgsLJ7gx5TPVpwMmsam+RFuuSp4XBdlWfT3A1gIJdP/ab4tGUkaFG66qIY7UelOggcCEHC5pEE3yKMakSHUcC1cb+JQ==",
+  "new_sign_pk": "Kay64UG8yvCyLhqU000LxzYeUm0L/hLIl5S8kyKWbdc=",
+  "seeds": {
+   "friend": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8=",
+   "new": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+   "old": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+  },
+  "sig_old_message": "rekey_friend|56475AA75463474C|24F6ED6ACBFE1009|03396219237F75A6|1793600000",
+  "tampered": "jR8WBL5AQmGYl3AkMZ1p7mvBxoUd4W+v1ldQoYCLqCiQ8cxu0eMLBJboAAA5XY1pTO8yt86YPYd6c4imO8GFdjWmt8UVoPOx/lMb/hEey/BmoggQNT9pQ7jkIw7+2xtaQVPM7c0PtrZP1ASC18EVaaFySYhMGuwJ7V4DMRjtb+g8Dm/iA9ai5ph3arAYuQZdvw4dXtyMNt7RcsgV7UeAYC2ISX93ZeXbfgXUmwgb5zHgos7AzXEXf/T3uatV3QxxPMkwjAtS+v3BcKIPPIi0DL13YE4J9zuMiAboM1kyea+SGaZSVJ+6/bOcNK+pcduqzS9mGtBA4I1PzMtr50vVAM515j//ce0nAfu4IcgsRTGKfxW6aUjb/PUeRHIW0JPrC2xu7shuayc40OPKuhG5HdBaorJUXURZMRTmbI9uIcCx0m5436bBcbD3D3ossGLoJhNYt3w4r39wYEFB/AevwCHmGzxG2c+sPKzdfSCCq38OWNqr"
+ },
+ "t": 1793600000
+}

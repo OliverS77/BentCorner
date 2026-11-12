@@ -58,6 +58,8 @@ def save(decks):
     tmp = FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps({"decks": decks}, ensure_ascii=False, indent=1), "utf-8")
     tmp.replace(FILE)
+    from collection import syncrun
+    syncrun.saved(FILE, {"decks": decks})
 
 
 def new_deck(name, fmt=None):
@@ -95,12 +97,22 @@ _TAGS = re.compile(r"\s*\[([^\]]*)\]")      # Archidekt: categories "[Ramp]", "[
 _COLOR = re.compile(r"\s*\^[^^]*\^")         # Archidekt: color tags "^Have,#37d67a^"
 
 
+# a list from outside (review 08.11. H2-1/H2-2): runs of spaces made one before the patterns (a line of „1 a“ +
+# 400 spaces took 8 s in _LINE), long lines cut, counts capped
+MAX_LINE = 300
+MAX_COUNT = 99_999   # bulk lands in a collection export can be in the thousands (lead 08.11.)
+
+
+def _count(s):
+    return max(1, min(MAX_COUNT, int(s)))
+
+
 def parse_text(text):
     """Deck list (Moxfield/Arena/MTGO) -> [(count, name, set, number, board)]. Board from headings:
     Commander, Sideboard, Maybeboard."""
     out, board = [], "main"
     for raw in text.splitlines():
-        line = raw.strip()
+        line = " ".join(raw.split())[:MAX_LINE]
         if not line:
             continue
         low = line.lower().strip("/#: ")
@@ -133,11 +145,11 @@ def parse_text(text):
         m = _ID_LINE.match(line)
         if m:   # the card ID stands in for the name – import_from looks it up by ID
             base, _, variant = m.group(2).partition("_")   # IDs: "OP05-118", parallels "OP05-118_p1"
-            out.append((int(m.group(1)), base.upper() + ("_" + variant.lower() if variant else ""), "", "", where))
+            out.append((_count(m.group(1)), base.upper() + ("_" + variant.lower() if variant else ""), "", "", where))
             continue
         m = _LINE.match(line)
         if m:
-            out.append((int(m.group(1)), m.group(2).strip(), (m.group(3) or "").lower(), m.group(4) or "", where))
+            out.append((_count(m.group(1)), m.group(2).strip(), (m.group(3) or "").lower(), m.group(4) or "", where))
         else:  # no count = 1
             out.append((1, line, "", "", where))
     return out
@@ -161,6 +173,30 @@ def to_text(deck, rows):
             r = rows[c["sid"]]
             lines.append(f"{c['count']} {r['name']} ({r['set_code'].upper()}) {r['number']}")
     return "\n".join(lines)
+
+
+def to_csv(deck, rows, path, text=None):
+    """A deck as our own CSV (Excel: semicolon, UTF-8 with BOM) – one row per card, the sections as in to_text().
+    text: "mit Kartentext" – {"game": key, "locale": {sids}} (collection/exporttext.py); rows = {sid: card row}.
+    -> number of rows"""
+    import csv
+    from collection import exporttext
+    if text and not exporttext.allowed(text.get("game")):
+        text = None
+    out = [("Commander", 1, sid) for sid in deck.get("commanders") or [] if sid in rows]
+    for board, title in (("main", "Deck"), ("side", "Sideboard"), ("maybe", "Maybeboard")):
+        cards = [c for c in deck["cards"] if c.get("board", "main") == board and c["sid"] in rows]
+        out += [(title, c["count"], c["sid"]) for c in sorted(cards, key=lambda c: rows[c["sid"]]["name"])]
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(["Anzahl", "Bereich", "Name", "Set", "Setname", "Nummer", "Seltenheit", "Karten-ID"]
+                   + (exporttext.headers(text["game"]) if text else []))
+        for where, n, sid in out:
+            r = rows[sid]
+            extra = exporttext.values(text["game"], r, sid in (text.get("locale") or ())) if text else []
+            w.writerow([n, where, r["name"], (r.get("set_code") or "").upper(), r.get("set_name") or "",
+                        r.get("number") or "", r.get("rarity") or "", sid] + extra)
+    return len(out)
 
 
 # ---------- Analysis ----------

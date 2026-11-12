@@ -4,3 +4,9 @@
 *.ico binary
 *.png binary
 *.jpg binary
+# Windows scripts always with CRLF – cmd.exe breaks on LF line ends (Start-live.cmd 06.11.2026, lead)
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+# device nicknames: PC and web hash the same bytes (lead 12.11.2026) – never converted
+system/nicknames.json -text

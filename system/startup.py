@@ -23,15 +23,25 @@ from ui.scanlook import refresh_color_consts
 
 log = logging.getLogger("booster")   # the same logger as app.py
 SETTINGS_FILE = BASE / "settings.json"
+AFTER_WAIT = 30   # s a restarted instance waits for the previous one to end (--after=<pid>)
+
+
+def _saved():
+    """settings.json as a dict – {} when missing, broken or not an object (review 08.11. F2: never a crash at start)."""
+    try:
+        d = json.loads(SETTINGS_FILE.read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
 
 
 def saved_language():
     """Language from the settings. Brand new (no settings yet): English – the first-run setup asks first, with
     flags."""
-    try:
-        return json.loads(SETTINGS_FILE.read_text("utf-8")).get("language", "de")
-    except (OSError, ValueError):
-        return "en" if not SETTINGS_FILE.exists() else "de"
+    if not SETTINGS_FILE.exists():
+        return "en"
+    lang = _saved().get("language", "de")
+    return lang if isinstance(lang, str) else "de"
 
 
 def apply_look(app):
@@ -116,15 +126,15 @@ def main(MainWindow):   # the window class from app.py – not importable here (
     app.setStyle("Fusion")
     iconkit.follow_system(app)  # window icon for all windows (Library, dialogs, welcome) – light/dark like Windows
     try:  # load the appearance before all windows (fonts, corners, colours)
-        look.load(json.loads(SETTINGS_FILE.read_text("utf-8")))
-    except (OSError, ValueError):
+        look.load(_saved())
+    except (OSError, ValueError, TypeError, AttributeError):
         look.load({})
     look.install_color_hook()
     refresh_color_consts()
     look.register_fonts()
     apply_look(app)
     try:  # accessibility layer off (caused crashes with Qt Quick) – unless explicitly wanted
-        if not json.loads(SETTINGS_FILE.read_text("utf-8")).get("accessibility"):
+        if not _saved().get("accessibility"):
             from ui import uiaguard
             uiaguard.install(app)
     except (OSError, ValueError):
@@ -135,6 +145,22 @@ def main(MainWindow):   # the window class from app.py – not importable here (
         if tr_qt.load("qtbase_de", QtCore.QLibraryInfo.path(QtCore.QLibraryInfo.TranslationsPath)):
             app.installTranslator(tr_qt)
             app._qt_translator = tr_qt
+    # Only once per Windows user (ui/tray.py): before anything else – also before the first-run setup – and after a
+    # restart only once the old instance is really gone (--after=<pid>; it never gets ended by force, lead 03.11.)
+    from ui import tray
+    after = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--after=")), "")
+    if after.isdigit():
+        from system import wipe
+        if not wipe._wait_for(int(after), AFTER_WAIT):
+            setup_logging()
+            log.warning("Restart: the previous Bent°Corner (PID %s) is still running after %d s – this start stops "
+                        "instead of running a second program on the same data", after, AFTER_WAIT)
+            sys.exit(1)
+    if "--move-data" not in sys.argv and "--selftest-ocr" not in sys.argv:
+        if not tray.acquire():
+            tray.show_other()
+            sys.exit(0)  # already running (e.g. in the tray): that one now shows its window
+        tray.claim()
     if "--move-data" in sys.argv:  # move the data folder (started by the program itself), then restart normally
         sys.exit(setupui.run_mover(sys.argv))
     if datahome.FIRST_RUN:  # first start: welcome, choose the data folder
@@ -157,9 +183,6 @@ def main(MainWindow):   # the window class from app.py – not importable here (
         # restart once: all paths depend on the data folder, language and game are only settled now
         setupui.relaunch()
         sys.exit(0)
-    from ui import tray
-    if "--selftest-ocr" not in sys.argv and tray.other_instance():
-        sys.exit(0)  # already running (e.g. in the tray): that one now shows its window
     setup_logging()
     if os.environ.get("QT_QUICK_BACKEND") == "software":
         log.info("UI renders in software (no graphics driver found, or set that way)")

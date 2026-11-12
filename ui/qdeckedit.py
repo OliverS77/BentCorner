@@ -289,24 +289,43 @@ class DeckEditorBackend(QtCore.QObject):
 
     @QtCore.Slot()
     def exportMenu(self):
-        ed = self.ed
         m = qmenu.Menu()
+        self._export_actions(m)
+        m.sheet(tr("Export"))   # a page in the window, not a list at the mouse
+
+    def _export_actions(self, m):
+        ed = self.ed
         m.addAction(tr("To clipboard (Moxfield/Arena text)"), ed.export_clipboard)
         m.addAction(tr("Share as image …"), lambda: ed._to_export("share_decks"))
         m.addAction(tr("More options (Import/Export) …"), lambda: ed._to_export("deck_export"))
-        m.sheet(tr("Export"))   # a page in the window, not a list at the mouse
 
     @QtCore.Slot()
     def versionsMenu(self):
-        ed = self.ed
-        if ed.deck is None:
+        if self.ed.deck is None:
             return
         m = qmenu.Menu()
+        self._version_actions(m)
+        m.sheet(tr("Versions"))
+
+    def _version_actions(self, m):
+        ed = self.ed
         m.addAction(tr("Save changes as a new version (original stays)") if ed.dirty
                     else tr("Duplicate as new version"), ed.save_as_version)
         m.addAction(tr("Compare with …"), lambda: self.page.compare_with(ed.deck))
         self.page.folder_submenu(m, ed.orig or ed.deck)
-        m.sheet(tr("Versions"))
+
+    @QtCore.Slot()
+    def moreMenu(self):
+        """„⋯“ in a narrow window (lead 06.11.): Export and Versions as their own pages, Delete last – with its question
+        as always (ed.delete). The same actions as the keys of the wide header."""
+        if self.ed.deck is None:
+            return
+        m = qmenu.Menu()
+        self._export_actions(m.addMenu(tr("Export")))
+        self._version_actions(m.addMenu(tr("Versions")))
+        m.addSeparator()
+        m.addAction(tr("Delete deck …"), self.ed.delete)
+        m.sheet(tr("Deck"))
 
     @QtCore.Slot()
     def deleteDeck(self):
@@ -770,7 +789,7 @@ class DeckEditorBackend(QtCore.QObject):
         """All printings of the card in the open row (cheapest first); marked = pinned printing."""
         from collection import alarms
         from ui.qtrade import db_image
-        from collection.tradelib import eur
+        from collection.tradelib import value as eur   # card values – not in Orbit's Core
         if not self._pin_pick:
             return []
         sid = self._pin_pick.split("|", 1)[0]

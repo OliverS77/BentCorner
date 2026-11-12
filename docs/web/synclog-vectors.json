@@ -1,0 +1,3894 @@
+{
+ "about": "Vectors for the collection in the sync (docs/web/SYNC-LOGS.md). Times: µs/ms = floor(t*1e6 resp. *1e3 + 0.5); prices whole cents; info/doc/item JSON text, carried as is.",
+ "card_fields": [
+  "id",
+  "name",
+  "set",
+  "number",
+  "lang",
+  "foil",
+  "finish",
+  "edition",
+  "cond",
+  "grade_by",
+  "grade",
+  "cond_note",
+  "from_print"
+ ],
+ "explode": [
+  {
+   "about": "a scan log, an import (1-ms steps), lines by hand (two in one instant, an edit, a removal with its saved entry, an old line without src), a trade booking, a trade mark",
+   "bookings": [
+    {
+     "get": [],
+     "give": [
+      [
+       "tst",
+       "3",
+       "en",
+       false
+      ]
+     ],
+     "id": "bk_1",
+     "kind": "trade",
+     "partner": [
+      "X",
+      "Max"
+     ],
+     "session": null,
+     "short": [],
+     "t": 1793600500.0,
+     "taken": [
+      {
+       "item": {
+        "added": 1793600000.0,
+        "cond": "near_mint",
+        "count": 1,
+        "eur": 1.25,
+        "eur_foil": 2.5,
+        "foil": false,
+        "id": "c-id_0",
+        "img": "x.jpg",
+        "lang": "en",
+        "name": "C",
+        "number": "3",
+        "rarity": "rare",
+        "set": "tst",
+        "src": "2026-11-02_10-00-00/1793600002.0",
+        "uid": "uc",
+        "url": ""
+       },
+       "n": 1,
+       "uid": "uc"
+      }
+     ]
+    }
+   ],
+   "expected": {
+    "2026-11-02_10-00-00|1793600000000000": 1,
+    "2026-11-02_10-00-00|1793600001000000": 0,
+    "2026-11-02_10-00-00|1793600002000000": 0,
+    "import_2026-11-02_10-05-00|1793600300000000": 1,
+    "import_2026-11-02_10-05-00|1793600300001000": 2,
+    "uid:uf": 2
+   },
+   "items": [
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 1,
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "foil": false,
+     "id": "a-id_0",
+     "img": "x.jpg",
+     "lang": "en",
+     "name": "A",
+     "number": "1",
+     "rarity": "rare",
+     "set": "tst",
+     "src": "2026-11-02_10-00-00/1793600000.0",
+     "trade": 1,
+     "uid": "ua",
+     "url": ""
+    },
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 1,
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "foil": false,
+     "id": "d-id_0",
+     "img": "x.jpg",
+     "lang": "en",
+     "name": "D",
+     "number": "1",
+     "rarity": "rare",
+     "set": "tst",
+     "src": "import_2026-11-02_10-05-00/1793600300.0",
+     "uid": "ud",
+     "url": ""
+    },
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 2,
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "foil": false,
+     "id": "e-id_0",
+     "img": "x.jpg",
+     "lang": "en",
+     "name": "E",
+     "number": "2",
+     "rarity": "rare",
+     "set": "tst",
+     "src": "import_2026-11-02_10-05-00/1793600300.001",
+     "uid": "ue",
+     "url": ""
+    },
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 2,
+     "edition": "1st",
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "finish": "etched",
+     "foil": false,
+     "id": "f-id_0",
+     "img": "x.jpg",
+     "lang": "fr",
+     "name": "F",
+     "number": "9",
+     "rarity": "rare",
+     "set": "tst",
+     "src": null,
+     "uid": "uf",
+     "url": ""
+    }
+   ],
+   "library": {
+    "2026-11-02_10-00-00|1793600000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "a-id_0",
+     "lang": "en",
+     "trade": 1
+    },
+    "import_2026-11-02_10-05-00|1793600300000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "d-id_0",
+     "lang": "en"
+    },
+    "import_2026-11-02_10-05-00|1793600300001000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 2,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "e-id_0",
+     "lang": "en"
+    },
+    "uid:uf": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 2,
+     "edition": "1st",
+     "finish": "etched",
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "f-id_0",
+     "lang": "fr"
+    }
+   },
+   "logs": [
+    {
+     "collection": true,
+     "ended": 1793600100.0,
+     "id": "2026-11-02_10-00-00",
+     "info": {
+      "active": false,
+      "kind": "cards",
+      "title": "2026-11-02_10-00-00"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600000.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "a-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "A",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        },
+        {
+         "added": 1793600001.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "b-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "B",
+         "number": "2",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        },
+        {
+         "added": 1793600002.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "c-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "C",
+         "number": "3",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793600000.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793600000.0
+    },
+    {
+     "collection": true,
+     "ended": 1793600400.0,
+     "id": "import_2026-11-02_10-05-00",
+     "info": {
+      "import": true,
+      "title": "csv"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600300.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "d-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "D",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        },
+        {
+         "added": 1793600300.001,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "e-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "E",
+         "number": "2",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793600300.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793600300.0
+    },
+    {
+     "collection": false,
+     "ended": 1793600400.0,
+     "id": "manual_2026-11-02",
+     "info": {
+      "kind": "manual",
+      "title": ""
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600400.0,
+         "cond": "near_mint",
+         "delta": 1,
+         "edition": "1st",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "finish": "etched",
+         "foil": false,
+         "id": "f-id_0",
+         "img": "x.jpg",
+         "lang": "de",
+         "name": "F",
+         "number": "9",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "uid": "uf",
+         "url": ""
+        },
+        {
+         "added": 1793600400.000001,
+         "cond": "near_mint",
+         "delta": 1,
+         "edition": "1st",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "finish": "etched",
+         "foil": false,
+         "id": "f-id_0",
+         "img": "x.jpg",
+         "lang": "de",
+         "name": "F",
+         "number": "9",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "uid": "uf",
+         "url": ""
+        },
+        {
+         "added": 1793600410.0,
+         "cond": "near_mint",
+         "delta": 0,
+         "edit": {
+          "lang": [
+           "de",
+           "fr"
+          ]
+         },
+         "edition": "1st",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "finish": "etched",
+         "foil": false,
+         "id": "f-id_0",
+         "img": "x.jpg",
+         "lang": "fr",
+         "name": "F",
+         "number": "9",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "uid": "uf",
+         "url": ""
+        },
+        {
+         "added": 1793600420.0,
+         "cond": "near_mint",
+         "delta": -1,
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "b-id_0",
+         "img": "x.jpg",
+         "item": {
+          "added": 1793600000.0,
+          "cond": "near_mint",
+          "count": 1,
+          "eur": 1.25,
+          "eur_foil": 2.5,
+          "foil": false,
+          "id": "b-id_0",
+          "img": "x.jpg",
+          "lang": "en",
+          "name": "B",
+          "number": "2",
+          "rarity": "rare",
+          "set": "tst",
+          "src": "2026-11-02_10-00-00/1793600001.0",
+          "uid": "ub",
+          "url": ""
+         },
+         "lang": "en",
+         "name": "B",
+         "number": "2",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "src": "2026-11-02_10-00-00/1793600001.0",
+         "uid": "ub",
+         "url": ""
+        },
+        {
+         "added": 1793600430.0,
+         "cond": "near_mint",
+         "delta": 1,
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "e-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "E",
+         "number": "2",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "uid": "ue",
+         "url": ""
+        }
+       ],
+       "opened": 1793600400.0,
+       "type": "manual"
+      }
+     ],
+     "started": 1793600400.0
+    }
+   ],
+   "name": "scan_import_hand_booking_mark",
+   "sum": "1af35ca6b697941b7906ae4cd3c42e33162c08f440235931b57d8541bfc9dc21",
+   "view": {
+    "bookings": {
+     "bk_1": {
+      "doc": "{\"get\":[],\"give\":[[\"tst\",\"3\",\"en\",false]],\"id\":\"bk_1\",\"kind\":\"trade\",\"partner\":[\"X\",\"Max\"],\"session\":null,\"short\":[],\"t\":1793600500.0,\"taken\":[{\"item\":{\"added\":1793600000.0,\"cond\":\"near_mint\",\"count\":1,\"eur\":1.25,\"eur_foil\":2.5,\"foil\":false,\"id\":\"c-id_0\",\"img\":\"x.jpg\",\"lang\":\"en\",\"name\":\"C\",\"number\":\"3\",\"rarity\":\"rare\",\"set\":\"tst\",\"src\":\"2026-11-02_10-00-00/1793600002.0\",\"uid\":\"uc\",\"url\":\"\"},\"n\":1,\"uid\":\"uc\"}]}",
+      "t": 1793600500000,
+      "taken": [
+       [
+        "2026-11-02_10-00-00|1793600002000000",
+        1
+       ]
+      ]
+     }
+    },
+    "logrows": {
+     "2026-11-02_10-00-00|1793600000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_10-00-00|1793600001000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_10-00-00|1793600002000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "c-id_0",
+      "lang": "en",
+      "name": "C",
+      "number": "3",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "import_2026-11-02_10-05-00|1793600300000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "d-id_0",
+      "lang": "en",
+      "name": "D",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "import_2026-11-02_10-05-00|1793600300001000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "e-id_0",
+      "lang": "en",
+      "name": "E",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "manual_2026-11-02|1793600400000000": {
+      "cond": "near_mint",
+      "delta": 1,
+      "edition": "1st",
+      "finish": "etched",
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "de",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     },
+     "manual_2026-11-02|1793600400000001": {
+      "cond": "near_mint",
+      "delta": 1,
+      "edition": "1st",
+      "finish": "etched",
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "de",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     },
+     "manual_2026-11-02|1793600410000000": {
+      "cond": "near_mint",
+      "delta": 0,
+      "edit": {
+       "lang": [
+        "de",
+        "fr"
+       ]
+      },
+      "edition": "1st",
+      "finish": "etched",
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "fr",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     },
+     "manual_2026-11-02|1793600420000000": {
+      "cond": "near_mint",
+      "delta": -1,
+      "foil": false,
+      "id": "b-id_0",
+      "item": "{\"added\":1793600000.0,\"cond\":\"near_mint\",\"count\":1,\"eur\":1.25,\"eur_foil\":2.5,\"foil\":false,\"id\":\"b-id_0\",\"img\":\"x.jpg\",\"lang\":\"en\",\"name\":\"B\",\"number\":\"2\",\"rarity\":\"rare\",\"set\":\"tst\",\"src\":\"2026-11-02_10-00-00/1793600001.0\",\"uid\":\"ub\",\"url\":\"\"}",
+      "key": "2026-11-02_10-00-00|1793600001000000",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "price": 125,
+      "set": "tst",
+      "src": "2026-11-02_10-00-00|1793600001000000",
+      "uid": "ub"
+     },
+     "manual_2026-11-02|1793600430000000": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "e-id_0",
+      "key": "import_2026-11-02_10-05-00|1793600300001000",
+      "lang": "en",
+      "name": "E",
+      "number": "2",
+      "price": 125,
+      "set": "tst",
+      "uid": "ue"
+     }
+    },
+    "logs": {
+     "2026-11-02_10-00-00": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00"
+     },
+     "import_2026-11-02_10-05-00": {
+      "collection": true,
+      "ended": 1793600400000,
+      "info": "{\"import\":true,\"title\":\"csv\"}",
+      "kind": "import",
+      "packs": [
+       [
+        1793600300000,
+        "booster"
+       ]
+      ],
+      "started": 1793600300000,
+      "title": "csv"
+     },
+     "manual_2026-11-02": {
+      "collection": false,
+      "ended": 1793600400000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600400000,
+        "manual"
+       ]
+      ],
+      "started": 1793600400000,
+      "title": ""
+     }
+    },
+    "trademarks": {
+     "2026-11-02_10-00-00|1793600000000000": {
+      "n": 1
+     }
+    }
+   }
+  },
+  {
+   "about": "a log still running (counts when it ends), a trade scan's outgoing card, a log out of the library",
+   "bookings": [],
+   "expected": {
+    "trade_2026-11-02_11-10-00|1793600700000000": 1
+   },
+   "items": [
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 1,
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "foil": false,
+     "id": "h-id_0",
+     "img": "x.jpg",
+     "lang": "en",
+     "name": "H",
+     "number": "1",
+     "rarity": "rare",
+     "set": "tst",
+     "src": "trade_2026-11-02_11-10-00/1793600700.0",
+     "uid": "uh",
+     "url": ""
+    }
+   ],
+   "library": {
+    "trade_2026-11-02_11-10-00|1793600700000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "h-id_0",
+     "lang": "en"
+    }
+   },
+   "logs": [
+    {
+     "collection": true,
+     "ended": null,
+     "id": "2026-11-02_11-00-00",
+     "info": {
+      "active": false,
+      "kind": "cards",
+      "title": "2026-11-02_11-00-00"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600600.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "g-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "G",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793600600.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793600600.0
+    },
+    {
+     "collection": true,
+     "ended": 1793600800.0,
+     "id": "trade_2026-11-02_11-10-00",
+     "info": {
+      "kind": "singles",
+      "title": "Tausch"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600700.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "h-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "H",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        },
+        {
+         "added": 1793600701.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "i-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "I",
+         "number": "2",
+         "out": true,
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793600700.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793600700.0
+    },
+    {
+     "collection": false,
+     "ended": 1793600900.0,
+     "id": "2026-11-02_11-20-00",
+     "info": {
+      "active": false,
+      "kind": "cards",
+      "title": "2026-11-02_11-20-00"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600800.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "j-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "J",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793600800.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793600800.0
+    }
+   ],
+   "name": "running_out_and_off",
+   "sum": "da826c96427460f033606dd15687c2ea998fa41c5072c3eafb643dc1b367635a",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "2026-11-02_11-00-00|1793600600000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "g-id_0",
+      "lang": "en",
+      "name": "G",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_11-20-00|1793600800000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "j-id_0",
+      "lang": "en",
+      "name": "J",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "trade_2026-11-02_11-10-00|1793600700000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "h-id_0",
+      "lang": "en",
+      "name": "H",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "trade_2026-11-02_11-10-00|1793600701000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "i-id_0",
+      "lang": "en",
+      "name": "I",
+      "number": "2",
+      "out": true,
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    "logs": {
+     "2026-11-02_11-00-00": {
+      "collection": true,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_11-00-00\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600600000,
+        "booster"
+       ]
+      ],
+      "started": 1793600600000,
+      "title": "2026-11-02_11-00-00"
+     },
+     "2026-11-02_11-20-00": {
+      "collection": false,
+      "ended": 1793600900000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_11-20-00\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600800000,
+        "booster"
+       ]
+      ],
+      "started": 1793600800000,
+      "title": "2026-11-02_11-20-00"
+     },
+     "trade_2026-11-02_11-10-00": {
+      "collection": true,
+      "ended": 1793600800000,
+      "info": "{\"kind\":\"singles\",\"title\":\"Tausch\"}",
+      "kind": "singles",
+      "packs": [
+       [
+        1793600700000,
+        "booster"
+       ]
+      ],
+      "started": 1793600700000,
+      "title": "Tausch"
+     }
+    },
+    "trademarks": {}
+   }
+  },
+  {
+   "about": "a log card that left without a line (the gone list), a log in the trash that keeps its cards",
+   "bookings": [],
+   "expected": {
+    "2026-11-02_12-00-00|1793600900000000": 1,
+    "2026-11-02_12-30-00|1793601000000000": 1
+   },
+   "items": [
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 1,
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "foil": false,
+     "id": "k-id_0",
+     "img": "x.jpg",
+     "lang": "en",
+     "name": "K",
+     "number": "1",
+     "rarity": "rare",
+     "set": "tst",
+     "src": "2026-11-02_12-00-00/1793600900.0",
+     "uid": "uk",
+     "url": ""
+    },
+    {
+     "added": 1793600000.0,
+     "cond": "near_mint",
+     "count": 1,
+     "eur": 1.25,
+     "eur_foil": 2.5,
+     "foil": false,
+     "id": "m-id_0",
+     "img": "x.jpg",
+     "lang": "en",
+     "name": "M",
+     "number": "1",
+     "rarity": "rare",
+     "set": "tst",
+     "src": "2026-11-02_12-30-00/1793601000.0",
+     "uid": "um",
+     "url": ""
+    }
+   ],
+   "library": {
+    "2026-11-02_12-00-00|1793600900000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "k-id_0",
+     "lang": "en"
+    },
+    "2026-11-02_12-30-00|1793601000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "m-id_0",
+     "lang": "en"
+    }
+   },
+   "logs": [
+    {
+     "collection": true,
+     "ended": 1793601000.0,
+     "id": "2026-11-02_12-00-00",
+     "info": {
+      "active": false,
+      "kind": "cards",
+      "title": "2026-11-02_12-00-00"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793600900.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "k-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "K",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        },
+        {
+         "added": 1793600901.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "l-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "L",
+         "number": "2",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793600900.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793600900.0
+    },
+    {
+     "collection": false,
+     "ended": 1793600950.0,
+     "gone": [
+      "2026-11-02_12-00-00/1793600901.0"
+     ],
+     "id": "manual_2026-11-02",
+     "info": {
+      "kind": "manual",
+      "title": ""
+     },
+     "packs": [
+      {
+       "cards": [],
+       "opened": 1793600950.0,
+       "type": "manual"
+      }
+     ],
+     "started": 1793600950.0
+    },
+    {
+     "collection": true,
+     "ended": 1793601100.0,
+     "hidden": {
+      "at": 1793601100.0,
+      "kept": true
+     },
+     "id": "2026-11-02_12-30-00",
+     "info": {
+      "active": false,
+      "kind": "cards",
+      "title": "2026-11-02_12-30-00"
+     },
+     "packs": [
+      {
+       "cards": [
+        {
+         "added": 1793601000.0,
+         "cond": "near_mint",
+         "eur": 1.25,
+         "eur_foil": 2.5,
+         "foil": false,
+         "id": "m-id_0",
+         "img": "x.jpg",
+         "lang": "en",
+         "name": "M",
+         "number": "1",
+         "price": 1.25,
+         "rarity": "rare",
+         "set": "tst",
+         "url": ""
+        }
+       ],
+       "opened": 1793601000.0,
+       "type": "booster"
+      }
+     ],
+     "started": 1793601000.0
+    }
+   ],
+   "name": "gone_and_hidden",
+   "sum": "cc96aededc518966fbd76ae8fc02a7f24f27261bbb0032258d0ad0e8aa7d41a2",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "2026-11-02_12-00-00|1793600900000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "k-id_0",
+      "lang": "en",
+      "name": "K",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_12-00-00|1793600901000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "l-id_0",
+      "lang": "en",
+      "name": "L",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_12-30-00|1793601000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "m-id_0",
+      "lang": "en",
+      "name": "M",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "manual_2026-11-02|gone|2026-11-02_12-00-00|1793600901000000": {
+      "gone": true
+     }
+    },
+    "logs": {
+     "2026-11-02_12-00-00": {
+      "collection": true,
+      "ended": 1793601000000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_12-00-00\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600900000,
+        "booster"
+       ]
+      ],
+      "started": 1793600900000,
+      "title": "2026-11-02_12-00-00"
+     },
+     "2026-11-02_12-30-00": {
+      "collection": true,
+      "ended": 1793601100000,
+      "hidden": {
+       "at": 1793601100000,
+       "kept": true
+      },
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_12-30-00\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793601000000,
+        "booster"
+       ]
+      ],
+      "started": 1793601000000,
+      "title": "2026-11-02_12-30-00"
+     },
+     "manual_2026-11-02": {
+      "collection": false,
+      "ended": 1793600950000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600950000,
+        "manual"
+       ]
+      ],
+      "started": 1793600950000,
+      "title": ""
+     }
+    },
+    "trademarks": {}
+   }
+  }
+ ],
+ "game": "mtg",
+ "kinds": [
+  "logs",
+  "logrows",
+  "bookings",
+  "trademarks"
+ ],
+ "local_info": [
+  "active"
+ ],
+ "ops": [
+  {
+   "about": "two devices scan at the same second (log ids with the device), one adds by hand: merging = both sets of logs",
+   "expected": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": 1,
+    "2026-11-02_10-00-00_aaaa|1793600001000000": 1,
+    "2026-11-02_10-00-00_bbbb|1793600000000000": 1,
+    "uid:uf_bbbb": 1
+   },
+   "kind_sums": {
+    "bookings": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "logrows": "ef6e4c24997e31e5c915ea17c7ec6305d13a3750269af1c6ac23a19751426753",
+    "logs": "7e950ab6c32463471214cf14d1a30bf2f34d87da6ccc355b846addf700aefc40",
+    "trademarks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "library": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "a-id_0",
+     "lang": "en"
+    },
+    "2026-11-02_10-00-00_aaaa|1793600001000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "b-id_0",
+     "lang": "en"
+    },
+    "2026-11-02_10-00-00_bbbb|1793600000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "c-id_0",
+     "lang": "en"
+    },
+    "uid:uf_bbbb": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "f-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "union",
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "k": "2026-11-02_10-00-00_bbbb",
+     "o": "bbbb.1793600001000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_bbbb\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_bbbb"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600001000,
+      1,
+      "bbbb"
+     ],
+     "k": "manual_2026-11-02_bbbb",
+     "o": "bbbb.1793600001000.1",
+     "s": {
+      "collection": false,
+      "ended": 1793600005000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600005000,
+        "manual"
+       ]
+      ],
+      "started": 1793600005000,
+      "title": ""
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      2,
+      "bbbb"
+     ],
+     "k": "2026-11-02_10-00-00_bbbb|1793600000000000",
+     "o": "bbbb.1793600001000.2",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "c-id_0",
+      "lang": "en",
+      "name": "C",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      3,
+      "bbbb"
+     ],
+     "k": "manual_2026-11-02_bbbb|1793600005000000",
+     "o": "bbbb.1793600001000.3",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf_bbbb",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf_bbbb"
+     }
+    }
+   ],
+   "sum": "9112791c6f41751a36228916a1d1e77f5bfd5c7584eb5ef71ae9f2c9c982a5b3",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "2026-11-02_10-00-00_aaaa|1793600000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_10-00-00_aaaa|1793600001000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_10-00-00_bbbb|1793600000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "c-id_0",
+      "lang": "en",
+      "name": "C",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "manual_2026-11-02_bbbb|1793600005000000": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf_bbbb",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf_bbbb"
+     }
+    },
+    "logs": {
+     "2026-11-02_10-00-00_aaaa": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     },
+     "2026-11-02_10-00-00_bbbb": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_bbbb\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_bbbb"
+     },
+     "manual_2026-11-02_bbbb": {
+      "collection": false,
+      "ended": 1793600005000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600005000,
+        "manual"
+       ]
+      ],
+      "started": 1793600005000,
+      "title": ""
+     }
+    },
+    "trademarks": {}
+   }
+  },
+  {
+   "about": "the same log card changed on both devices: the later change wins per field; another field of another card changed meanwhile stays",
+   "expected": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": 1,
+    "2026-11-02_10-00-00_aaaa|1793600001000000": 1
+   },
+   "kind_sums": {
+    "bookings": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "logrows": "b7b5e4add3a4ba6fea7b6727e7e121e422791e2f2201a4d5d666e826e9f15cdd",
+    "logs": "5537a1d1fa23e121e39467e9e63abfd0b1ee8139e032795dcbd66048350e574a",
+    "trademarks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "library": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "a-id_0",
+     "lang": "fr"
+    },
+    "2026-11-02_10-00-00_aaaa|1793600001000000": {
+     "cond": "excellent",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "b-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "edit_lww",
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600001000.0",
+     "s": {
+      "lang": "de"
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600002000,
+      0,
+      "bbbb"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "bbbb.1793600002000.0",
+     "s": {
+      "lang": "fr"
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600002000,
+      1,
+      "bbbb"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "bbbb.1793600002000.1",
+     "s": {
+      "cond": "excellent"
+     }
+    }
+   ],
+   "sum": "4b4ef33e4e025454cb7acecd7d9c9e8f959809b48c17d05224af1802c2e75fe0",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "2026-11-02_10-00-00_aaaa|1793600000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "fr",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "2026-11-02_10-00-00_aaaa|1793600001000000": {
+      "cond": "excellent",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    "logs": {
+     "2026-11-02_10-00-00_aaaa": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    "trademarks": {}
+   }
+  },
+  {
+   "about": "a log deleted for good: tombstone + one line by hand per key (+n, no src); a later edit of a card of that log on the other device brings nothing back (its log is gone)",
+   "expected": {
+    "uid:ua": 1,
+    "uid:ub": 1
+   },
+   "kind_sums": {
+    "bookings": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "logrows": "35af954094ac7e3afb45545c9b0d58cd6213b4086c3943264eb8d1ff6c9126bc",
+    "logs": "002426d28d84350770ab76e95df364d98d658cfe98f480d9f28c88be0d00e25e",
+    "trademarks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "library": {
+    "uid:ua": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "a-id_0",
+     "lang": "en"
+    },
+    "uid:ub": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "b-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "delete_log_keeps_cards",
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "c": "mtg/logs",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600001000.0",
+     "x": 1
+    },
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600001000,
+      1,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa",
+     "o": "aaaa.1793600001000.1",
+     "s": {
+      "collection": false,
+      "ended": 1793600002000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600002000,
+        "manual"
+       ]
+      ],
+      "started": 1793600002000,
+      "title": ""
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600001000.2",
+     "x": 1
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      3,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600001000.3",
+     "x": 1
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      4,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600002000000",
+     "o": "aaaa.1793600001000.4",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "a-id_0",
+      "key": "uid:ua",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "price": 125,
+      "set": "tst",
+      "uid": "ua",
+      "why": "from a log deleted for good"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      5,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600002000001",
+     "o": "aaaa.1793600001000.5",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "b-id_0",
+      "key": "uid:ub",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "price": 125,
+      "set": "tst",
+      "uid": "ub",
+      "why": "from a log deleted for good"
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600002000,
+      0,
+      "bbbb"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "bbbb.1793600002000.0",
+     "s": {
+      "lang": "it"
+     }
+    }
+   ],
+   "sum": "8e246398c1490d231d3230027a33c0907adc91ff9fb40b813cbf53be315aa138",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "2026-11-02_10-00-00_aaaa|1793600000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "it",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     },
+     "manual_2026-11-02_aaaa|1793600002000000": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "a-id_0",
+      "key": "uid:ua",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "price": 125,
+      "set": "tst",
+      "uid": "ua",
+      "why": "from a log deleted for good"
+     },
+     "manual_2026-11-02_aaaa|1793600002000001": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "b-id_0",
+      "key": "uid:ub",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "price": 125,
+      "set": "tst",
+      "uid": "ub",
+      "why": "from a log deleted for good"
+     }
+    },
+    "logs": {
+     "manual_2026-11-02_aaaa": {
+      "collection": false,
+      "ended": 1793600002000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600002000,
+        "manual"
+       ]
+      ],
+      "started": 1793600002000,
+      "title": ""
+     }
+    },
+    "trademarks": {}
+   }
+  },
+  {
+   "about": "two lines by hand in the same millisecond (and µs neighbours): their own keys",
+   "expected": {
+    "uid:uf": 1,
+    "uid:ug": 1
+   },
+   "kind_sums": {
+    "bookings": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "logrows": "8bdc5a667e27906f3045072fbbd9ce83f2684fa33351c2c97e9e2ff190073856",
+    "logs": "4afb20e449ea53d25344c715f054a6b16a7b94eb2549949c00676e4d35e3a74b",
+    "trademarks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "library": {
+    "uid:uf": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "f-id_0",
+     "lang": "en"
+    },
+    "uid:ug": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "g-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "two_rows_same_ms",
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": false,
+      "ended": 1793600000000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600000000,
+        "manual"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": ""
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600000000400",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600000000401",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "g-id_0",
+      "key": "uid:ug",
+      "lang": "en",
+      "name": "G",
+      "number": "8",
+      "price": 125,
+      "set": "tst",
+      "uid": "ug"
+     }
+    }
+   ],
+   "sum": "8bba7e7fc508b9a8f422ca6faf23a5c7b204dd170533f0c6bd689b864023a4df",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "manual_2026-11-02_aaaa|1793600000000400": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     },
+     "manual_2026-11-02_aaaa|1793600000000401": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "g-id_0",
+      "key": "uid:ug",
+      "lang": "en",
+      "name": "G",
+      "number": "8",
+      "price": 125,
+      "set": "tst",
+      "uid": "ug"
+     }
+    },
+    "logs": {
+     "manual_2026-11-02_aaaa": {
+      "collection": false,
+      "ended": 1793600000000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600000000,
+        "manual"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": ""
+     }
+    },
+    "trademarks": {}
+   }
+  },
+  {
+   "about": "Undo writes counter lines: after an edit the edit back, after adding by hand the same copies out (uid key) – nothing is removed, so the undo syncs",
+   "expected": {
+    "uid:uf": 1,
+    "uid:ug": 0
+   },
+   "kind_sums": {
+    "bookings": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "logrows": "82f493fe4bf6ce05b968c65fb0d7c68d735a6893bebef9f1e31ad5247e7ac592",
+    "logs": "4afb20e449ea53d25344c715f054a6b16a7b94eb2549949c00676e4d35e3a74b",
+    "trademarks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "library": {
+    "uid:uf": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "f-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "undo_counter_rows",
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": false,
+      "ended": 1793600000000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600000000,
+        "manual"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": ""
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600001000000",
+     "o": "aaaa.1793600001000.0",
+     "s": {
+      "cond": "near_mint",
+      "delta": 0,
+      "edit": {
+       "lang": [
+        "en",
+        "de"
+       ]
+      },
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "de",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600002000,
+      0,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600002000000",
+     "o": "aaaa.1793600002000.0",
+     "s": {
+      "cond": "near_mint",
+      "delta": 0,
+      "edit": {
+       "lang": [
+        "de",
+        "en"
+       ]
+      },
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf",
+      "why": "undone"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600003000,
+      0,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600003000000",
+     "o": "aaaa.1793600003000.0",
+     "s": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "g-id_0",
+      "key": "uid:ug",
+      "lang": "en",
+      "name": "G",
+      "number": "8",
+      "price": 125,
+      "set": "tst",
+      "uid": "ug"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600004000,
+      0,
+      "aaaa"
+     ],
+     "k": "manual_2026-11-02_aaaa|1793600004000000",
+     "o": "aaaa.1793600004000.0",
+     "s": {
+      "cond": "near_mint",
+      "delta": -1,
+      "foil": false,
+      "id": "g-id_0",
+      "item": "{\"added\":1793600000.0,\"cond\":\"near_mint\",\"count\":1,\"eur\":1.25,\"eur_foil\":2.5,\"foil\":false,\"id\":\"g-id_0\",\"img\":\"x.jpg\",\"lang\":\"en\",\"name\":\"G\",\"number\":\"8\",\"rarity\":\"rare\",\"set\":\"tst\",\"src\":null,\"uid\":\"ug\",\"url\":\"\"}",
+      "key": "uid:ug",
+      "lang": "en",
+      "name": "G",
+      "number": "8",
+      "price": 125,
+      "set": "tst",
+      "uid": "ug",
+      "why": "undone"
+     }
+    }
+   ],
+   "sum": "2bf9304b46e9b60e980f65b71e0a3165c4adf2fef092385a8ba73891f689e81c",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "manual_2026-11-02_aaaa|1793600000000000": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     },
+     "manual_2026-11-02_aaaa|1793600001000000": {
+      "cond": "near_mint",
+      "delta": 0,
+      "edit": {
+       "lang": [
+        "en",
+        "de"
+       ]
+      },
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "de",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf"
+     },
+     "manual_2026-11-02_aaaa|1793600002000000": {
+      "cond": "near_mint",
+      "delta": 0,
+      "edit": {
+       "lang": [
+        "de",
+        "en"
+       ]
+      },
+      "foil": false,
+      "id": "f-id_0",
+      "key": "uid:uf",
+      "lang": "en",
+      "name": "F",
+      "number": "9",
+      "price": 125,
+      "set": "tst",
+      "uid": "uf",
+      "why": "undone"
+     },
+     "manual_2026-11-02_aaaa|1793600003000000": {
+      "cond": "near_mint",
+      "delta": 1,
+      "foil": false,
+      "id": "g-id_0",
+      "key": "uid:ug",
+      "lang": "en",
+      "name": "G",
+      "number": "8",
+      "price": 125,
+      "set": "tst",
+      "uid": "ug"
+     },
+     "manual_2026-11-02_aaaa|1793600004000000": {
+      "cond": "near_mint",
+      "delta": -1,
+      "foil": false,
+      "id": "g-id_0",
+      "item": "{\"added\":1793600000.0,\"cond\":\"near_mint\",\"count\":1,\"eur\":1.25,\"eur_foil\":2.5,\"foil\":false,\"id\":\"g-id_0\",\"img\":\"x.jpg\",\"lang\":\"en\",\"name\":\"G\",\"number\":\"8\",\"rarity\":\"rare\",\"set\":\"tst\",\"src\":null,\"uid\":\"ug\",\"url\":\"\"}",
+      "key": "uid:ug",
+      "lang": "en",
+      "name": "G",
+      "number": "8",
+      "price": 125,
+      "set": "tst",
+      "uid": "ug",
+      "why": "undone"
+     }
+    },
+    "logs": {
+     "manual_2026-11-02_aaaa": {
+      "collection": false,
+      "ended": 1793600000000,
+      "info": "{\"kind\":\"manual\",\"title\":\"\"}",
+      "kind": "manual",
+      "packs": [
+       [
+        1793600000000,
+        "manual"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": ""
+     }
+    },
+    "trademarks": {}
+   }
+  },
+  {
+   "about": "a trade mark set on one device, taken off on the other later",
+   "expected": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": 1
+   },
+   "kind_sums": {
+    "bookings": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "logrows": "b5687dc0fa01a84b382f63a95bb8ec30afcdfb026cc037bea37107b3068c45d6",
+    "logs": "5537a1d1fa23e121e39467e9e63abfd0b1ee8139e032795dcbd66048350e574a",
+    "trademarks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+   },
+   "library": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "a-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "trade_mark",
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/trademarks",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "n": 1
+     }
+    },
+    {
+     "c": "mtg/trademarks",
+     "h": [
+      1793600001000,
+      0,
+      "bbbb"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "bbbb.1793600001000.0",
+     "x": 1
+    }
+   ],
+   "sum": "83192efafba5396f7d8327f5bf4b07ed2160f8e227c4f8e801da39e32d675977",
+   "view": {
+    "bookings": {},
+    "logrows": {
+     "2026-11-02_10-00-00_aaaa|1793600000000000": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    "logs": {
+     "2026-11-02_10-00-00_aaaa": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    "trademarks": {}
+   }
+  }
+ ],
+ "snaps": [
+  {
+   "about": "a snap of the state: the removed row keeps only its clocks (no fields)",
+   "expected": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": 1
+   },
+   "library": {
+    "2026-11-02_10-00-00_aaaa|1793600000000000": {
+     "cond": "near_mint",
+     "cond_note": null,
+     "count": 1,
+     "edition": null,
+     "finish": null,
+     "foil": false,
+     "grade": null,
+     "grade_by": null,
+     "id": "a-id_0",
+     "lang": "en"
+    }
+   },
+   "name": "snap",
+   "now": 1793600001000,
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600001000.0",
+     "x": 1
+    }
+   ],
+   "snap": {
+    "dev": "aaaa",
+    "kinds": {
+     "mtg/logrows": {
+      "2026-11-02_10-00-00_aaaa|1793600000000000": {
+       "alive": [
+        1793600000000,
+        1,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "cond": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "cond": "near_mint"
+         }
+        ],
+        "foil": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "foil": false
+         }
+        ],
+        "id": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "id": "a-id_0"
+         }
+        ],
+        "lang": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "lang": "en"
+         }
+        ],
+        "name": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "name": "A"
+         }
+        ],
+        "number": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "number": "1"
+         }
+        ],
+        "pack": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "pack": 0
+         }
+        ],
+        "price": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "price": 125
+         }
+        ],
+        "set": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "set": "tst"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      },
+      "2026-11-02_10-00-00_aaaa|1793600001000000": {
+       "alive": [
+        1793600000000,
+        2,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": [
+        1793600001000,
+        0,
+        "aaaa"
+       ],
+       "f": {},
+       "gone": 0,
+       "made": true
+      }
+     },
+     "mtg/logs": {
+      "2026-11-02_10-00-00_aaaa": {
+       "alive": [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "collection": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "collection": true
+         }
+        ],
+        "ended": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "ended": 1793600100000
+         }
+        ],
+        "info": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}"
+         }
+        ],
+        "kind": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "kind": "cards"
+         }
+        ],
+        "packs": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "packs": [
+           [
+            1793600000000,
+            "booster"
+           ]
+          ]
+         }
+        ],
+        "started": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "started": 1793600000000
+         }
+        ],
+        "title": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "title": "2026-11-02_10-00-00_aaaa"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      }
+     }
+    },
+    "sum": {
+     "mtg/logrows": "b5687dc0fa01a84b382f63a95bb8ec30afcdfb026cc037bea37107b3068c45d6",
+     "mtg/logs": "5537a1d1fa23e121e39467e9e63abfd0b1ee8139e032795dcbd66048350e574a"
+    },
+    "t": "snap",
+    "top": {
+     "aaaa": [
+      1793600001000,
+      0,
+      "aaaa"
+     ]
+    },
+    "v": 1
+   },
+   "sum": "83192efafba5396f7d8327f5bf4b07ed2160f8e227c4f8e801da39e32d675977"
+  },
+  {
+   "about": "„keep this device's data“: the snap carries takeover {dev, at}",
+   "name": "snap_takeover",
+   "now": 1793600001000,
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/logs",
+     "h": [
+      1793600000000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa",
+     "o": "aaaa.1793600000000.0",
+     "s": {
+      "collection": true,
+      "ended": 1793600100000,
+      "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}",
+      "kind": "cards",
+      "packs": [
+       [
+        1793600000000,
+        "booster"
+       ]
+      ],
+      "started": 1793600000000,
+      "title": "2026-11-02_10-00-00_aaaa"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      1,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600000000000",
+     "o": "aaaa.1793600000000.1",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "a-id_0",
+      "lang": "en",
+      "name": "A",
+      "number": "1",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/logrows",
+     "h": [
+      1793600000000,
+      2,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600000000.2",
+     "s": {
+      "cond": "near_mint",
+      "foil": false,
+      "id": "b-id_0",
+      "lang": "en",
+      "name": "B",
+      "number": "2",
+      "pack": 0,
+      "price": 125,
+      "set": "tst"
+     }
+    },
+    {
+     "c": "mtg/logrows",
+     "h": [
+      1793600001000,
+      0,
+      "aaaa"
+     ],
+     "k": "2026-11-02_10-00-00_aaaa|1793600001000000",
+     "o": "aaaa.1793600001000.0",
+     "x": 1
+    }
+   ],
+   "snap": {
+    "dev": "bbbb",
+    "kinds": {
+     "mtg/logrows": {
+      "2026-11-02_10-00-00_aaaa|1793600000000000": {
+       "alive": [
+        1793600000000,
+        1,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "cond": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "cond": "near_mint"
+         }
+        ],
+        "foil": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "foil": false
+         }
+        ],
+        "id": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "id": "a-id_0"
+         }
+        ],
+        "lang": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "lang": "en"
+         }
+        ],
+        "name": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "name": "A"
+         }
+        ],
+        "number": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "number": "1"
+         }
+        ],
+        "pack": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "pack": 0
+         }
+        ],
+        "price": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "price": 125
+         }
+        ],
+        "set": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "set": "tst"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      },
+      "2026-11-02_10-00-00_aaaa|1793600001000000": {
+       "alive": [
+        1793600000000,
+        2,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": [
+        1793600001000,
+        0,
+        "aaaa"
+       ],
+       "f": {},
+       "gone": 0,
+       "made": true
+      }
+     },
+     "mtg/logs": {
+      "2026-11-02_10-00-00_aaaa": {
+       "alive": [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "collection": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "collection": true
+         }
+        ],
+        "ended": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "ended": 1793600100000
+         }
+        ],
+        "info": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}"
+         }
+        ],
+        "kind": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "kind": "cards"
+         }
+        ],
+        "packs": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "packs": [
+           [
+            1793600000000,
+            "booster"
+           ]
+          ]
+         }
+        ],
+        "started": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "started": 1793600000000
+         }
+        ],
+        "title": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "title": "2026-11-02_10-00-00_aaaa"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      }
+     }
+    },
+    "sum": {
+     "mtg/logrows": "b5687dc0fa01a84b382f63a95bb8ec30afcdfb026cc037bea37107b3068c45d6",
+     "mtg/logs": "5537a1d1fa23e121e39467e9e63abfd0b1ee8139e032795dcbd66048350e574a"
+    },
+    "t": "snap",
+    "takeover": {
+     "at": 1793600001000,
+     "dev": "bbbb",
+     "device": "phone"
+    },
+    "top": {
+     "aaaa": [
+      1793600001000,
+      0,
+      "aaaa"
+     ]
+    },
+    "v": 1
+   }
+  },
+  {
+   "about": "a later snap (another device compacts) carries the last takeover on unchanged",
+   "from": {
+    "dev": "bbbb",
+    "kinds": {
+     "mtg/logrows": {
+      "2026-11-02_10-00-00_aaaa|1793600000000000": {
+       "alive": [
+        1793600000000,
+        1,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "cond": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "cond": "near_mint"
+         }
+        ],
+        "foil": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "foil": false
+         }
+        ],
+        "id": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "id": "a-id_0"
+         }
+        ],
+        "lang": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "lang": "en"
+         }
+        ],
+        "name": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "name": "A"
+         }
+        ],
+        "number": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "number": "1"
+         }
+        ],
+        "pack": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "pack": 0
+         }
+        ],
+        "price": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "price": 125
+         }
+        ],
+        "set": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "set": "tst"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      },
+      "2026-11-02_10-00-00_aaaa|1793600001000000": {
+       "alive": [
+        1793600000000,
+        2,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": [
+        1793600001000,
+        0,
+        "aaaa"
+       ],
+       "f": {},
+       "gone": 0,
+       "made": true
+      }
+     },
+     "mtg/logs": {
+      "2026-11-02_10-00-00_aaaa": {
+       "alive": [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "collection": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "collection": true
+         }
+        ],
+        "ended": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "ended": 1793600100000
+         }
+        ],
+        "info": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}"
+         }
+        ],
+        "kind": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "kind": "cards"
+         }
+        ],
+        "packs": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "packs": [
+           [
+            1793600000000,
+            "booster"
+           ]
+          ]
+         }
+        ],
+        "started": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "started": 1793600000000
+         }
+        ],
+        "title": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "title": "2026-11-02_10-00-00_aaaa"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      }
+     }
+    },
+    "sum": {
+     "mtg/logrows": "b5687dc0fa01a84b382f63a95bb8ec30afcdfb026cc037bea37107b3068c45d6",
+     "mtg/logs": "5537a1d1fa23e121e39467e9e63abfd0b1ee8139e032795dcbd66048350e574a"
+    },
+    "t": "snap",
+    "takeover": {
+     "at": 1793600001000,
+     "dev": "bbbb",
+     "device": "phone"
+    },
+    "top": {
+     "aaaa": [
+      1793600001000,
+      0,
+      "aaaa"
+     ]
+    },
+    "v": 1
+   },
+   "name": "snap_takeover_carried",
+   "now": 1793600002000,
+   "snap": {
+    "dev": "aaaa",
+    "kinds": {
+     "mtg/logrows": {
+      "2026-11-02_10-00-00_aaaa|1793600000000000": {
+       "alive": [
+        1793600000000,
+        1,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "cond": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "cond": "near_mint"
+         }
+        ],
+        "foil": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "foil": false
+         }
+        ],
+        "id": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "id": "a-id_0"
+         }
+        ],
+        "lang": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "lang": "en"
+         }
+        ],
+        "name": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "name": "A"
+         }
+        ],
+        "number": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "number": "1"
+         }
+        ],
+        "pack": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "pack": 0
+         }
+        ],
+        "price": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "price": 125
+         }
+        ],
+        "set": [
+         [
+          1793600000000,
+          1,
+          "aaaa"
+         ],
+         {
+          "set": "tst"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      },
+      "2026-11-02_10-00-00_aaaa|1793600001000000": {
+       "alive": [
+        1793600000000,
+        2,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": [
+        1793600001000,
+        0,
+        "aaaa"
+       ],
+       "f": {},
+       "gone": 0,
+       "made": true
+      }
+     },
+     "mtg/logs": {
+      "2026-11-02_10-00-00_aaaa": {
+       "alive": [
+        1793600000000,
+        0,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": null,
+       "f": {
+        "collection": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "collection": true
+         }
+        ],
+        "ended": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "ended": 1793600100000
+         }
+        ],
+        "info": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "info": "{\"kind\":\"cards\",\"title\":\"2026-11-02_10-00-00_aaaa\"}"
+         }
+        ],
+        "kind": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "kind": "cards"
+         }
+        ],
+        "packs": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "packs": [
+           [
+            1793600000000,
+            "booster"
+           ]
+          ]
+         }
+        ],
+        "started": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "started": 1793600000000
+         }
+        ],
+        "title": [
+         [
+          1793600000000,
+          0,
+          "aaaa"
+         ],
+         {
+          "title": "2026-11-02_10-00-00_aaaa"
+         }
+        ]
+       },
+       "gone": 0,
+       "made": true
+      }
+     }
+    },
+    "sum": {
+     "mtg/logrows": "b5687dc0fa01a84b382f63a95bb8ec30afcdfb026cc037bea37107b3068c45d6",
+     "mtg/logs": "5537a1d1fa23e121e39467e9e63abfd0b1ee8139e032795dcbd66048350e574a"
+    },
+    "t": "snap",
+    "takeover": {
+     "at": 1793600001000,
+     "dev": "bbbb",
+     "device": "phone"
+    },
+    "top": {
+     "aaaa": [
+      1793600001000,
+      0,
+      "aaaa"
+     ]
+    },
+    "v": 1
+   }
+  },
+  {
+   "about": "deleted entries in a snap: no fields, counters only net (here 0); an older change of another device after the delete stays out",
+   "name": "snap_purged",
+   "now": 1793600003000,
+   "ops": [
+    {
+     "a": 1,
+     "c": "mtg/decks",
+     "h": [
+      1793600002000,
+      0,
+      "aaaa"
+     ],
+     "k": "d1",
+     "o": "aaaa.1793600002000.0",
+     "s": {
+      "name": "Burn",
+      "notes": "for Max"
+     }
+    },
+    {
+     "a": 1,
+     "c": "mtg/deckcards",
+     "d": {
+      "n": 3
+     },
+     "h": [
+      1793600002000,
+      1,
+      "aaaa"
+     ],
+     "k": "d1|s1|main",
+     "o": "aaaa.1793600002000.1"
+    },
+    {
+     "c": "mtg/decks",
+     "h": [
+      1793600003000,
+      0,
+      "aaaa"
+     ],
+     "k": "d1",
+     "o": "aaaa.1793600003000.0",
+     "x": 1
+    },
+    {
+     "c": "mtg/deckcards",
+     "h": [
+      1793600003000,
+      1,
+      "aaaa"
+     ],
+     "k": "d1|s1|main",
+     "o": "aaaa.1793600003000.1",
+     "x": 3
+    },
+    {
+     "c": "mtg/decks",
+     "h": [
+      1793600000500,
+      0,
+      "bbbb"
+     ],
+     "k": "d1",
+     "o": "bbbb.1793600000500.0",
+     "s": {
+      "name": "Burn 2"
+     }
+    }
+   ],
+   "snap": {
+    "dev": "aaaa",
+    "kinds": {
+     "mtg/deckcards": {
+      "d1|s1|main": {
+       "alive": [
+        1793600002000,
+        1,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": [
+        1793600003000,
+        1,
+        "aaaa"
+       ],
+       "f": {},
+       "gone": 0,
+       "made": true
+      }
+     },
+     "mtg/decks": {
+      "d1": {
+       "alive": [
+        1793600002000,
+        0,
+        "aaaa"
+       ],
+       "cnt": {},
+       "dead": [
+        1793600003000,
+        0,
+        "aaaa"
+       ],
+       "f": {},
+       "gone": 0,
+       "made": true
+      }
+     }
+    },
+    "sum": {
+     "mtg/deckcards": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "mtg/decks": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    "t": "snap",
+    "top": {
+     "aaaa": [
+      1793600003000,
+      1,
+      "aaaa"
+     ],
+     "bbbb": [
+      1793600000500,
+      0,
+      "bbbb"
+     ]
+    },
+    "v": 1
+   }
+  }
+ ],
+ "sync_fields": [
+  "id",
+  "lang",
+  "foil",
+  "finish",
+  "edition",
+  "cond",
+  "grade_by",
+  "grade",
+  "cond_note"
+ ]
+}

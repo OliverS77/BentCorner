@@ -23,6 +23,37 @@ def eur(v):
     return "–" if v is None else f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def value(v):
+    """A CARD value (market price) – "" in Orbit's Core (legal 06.11.); eur() stays for money between friends."""
+    from system import orbit
+    return eur(v) if orbit.prices_shown() else ""
+
+
+PAY_NOTE = "Payment happens between you – Bent°Corner handles no money."
+
+
+def money_text(t, my_id):
+    """The amount in a ticket as the proposal of whoever made it – also in Orbit's Core (legal/lead 06.11.: a sum a
+    friend entered is no market value; hiding it would hide part of the deal). No card values, no sums, no balance.
+    -> "" without money."""
+    from collection import ticket
+    m = ticket.money_from_me(t, my_id) if t else 0.0   # + I pay, − I get
+    if abs(m) < 0.01:
+        return ""
+    if ticket.kind(t) == "f":   # closing ticket: the deal is agreed – who pays whom, nobody "wants" (lead 06.11.)
+        sd = ticket.side(t, my_id)
+        other = (sd[2][1] if sd else "") or ""
+        if m > 0:
+            return tr(f"You pay {eur(m)} to {other}") if other else tr(f"You pay {eur(m)} to your friend")
+        return tr(f"{other} pays you {eur(-m)}") if other else tr(f"Your friend pays you {eur(-m)}")
+    mine = (t.get("f") or ["", ""])[0] == my_id         # who made this version: me or the friend
+    if mine:
+        other = (t.get("o") or ["", ""])[1] or "?"
+        return tr(f"You add {eur(m)}") if m > 0 else tr(f"You want {eur(-m)} from {other}")
+    name = (t.get("f") or ["", ""])[1] or "?"
+    return tr(f"{name} adds {eur(-m)}") if m < 0 else tr(f"{name} wants {eur(m)} from you")
+
+
 # ---------- Cards of one column ----------
 class Browser(QtCore.QObject):
     """Cards with search, filter chips and a grid/list toggle. checkable: checkmarks for selecting/deselecting.
@@ -93,6 +124,9 @@ class Browser(QtCore.QObject):
             self.info = tr(f"{n} cards · {eur(chk)}") + " " + tr(f"(All: {eur(val)})")
         else:
             self.info = tr(f"{n} cards · {eur(val)}")
+        from system import orbit
+        if not orbit.prices_shown():   # Orbit's Core: only the count
+            self.info = tr(f"{n} cards")
         self.empty = "" if rows else (self.empty_text if not self.all_rows
                                       else tr("Nothing found – change the search or filters."))
         self.changed.emit()
@@ -116,16 +150,40 @@ class Browser(QtCore.QObject):
         self.checks_changed.emit()
 
 
+def same_cards(items, key, count, add):
+    """Identical cards once with the summed count ("2× Bolt" instead of two lines) – first place kept, order unchanged.
+    key(x) -> what makes two entries the same card, count(x) -> its count, add(x, n) -> a copy with count n."""
+    out, at = [], {}
+    for x in items:
+        k = key(x)
+        if k in at:
+            i = at[k]
+            out[i] = add(out[i], count(out[i]) + count(x))
+        else:
+            at[k] = len(out)
+            out.append(x)
+    return out
+
+
+def same_rows(rows):
+    """Image rows ({"name", "set", "number", "lang", "foil", "count", …}): identical cards in one row."""
+    return same_cards(rows, lambda r: (r.get("name"), str(r.get("set")).upper(), str(r.get("number")),
+                                       r.get("lang") or "en", bool(r.get("foil"))),
+                      lambda r: int(r.get("count") or 1), lambda r, n: dict(r, count=n))
+
+
 # ---------- Trade offer as an image (trade ticket) ----------
 def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
     """me/friend: (name, card back). Rows: [{"name", "set", "number", "count", "price", "lang", "foil"}].
     Portrait like a till receipt – on a phone you read it by zooming in. tk: ticket (ticket.new) – then the
     receipt carries a tear-off stub at the bottom with a pixel code that Bent°Corner can read back (Trade → Import).
-    priced=False (Orbit's Core, legal 03.11.): only the cards and counts – no prices, no TOTAL, no money, no balance.
+    priced=False (Orbit's Core, legal 03.11.): only the cards and counts – no prices, no TOTAL, no balance; an amount
+    the partners entered themselves is still printed (lead/legal 06.11.: it is part of the deal, not a value).
     -> QImage (2× for sharp rendering)."""
     import json
     from collection import ticket
     S = 2
+    get_rows, give_rows = same_rows(get_rows), same_rows(give_rows)   # the same card twice: one line "2×"
     W = ticket.RECEIPT.W
     L, R = 40, W - 40          # text margins
     SHOW = 30                  # this many cards per side are printed legibly on the receipt (the code carries all)
@@ -136,7 +194,7 @@ def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
     def side_h(rows):
         n = min(len(rows), SHOW)
         return 40 + max(1, n) * ROW + (26 if len(rows) > SHOW else 0) + (50 if priced else 32)
-    money = int(tk.get("m") or 0) / 100 if tk and priced else 0.0
+    money = int(tk.get("m") or 0) / 100 if tk else 0.0
     H = 262 + side_h(get_rows) + side_h(give_rows) + (40 if abs(money) >= 0.01 else 0) + (96 if priced else 40) + stub
     img = QtGui.QImage(W * S, H * S, QtGui.QImage.Format_ARGB32_Premultiplied)
     img.setDevicePixelRatio(S)
@@ -187,7 +245,9 @@ def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
     if tk:
         kind = tr("COMPLETION") if ticket.kind(tk) == "f" else (
             tr("TRADE TICKET") if int(tk.get("n") or 1) == 1 else tr(f"COUNTEROFFER {int(tk.get('n') or 1)}"))
-    text(QRectF(L, 72, R - L, 20), Qt.AlignHCenter, kind + "  ·  " + time.strftime("%d.%m.%Y %H:%M"), 13, muted, True)
+    when = time.localtime(int(tk["t"]) if tk and tk.get("t") else None)   # the ticket's date, not when it is shown
+    text(QRectF(L, 72, R - L, 20), Qt.AlignHCenter, kind + "  ·  " + time.strftime("%d.%m.%Y %H:%M", when), 13,
+         muted, True)
     if tk:
         text(QRectF(L, 94, R - L, 20), Qt.AlignHCenter, tr("TRADE") + " " + str(tk.get("x") or tk.get("id") or "").upper(),
              13, muted)
@@ -235,7 +295,8 @@ def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
         text(QRectF(L, y + 12, R - L, 28), Qt.AlignRight | Qt.AlignVCenter, eur(total), 22, ink, display=True)
         y += 50
     if abs(money) >= 0.01:   # money on top (from f to o, reversed if negative)
-        payer, payee, m = (tk.get("f") or ["", "?"])[1], (tk.get("o") or ["", "?"])[1], money
+        # a side without a name is me (my profile has none): the same name as in the header
+        payer, payee, m = (tk.get("f") or ["", ""])[1] or me[0], (tk.get("o") or ["", ""])[1] or me[0], money
         if m < 0:
             payer, payee, m = payee, payer, -m
         text(QRectF(L, y, R - L, 30), Qt.AlignLeft | Qt.AlignVCenter, tr(f"+ {eur(m)} from {payer} to {payee}"), 17,

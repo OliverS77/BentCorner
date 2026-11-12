@@ -24,7 +24,6 @@ Drittanbietern). Die vollständigen Lizenztexte liegen im Programmordner unter `
 | SQLite (`sqlite3.dll`) | 3.49.1 | blessing (Public Domain) | https://sqlite.org/ |
 | libffi (`libffi-8.dll`) | 3.4.x (Version nicht ausgelesen) | MIT | https://sourceware.org/libffi/ |
 | OpenCV (opencv-python) | 4.14.0 (Paket 4.14.0.94) | Apache-2.0 ³ | https://opencv.org/ · https://github.com/opencv/opencv-python |
-| FFmpeg (`cv2/opencv_videoio_ffmpeg4140_64.dll`, mit libvpx und libaom) | 7.1 (libavcodec 61.19.100) | LGPL-2.1-or-later (libvpx, libaom: BSD) ⁴ | https://ffmpeg.org/ · https://github.com/opencv/opencv_3rdparty/tree/ffmpeg/4.x |
 | NumPy | 2.5.3 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | https://numpy.org/ |
 | OpenBLAS (in NumPy, mit LAPACK und GCC-Laufzeit) | 0.3.34 | BSD-3-Clause; LAPACK: BSD-3-Clause-Open-MPI; GCC-Laufzeit: GPL-3.0-or-later WITH GCC-exception-3.1 | https://www.openblas.net/ |
 | ONNX Runtime (Microsoft), Paket onnxruntime-directml | 1.24.4 | MIT ⁵ | https://github.com/microsoft/onnxruntime |
@@ -82,12 +81,9 @@ SQLite, libffi); ihre Hinweise stehen im Python-Lizenztext (`licenses/Python-LIC
 Protocol Buffers, FlatBuffers, quirc und Intel IPP ICV (Intel Simplified Software License). Alle Texte stehen in
 `licenses/opencv-LICENSE-3RD-PARTY.txt` (aus dem opencv-python-Paket).
 
-⁴ **FFmpeg und GEOS unter LGPL-2.1:** beide liegen als eigene DLL im Programmordner
-(`cv2\opencv_videoio_ffmpeg4140_64.dll`, `Shapely.libs\geos*.dll`) und können ersetzt werden. Das FFmpeg ist ohne
-GPL- und „nonfree“-Teile gebaut; OpenH264 von Cisco wird nicht mitgeliefert. Quellcode: FFmpeg
-https://ffmpeg.org/download.html (Bauskripte: https://github.com/opencv/opencv_3rdparty/tree/ffmpeg/4.x), GEOS
-https://libgeos.org/usage/download/; auf Anfrage schicken wir ihn auch selbst, mindestens drei Jahre nach der letzten
-Weitergabe dieser Version. Text der LGPL-2.1 unter `licenses/`.
+⁴ **GEOS 3.13.1 unter LGPL-2.1:** liegt als eigene DLL im Programmordner (`Shapely.libs\geos*.dll`) und kann
+ersetzt werden. Quellcode: https://libgeos.org/usage/download/; auf Anfrage schicken wir ihn auch selbst, mindestens drei
+Jahre nach der letzten Weitergabe dieser Version. Text der LGPL-2.1 unter `licenses/`.
 
 ⁵ **ONNX Runtime** enthält Code Dritter; die Hinweise stehen in `licenses/onnxruntime-ThirdPartyNotices.txt`.
 

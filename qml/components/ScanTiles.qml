@@ -341,7 +341,7 @@ Item {
                                    font.letterSpacing: 1.4; font.bold: pc.cur }
                         }
                         Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                               text: pc.modelData.cards + " " + shell.text("cards") + " · " + pc.modelData.total
+                               text: pc.modelData.cards + " " + shell.text("cards") + (pc.modelData.total ? " · " + pc.modelData.total : "")
                                color: pc.cur ? T.text2 : T.muted; font.family: T.font; font.pixelSize: Math.round(11 * g.fz) }
                         MouseArea { id: pkm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onPressed: forceActiveFocus()
@@ -552,7 +552,12 @@ Item {
                     family: T.display; pixelSize: Math.round(24 * g.fz); bold: true; color: T.text
                     commit: function (v) { return g.tb.setSessionField("title", v) }
                 }
+                PriceVeil {   // Orbit's Core: the short line where the value stood
+                    full: false; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                    width: 170; height: 30; visible: !shell.pricesOn
+                }
                 Text { id: sVal; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                       width: shell.pricesOn ? implicitWidth : 170
                        text: g.s.value || ""; color: T.top; font.family: T.display; font.pixelSize: Math.round(24 * g.fz); font.weight: Font.DemiBold }
             }
             Text { width: parent.width; height: 21; elide: Text.ElideRight; color: T.muted; font.family: T.font; font.pixelSize: Math.round(12 * g.fz)

@@ -23,6 +23,7 @@ import uuid
 import zlib
 
 from scanner.common import MINE
+from system import orbit
 from system.i18n import tr
 
 FRIENDS = MINE / "friends"
@@ -187,6 +188,8 @@ def save_wishes(items):
     from system import undo
     undo.before_write(WISH_FILE, "Wunschliste")
     WISH_FILE.write_text(json.dumps({"version": 1, "items": items}, ensure_ascii=False, indent=1), "utf-8")
+    from collection import syncrun
+    syncrun.saved(WISH_FILE, {"version": 1, "items": items})
 
 
 def add_wish(name, count=1, set_code=None, number=None, note="", list_id=MAIN_WISH):
@@ -349,6 +352,8 @@ def _write_lists(d, game=None):
         from system import undo
         undo.before_write(LISTS_FILE, "Listen")
     f.write_text(json.dumps(d, ensure_ascii=False, indent=1), "utf-8")
+    from collection import syncrun
+    syncrun.saved(f, d)
 
 
 def lists(kind):
@@ -955,21 +960,44 @@ COLUMNS = [("count", "Anzahl"), ("name", "Name"), ("set", "Set"), ("number", "Nu
 PRESET_COLUMNS = {"excel": ["count", "name", "set", "number", "lang", "foil", "rarity", "price"]}
 
 
-def export_custom(groups, path, columns, db_rows=None):
-    """CSV with freely chosen columns (semicolon, for Excel). db_rows: {sid: row} for mana value/type/text."""
+# card text in a shared file (legal 05.11.): never for these games, and elsewhere only with the "Quelle" column
+NO_TEXT_GAMES = ("lorcana", *__import__("games").extra("NO_TEXT_GAMES", ()))
+WISH_COLUMNS = ("count", "name", "set")   # a wish list row: only these (legal 05.11.)
+
+
+def columns_for(game):
+    """The columns "Share collection" offers for this game: type and rules text not for NO_TEXT_GAMES."""
+    return [(k, lb) for k, lb in COLUMNS if not (game in NO_TEXT_GAMES and k in ("type", "text"))]
+
+
+def export_custom(groups, path, columns, db_rows=None, game=None, locale=()):
+    """CSV with freely chosen columns (semicolon, for Excel). db_rows: {sid: row} for mana value/type/text.
+    game: the cards' game – NO_TEXT_GAMES never get type or rules text; with rules text the row's source comes
+    last as "Quelle" (collection/exporttext.py, legal 05.11.); locale: sids from ygo-locale.sqlite (YGOJSON).
+    A wish list row (g["wish"]) only ever gets count, name and set – card data only for cards you own (legal 05.11.;
+    today the groups come from the collection only, this guards any later wish rows)."""
+    from collection import exporttext
     db_rows = db_rows or {}
     names = dict(COLUMNS)
+    allowed = {k for k, _ in columns_for(game)}
+    columns = [c for c in columns if c in allowed]
+    source = "text" in columns and game in exporttext.SOURCE
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
-        w.writerow([names[c] for c in columns])
+        w.writerow([names[c] for c in columns] + (["Quelle"] if source else []))
         for g in groups:
             r = db_rows.get(g.get("sid")) or {}
             p = g.get("eur_foil") if g.get("foil") else g.get("eur")
+            if not orbit.prices_shown():   # Orbit's Core: the column stays (other programs read it), empty
+                p = None
             vals = {"count": g["count"], "name": g["name"], "set": g["set"], "number": g["number"],
                     "lang": (g.get("lang") or "en").upper(), "foil": "ja" if g.get("foil") else "",
                     "rarity": g.get("rarity") or "", "price": "" if p is None else f"{p:.2f}".replace(".", ","),
                     "mv": r.get("cmc", ""), "type": r.get("type_line", ""), "text": r.get("oracle_text", "")}
-            w.writerow([vals[c] for c in columns])
+            if g.get("wish"):
+                vals = {k: (v if k in WISH_COLUMNS else "") for k, v in vals.items()}
+            w.writerow([vals[c] for c in columns] + ([("" if g.get("wish") else exporttext.SOURCE[game] + (
+                exporttext.YGOJSON if game == "yugioh" and g.get("sid") in locale else ""))] if source else []))
     return len(groups)
 
 
@@ -997,12 +1025,30 @@ def export_deckbox(groups, path):
 
 
 # ---------- Import ----------
+# a file from outside (review 08.11. H2-4 / Gordon B8): a list or a friend file is small – far below these
+FILE_MAX = 32 * 1024 ** 2
+UNPACKED_MAX = 64 * 1024 ** 2
+
+
 def read_file(path):
-    """File -> {"kind": "bentcorner"|"csv"|"text", "data": …}. Raises ValueError for unknown formats."""
+    """File -> {"kind": "bentcorner"|"csv"|"text", "data": …}. Raises ValueError for unknown formats or files that are
+    too large (also once unpacked)."""
+    import os
+    if os.path.getsize(path) > FILE_MAX:
+        raise ValueError(tr("The file is too large."))
     with open(path, "rb") as f:
-        raw = f.read()
+        raw = f.read(FILE_MAX + 1)
     if raw.startswith(MAGIC):
-        d = json.loads(zlib.decompress(raw[len(MAGIC):]).decode("utf-8"))
+        z = zlib.decompressobj()
+        try:
+            body = z.decompress(raw[len(MAGIC):], UNPACKED_MAX)
+        except zlib.error:
+            raise ValueError(tr("Not a Bent°Corner file"))
+        if z.unconsumed_tail:
+            raise ValueError(tr("The file is too large."))
+        d = json.loads(body.decode("utf-8"))
+        if not isinstance(d, dict):
+            raise ValueError(tr("Not a Bent°Corner file"))
         if d.get("app") != "BentCorner" or not d.get("id"):
             raise ValueError(tr("Not a Bent°Corner file"))
         return {"kind": "bentcorner", "data": d}
@@ -1056,7 +1102,7 @@ def parse_csv(text):
                 col[key] = head.index(n)
                 break
     if "name" not in col:
-        raise ValueError("Keine Spalte „Name“ gefunden")
+        raise ValueError(tr("No “Name” column found"))   # was German in every language (ports 06.11.)
     from cards import conditions
     # "LP" means Light Played on ManaBox/Cardmarket, Lightly Played on Moxfield/TCGplayer
     source = "manabox" if "manabox id" in head else ("cardmarket" if "cardmarket id" in head
@@ -1071,8 +1117,9 @@ def parse_csv(text):
             continue
         try:
             n = int(float(val("count") or 1))
-        except ValueError:
+        except (ValueError, OverflowError):   # „inf“, „1e999“ (review 08.11.)
             n = 1
+        n = min(n, 99_999)   # review 08.11. H2-2: one entry per copy – never millions (bulk lands: thousands are fine)
         lang = val("lang").lower()
         lang = _LANG_NAMES.get(lang, lang if len(lang) <= 3 and lang else "en")
         foil = val("foil").lower() in ("foil", "etched", "true", "yes", "ja", "1", "x")
@@ -1118,7 +1165,7 @@ def friend_from_import(parsed, name=None, fid=None, as_new=False):
     if parsed["kind"] == "bentcorner":
         d = parsed["data"]
         keep_id = not as_new and SAFE_ID.fullmatch(str(d.get("id") or ""))   # a strange id from a file: a new one
-        out = {"id": d["id"] if keep_id else uuid.uuid4().hex, "name": name or d.get("name") or "Freund",
+        out = {"id": d["id"] if keep_id else uuid.uuid4().hex, "name": name or d.get("name") or tr("Friend"),
                "back": d.get("back"), "date": d.get("date") or now, "imported": now, "what": d.get("what"),
                "cards": d.get("c") or [], "wants": d.get("w") or [], "source": "bentcorner"}
         # library: its own field – or "c" if the whole collection was sent
@@ -1127,7 +1174,7 @@ def friend_from_import(parsed, name=None, fid=None, as_new=False):
             out["library"] = lib
     else:
         rows = [r[:7] for r in parsed["data"]]   # no condition (column 8 only exists on collection import)
-        out = {"id": fid or uuid.uuid4().hex, "name": name or "Freund", "back": None, "date": now, "imported": now,
+        out = {"id": fid or uuid.uuid4().hex, "name": name or tr("Friend"), "back": None, "date": now, "imported": now,
                "what": "all", "cards": rows, "wants": [], "source": parsed["kind"], "library": rows}
     old = friend(out["id"])
     if old and not as_new:

@@ -90,6 +90,7 @@ def migration(items, logs, bookings, when, card_of=None):
     Undo) is a minus line with the card as its newest line by hand had it (03.11.2026: skipping it left a gap of
     1 and a warning at every logs check). card_of is kept for callers (no longer needed)."""
     from collection.collection import CARD_KEYS, price
+    from collection import synclogs
     from cards import conditions
     gap = diff(items, logs, bookings)
     if not gap:
@@ -116,6 +117,7 @@ def migration(items, logs, bookings, when, card_of=None):
         src = it if it is not None else last.get(k[4:])
         if src is None:   # a uid no line knows (can't happen: its want came from a line)
             continue
+        t = synclogs.free_added(lines, t)   # its own µs (the row key in the sync)
         line = {kk: src.get(kk) for kk in CARD_KEYS}
         line.update(lang=src.get("lang") or "en", foil=bool(src.get("foil")), delta=delta,
                     uid=it["uid"] if it is not None else src["uid"],
@@ -127,7 +129,7 @@ def migration(items, logs, bookings, when, card_of=None):
         t += 1e-6
     if not lines and not gone:
         return None
-    sid = MIGRATION_PREFIX + __import__("time").strftime("%Y-%m-%d", __import__("time").localtime(when))
+    sid = synclogs.new_id(MIGRATION_PREFIX + __import__("time").strftime("%Y-%m-%d", __import__("time").localtime(when)))
     d = {"id": sid, "started": when - 1, "ended": when, "collection": False,
          "info": {"kind": "manual", "title": "", "migrated": when, "active": False},
          "packs": [{"opened": when, "type": "manual", "cards": lines}]}

@@ -336,7 +336,7 @@ class BinderBackend(QtCore.QObject):
                     except Exception:  # noqa: BLE001 – without image: name in the card outline
                         img = ""
                 cells.append({"index": i, "empty": False, "name": s.get("name") or "", "img": img,
-                              "have": bool(owned.get((s["set"], s["number"]))), "hl": i in (self.hl, self.drop_hl),
+                              "have": bool(owned.get(binders.key(s))), "hl": i in (self.hl, self.drop_hl),
                               "setLine": f"{s['set'].upper()} #{s['number']}" + (" · Foil" if s.get("foil") else "")})
             out.append(cells)
         return out
@@ -539,7 +539,7 @@ class BinderBackend(QtCore.QObject):
             return
         miss = binders.missing(self.b, self._owned())
         for s in miss:
-            trade.add_wish(s["name"], 1, s["set"], s["number"])
+            trade.add_wish(s.get("name") or "", 1, *binders.key(s))
         self.ctrl.trade_changed()
         self.ctrl.stream_toast(tr(f"{len(miss)} missing cards added to the wish list"))
 
@@ -580,8 +580,7 @@ def share_put(ctrl, game, b, quiet=False):
     s = ctrl.settings
     items = ctrl.collection.items if game == games.current().key else games.collection_items(game)
     payload = binders.share_payload(b, binders.owned_map(items))
-    aud = relay.state(s).get("audience") or {}
-    codes = relay.audience_codes(s, aud.get("mode") or "all", aud.get("codes") or ())
+    codes = relay.share_codes(s)   # the friends switched on ("Shared with friends")
     fp = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
     relay.state(s).setdefault("binder_fp", {})[f"{game}/binder-{b['id']}"] = fp
     ctrl._relay_bg("binder_put_quiet" if quiet else "binder_put",
@@ -597,6 +596,32 @@ def share_withdraw(ctrl, game, bid):
         ctrl._relay_bg("binder_gone", lambda: relay.withdraw(s, game, f"binder-{bid}"))
 
 
+def all_binders(ctrl):
+    """Every binder of all (ready) games: [(game, binder)] – read straight from each game's binders.json."""
+    import json
+    import games
+    cur = games.current().key
+    out = []
+    for key, _n, ready in games.GAMES:
+        if not ready:
+            continue
+        if key == cur:
+            items = binders.load()
+        else:
+            f = games.mine(key) / "binders.json"
+            try:
+                items = json.loads(f.read_text("utf-8")).get("binders") or [] if f.exists() else []
+            except (OSError, ValueError):
+                items = []
+        out += [(key, b) for b in items]
+    return out
+
+
+def shared_binders(ctrl):
+    """The binders shared with friends, all games – what auto_share posts and "Shared with friends" shows."""
+    return [(g, b) for g, b in all_binders(ctrl) if b.get("shared")]
+
+
 def auto_share(ctrl, force=False):
     """Lists tick (every 5 min.): re-share shared binders if they have changed (including "have" through
     new cards) or the last state is older than one day. All games. force: re-share all of them now (new key –
@@ -610,26 +635,13 @@ def auto_share(ctrl, force=False):
         return
     fps = relay.state(s).setdefault("binder_fp", {})
     cur = games.current().key
-    for key, _n, ready in games.GAMES:
-        if not ready:
-            continue
-        if key == cur:
-            items = binders.load()
-        else:
-            f = games.mine(key) / "binders.json"
-            try:
-                items = json.loads(f.read_text("utf-8")).get("binders") or [] if f.exists() else []
-            except (OSError, ValueError):
-                items = []
-        for b in items:
-            if not b.get("shared"):
-                continue
-            owned = binders.owned_map(ctrl.collection.items if key == cur else games.collection_items(key))
-            fp = hashlib.sha256(json.dumps(binders.share_payload(b, owned), sort_keys=True).encode()).hexdigest()[:16]
-            post = relay.posted(s, key, f"binder-{b['id']}") or {}
-            old = time.time() - float(post.get("t") or 0) > 22 * 3600
-            if force or not post or old or fps.get(f"{key}/binder-{b['id']}") != fp:
-                share_put(ctrl, key, b, quiet=True)
+    for key, b in shared_binders(ctrl):
+        owned = binders.owned_map(ctrl.collection.items if key == cur else games.collection_items(key))
+        fp = hashlib.sha256(json.dumps(binders.share_payload(b, owned), sort_keys=True).encode()).hexdigest()[:16]
+        post = relay.posted(s, key, f"binder-{b['id']}") or {}
+        old = time.time() - float(post.get("t") or 0) > 22 * 3600
+        if force or not post or old or fps.get(f"{key}/binder-{b['id']}") != fp:
+            share_put(ctrl, key, b, quiet=True)
 
 
 def rename_in(game, bid, name):
@@ -655,4 +667,7 @@ def rename_in(game, bid, name):
 
 
 def _eur(v):
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: a binder shows no value
+        return ""
     return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")

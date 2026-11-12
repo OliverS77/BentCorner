@@ -1,0 +1,6 @@
+{
+ "version": 1,
+ "about": "Online backup expiry (box VAULT_TTL; legal/lead 07.11.2026): the server deletes it ttl_days after its last signed get/put; a device warns warn_days after ITS last vault access – locally, without network, also outside Full Orbit. Desktop: collection/syncrun.py expiry(); web: the same rule.",
+ "warn_days": 150,
+ "ttl_days": 183
+}

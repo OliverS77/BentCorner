@@ -54,8 +54,10 @@ class Shell(QtCore.QObject):
     toast = QtCore.Signal(str)
     showRequested = QtCore.Signal(str)
     navChanged = QtCore.Signal()
+    orbitChanged = QtCore.Signal()   # the Orbit level changed: prices shown or not (orbit.prices_shown)
     trimPages = QtCore.Signal()   # minimized: tear down pages (app.trim_memory), Main.qml rebuilds them when restored
     busyChanged = QtCore.Signal()   # ui/busy.py: the loading sign over the window while the GUI thread works
+    noticeChanged = QtCore.Signal()   # the notice at the top (ui/expiryui.py: the online backup's expiry, legal 07.11.)
 
     def __init__(self, ctrl):
         super().__init__(ctrl)
@@ -93,6 +95,7 @@ class Shell(QtCore.QObject):
             log.error("QML: Main.qml could not be loaded")
         else:
             self._log_render_loop(self.window)
+        QtCore.QTimer.singleShot(4000, self.refresh_notice)   # after the sync set up its status (expiry)
 
     @staticmethod
     def _log_render_loop(win):
@@ -113,6 +116,40 @@ class Shell(QtCore.QObject):
         win.sceneGraphInitialized.connect(first_frame, QtCore.Qt.DirectConnection)
 
     # ---------- hook into the page logic (ui.streamwindow.StreamWindow) ----------
+    # ---------- the notice at the top: closable, no pop-up (legal 07.11.: the online backup's expiry) ----------
+    _notice = None
+
+    def refresh_notice(self):
+        from ui import expiryui
+        try:
+            self._notice = expiryui.notice_due(self.ctrl)
+        except Exception:  # noqa: BLE001 – a notice is never worth an error
+            log.exception("notice")
+            self._notice = None
+        self.noticeChanged.emit()
+
+    @QtCore.Property(str, notify=noticeChanged)
+    def noticeText(self):
+        return (self._notice or {}).get("text", "")
+
+    @QtCore.Property(str, notify=noticeChanged)
+    def noticeKey(self):
+        k = (self._notice or {}).get("key", "")
+        return tr(k) if k else ""
+
+    @QtCore.Slot()
+    def noticeAct(self):
+        from ui import expiryui
+        expiryui.notice_closed(self.ctrl)
+        expiryui.act(self.ctrl)
+        self.refresh_notice()
+
+    @QtCore.Slot()
+    def noticeClose(self):
+        from ui import expiryui
+        expiryui.notice_closed(self.ctrl)   # the frame on „Your devices“ stays
+        self.refresh_notice()
+
     def _hook_stream(self):
         st = self.stream
         self.navChanged.connect(self._nav_all_games)   # ∞ on the game button (price alerts of all games)
@@ -133,7 +170,9 @@ class Shell(QtCore.QObject):
         def set_badge(key, on):
             """on: True = dot, a number > 0 = dot with number, otherwise gone."""
             b = dict(self._badges)
-            if on:
+            if on == "pulse":   # a request waiting to be seen: the dot with a quick drop (PLAN-EINFACH D)
+                b[key] = "pulse"
+            elif on:
                 b[key] = int(on) if isinstance(on, int) and not isinstance(on, bool) else True
             else:
                 b.pop(key, None)
@@ -182,6 +221,7 @@ class Shell(QtCore.QObject):
         self.engine.rootContext().setContextProperty("tradeLists", self.backends["trade"].lists_b)   # TRADE-SPLIT
         self.engine.rootContext().setContextProperty("tradeAlarms", self.backends["trade"].alarms_b)
         self.engine.rootContext().setContextProperty("tradeFriends", self.backends["trade"].friends_b)
+        self.engine.rootContext().setContextProperty("tradeShared", self.backends["trade"].shared_b)
         from ui import qsessions
         self.register("sessions", qsessions.SessionsBackend(self.ctrl), "SessionsPage.qml")
         from ui import qstats
@@ -257,6 +297,51 @@ class Shell(QtCore.QObject):
     @QtCore.Property(str, notify=navChanged)
     def pageAnim(self):
         return self.ctrl.settings.get("page_anim") or "flip"
+
+    @QtCore.Property(bool, notify=orbitChanged)
+    def pricesOn(self):
+        """Card prices may be shown (Near Orbit on) – in Core a PriceVeil stands where they would be."""
+        from system import orbit
+        return orbit.prices_shown()
+
+    @QtCore.Property(bool, notify=orbitChanged)
+    def friendsOn(self):
+        """Friends and trade tickets (Full Orbit) – otherwise a veil with the friends note stands in their place."""
+        from system import orbit
+        return orbit.friends_shown()
+
+    @QtCore.Property(bool, constant=True)
+    def fileFriends(self):
+        """Friends by trade file (orbit.FILE_FRIENDS) – off; the buttons stay in the code for a comeback."""
+        from system import orbit
+        return orbit.FILE_FRIENDS
+
+    @QtCore.Property(bool, constant=True)
+    def syncBuilt(self):
+        """The sync is built in (collection/syncrun.available()) – only then „Devices“ in the profile menu."""
+        try:
+            from collection import syncrun
+            return bool(syncrun.available())
+        except ImportError:
+            return False
+
+    @QtCore.Slot()
+    def profileEdit(self):
+        """The profile menu's „Edit“: the profile page with the name field focused (qprofile reads focus_profile_name)."""
+        self.ctrl.focus_profile_name = True
+        self.pick("profile", 0)
+
+    @QtCore.Slot()
+    def openDevices(self):
+        """The profile menu's „Devices“: Settings → Your devices (sync builds only)."""
+        self.ctrl.stream.show_page("settings", back=True)
+        self.ctrl.show_settings("devices")
+
+    @QtCore.Slot()
+    def openOrbitSettings(self):
+        """The veil's "Change level": only opens Settings → Friends & privacy – the user moves the slider himself."""
+        self.ctrl.stream.show_page("settings", back=True)
+        self.ctrl.show_settings("privacy")
 
     @QtCore.Slot(str, int, result=str)
     def pageSourceFor(self, key, _rev):

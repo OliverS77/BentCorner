@@ -24,7 +24,7 @@ from system import userprofile
 from system.i18n import tr
 from scanner.common import image_rel
 from ui.librarycore import DetailHost, LibraryCore
-from collection.tradelib import Browser, offer_image
+from collection.tradelib import PAY_NOTE, Browser, money_text, offer_image, same_cards
 from ui import qdialogs
 
 
@@ -914,7 +914,7 @@ class TradePage(QtCore.QObject):
                           rows(get), rows(give), t, priced=self.priced())
         from collection import collectibles
         collectibles.archive(t, "shown", img=img)
-        self.ctrl.go_export("offer", img=img)
+        self.ctrl.go_export("offer", img=img, ticket=t)
 
     def book_offer(self, answer=None):
         """'Book directly' (without a ticket): actually trade the ticked cards (collection, session "Trade with …")."""
@@ -1003,16 +1003,25 @@ class TradePage(QtCore.QObject):
         vs, _ = bookings.prices_of(give, db)
         money = ticket.money_from_me(t, me.get("id"))
 
-        def lines(cards):
+        def lines(cards):   # the same card twice (two copies picked one by one): one line "2×", also on the receipt
+            cards = same_cards(cards, lambda c: (str(c[0]).lower(), str(c[1]), c[2] or "en", bool(c[3])),
+                               lambda c: int(c[4] or 1), lambda c, n: c[:4] + [n] + c[5:])
             out = [f"{int(c[4] or 1)}× {c[5]}  ·  {str(c[0]).upper()} #{c[1]}" + ("  ·  Foil" if c[3] else "")
                    for c in cards[:12]]
             if len(cards) > 12:
                 out.append(tr(f"… and {len(cards) - 12} more"))
             return "\n".join(out) or tr("nothing")
-        info = (tr(f"You get ({eur(gs)}):") + "\n" + lines(get) + "\n\n" + tr(f"You give ({eur(vs)}):") + "\n"
-                + lines(give))
-        if money:
+        priced = self.priced()   # Core: no card values (legal 03.11.)
+
+        def head(side, v):
+            if priced:
+                return tr(f"You get ({eur(v)}):") if side == "get" else tr(f"You give ({eur(v)}):")
+            return tr("You get" if side == "get" else "You give") + ":"
+        info = head("get", gs) + "\n" + lines(get) + "\n\n" + head("give", vs) + "\n" + lines(give)
+        if money and priced:
             info += "\n\n" + (tr(f"You pay {eur(money)} on top.") if money > 0 else tr(f"You get {eur(-money)} on top."))
+        elif money:   # Core: an entered amount is part of the deal – shown as a proposal, no sums (lead/legal 06.11.)
+            info += "\n\n" + money_text(t, me.get("id")) + "\n" + tr(PAY_NOTE)
         if short:
             info += "\n\n" + tr("Not (or no longer) in your collection – skipped:") + "\n" + lines(short)
         if other:   # mixed trade: summary per game (only games that are affected)
@@ -1022,8 +1031,8 @@ class TradePage(QtCore.QObject):
                 ogs, _ = bookings.prices_of(part["get"], gdb)
                 ovs, _ = bookings.prices_of(part["give"], gdb)
                 info += (("\n\n" if info else "") + f"<b>{games.nick_of(g)}</b>\n"
-                         + tr(f"You get ({eur(ogs)}):") + "\n" + lines(part["get"]) + "\n\n"
-                         + tr(f"You give ({eur(ovs)}):") + "\n" + lines(part["give"]))
+                         + head("get", ogs) + "\n" + lines(part["get"]) + "\n\n"
+                         + head("give", ovs) + "\n" + lines(part["give"]))
         opts = {"have": bool(lists[0]), "wish": bool(lists[1])}
         if answer is None:
             def build(ui, d):
@@ -1154,12 +1163,31 @@ class TradePage(QtCore.QObject):
     def decline_offer(self, trade_id):
         from collection import offers
         offers.set_status(trade_id, "declined")
+        self._mail_gone(trade_id, "declined")   # lead 06.11.: otherwise the friend waits for ever
         self.ctrl.trade_offers_changed()
 
     def withdraw_offer(self, trade_id):
         from collection import offers
         offers.set_status(trade_id, "withdrawn")
+        self._mail_gone(trade_id, "withdrawn")
         self.ctrl.trade_offers_changed()
+
+    def mail_friend(self, profile_id):
+        """The mailbox address of a trade partner who is a friend there (Full Orbit only) – else None: the image."""
+        from net import relay
+        from system import orbit
+        if not orbit.friends_shown() or not relay.enabled(self.ctrl.settings):
+            return None
+        return relay.friend_of_profile(self.ctrl.settings, profile_id)
+
+    def _mail_gone(self, trade_id, why):
+        """A mailbox friend learns that I withdrew my offer / declined theirs (one small parcel, same slot)."""
+        from collection import offers
+        o = offers.get(trade_id)
+        t = offers.latest(o) if o else None
+        code = self.mail_friend((o or {}).get("partner", ["", ""])[0]) if t else None
+        if code and hasattr(self.ctrl, "relay_send_ticket_gone"):
+            self.ctrl.relay_send_ticket_gone(code, trade_id, int(t.get("n") or 1), why)
 
     def counter_offer(self, trade_id, give=None, get=None, money=None):
         """Counter-offer: change cards/counts/money -> new version (same trade ID) as a ticket.
@@ -1193,7 +1221,10 @@ class TradePage(QtCore.QObject):
             return False
         t = offers.latest(o)
         if trade.friend(o["partner"][0]) is None:
-            qdialogs.info(tr("Trade offer"), tr("To add cards you need this friend's trade file (Import friend …). You can change counts and money directly."))
+            from system import orbit
+            qdialogs.info(tr("Trade offer"), tr("To add cards you need this friend's trade file (Import friend …). You can change counts and money directly.")
+                          if orbit.FILE_FRIENDS else
+                          tr("To add cards you need this friend's cards – connect through your IDs. You can change counts and money directly."))
             return False
         self.open_friend(o["partner"][0])
         from collection import ticket
@@ -1237,8 +1268,16 @@ class TradePage(QtCore.QObject):
 
     # --- Import ---
     def import_dialog(self):
-        path = qdialogs.open_file(tr("Import a friend's collection"),
-                                  "", tr("Collections and trade tickets (*.bentcorner *.csv *.txt *.png *.jpg *.jpeg *.webp);;All files (*)"))
+        """Friends' files and trade-ticket images – only in Full Orbit; friends by file only with orbit.FILE_FRIENDS
+        (off since 06.11.: then the dialog takes ticket images only). import_file itself stays as it is (tests, a comeback)."""
+        from system import orbit
+        if not orbit.friends_shown():
+            return None
+        if orbit.FILE_FRIENDS:
+            path = qdialogs.open_file(tr("Import a friend's collection"),
+                                      "", tr("Collections and trade tickets (*.bentcorner *.csv *.txt *.png *.jpg *.jpeg *.webp);;All files (*)"))
+        else:
+            path = qdialogs.open_file(tr("Load a trade ticket"), "", tr("Trade tickets (*.png *.jpg *.jpeg *.webp)"))
         if path:
             return self.import_file(path)
         return None
@@ -1247,27 +1286,28 @@ class TradePage(QtCore.QObject):
         """answer (for tests): "update" | "new" – otherwise asks if the friend already exists.
         An image is a trade ticket (ticket.py): booked after a confirmation."""
         from collection import ticket
+        self.import_error = ""
         if ticket.is_ticket_file(path):
             t = ticket.read_image(path)
             if t is None:
-                qdialogs.warn(tr("Trade ticket"), tr("This image doesn't contain a Bent°Corner trade ticket – or it was cropped. Best send the image unchanged."))
+                self.import_error = tr("This image doesn't contain a Bent°Corner trade ticket – or it was cropped. Best send the image unchanged.")
                 return None
             return self.receive_ticket(t, answer=answer)
         try:
             parsed = trade.read_file(path)
-        except (OSError, ValueError) as e:
-            qdialogs.warn(tr("Importieren"), tr(f"Couldn't read the file: {e}"))
+        except (OSError, ValueError) as e:   # a line under the import button, no box (FriendsBackend.importError)
+            self.import_error = tr(f"Couldn't read the file: {e}")
             return None
         as_new = False
         if parsed["kind"] == "bentcorner":
             d = parsed["data"]
             if d["id"] == userprofile.ensure(self.ctrl.settings)["id"]:
-                qdialogs.info(tr("Importieren"), tr("That's your own collection 🙂"))
+                self.import_error = tr("That's your own collection 🙂")
                 return None
             from net import relay
             rf = next((f for f in relay.friends(self.ctrl.settings).values() if f.get("pid") == d["id"]), None)
             if rf is not None and rf.get("status") == "blocked":
-                qdialogs.info(tr("Importieren"), tr("You blocked this person – their files can't be imported. You can unblock them in your profile."))
+                self.import_error = tr("You blocked this person – their files can't be imported. You can unblock them in your profile.")
                 return None
             if rf is not None and relay.shown_back(rf) is None:   # card back hidden: store the neutral one
                 d["back"] = None

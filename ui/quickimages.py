@@ -153,6 +153,7 @@ def _save_round(key, img):
 
 
 def _load(key, width):
+    key = key.split("?", 1)[0]   # „…?<n>“: a live picture asking again (ui.live) – the same image key
     if key in _keep or key in _mem:
         return _load_raw(key, width)
     big = _rounded(_load_raw(key, max(width, ROUND_W)))

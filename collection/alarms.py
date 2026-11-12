@@ -25,6 +25,9 @@ from system.i18n import tr
 
 
 def eur(v):
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
+        return ""
     return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".") if v is not None else "–"
 
 

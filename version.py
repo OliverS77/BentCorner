@@ -10,12 +10,19 @@ import re
 # Arbeitsstände haben vier Stellen (0.8.20.0, 0.8.20.1 …): nur hier auf dem PC und auf GitHub, nie auf dem
 # Update-Server. Erst wenn der Nutzer „shippen“ sagt, wird daraus die Version mit drei Stellen (0.8.20) gebaut und
 # mit tools/publish_release.py veröffentlicht (das verweigert vierstellige). Danach geht es mit 0.8.21.0 weiter.
-VERSION = "0.9.7.33"
+VERSION = "0.9.7"
 
 
 # „Was ist neu?“ nach einem Update: je geshippter Version höchstens 5 kurze Punkte (mehr liest keiner) – englisch,
 # Deutsch in locales/de.py. Alles Weitere bleibt unter Einstellungen → Updates.
 HIGHLIGHTS = {
+    "0.9.7": [   # Oliver 06.11. + lead/legal 07.11./08.11.: sync, devices, protection code, backup, tickets + sharing rules (legal)
+        'New in Full Orbit: your collection, decks, lists, binders and more can be backed up online, end-to-end encrypted, and kept in sync between your devices – one switch, “Online backup and sync”, which you can turn off at any time.',
+        'Your devices and backups are simpler: each device with its name, add one with a code, remove one with ✕; online and offline backups in two boxes.',
+        'New: the protection code. From your second device on, you need it to add or remove devices – and with it you get your online backup back even if all your devices are gone.',
+        'Friends and trading are now only in Full Orbit; what you share with whom, you choose per friend under “Shared with friends”. Saved friends are kept. If you shared your whole library before, the app asks you once whether to keep doing so.',
+        'In Core the app no longer shows prices – prices are available from Near Orbit on.',
+    ],
     "0.9.6": [
         "The Bent°Corner icon next to the clock: pin it once and it stays there – even after updates",
         "Loading animation: cards fade in visibly and sink away when loading is done – the start window shows card after card",
@@ -60,6 +67,30 @@ HIGHLIGHTS = {
 }
 
 
+# a heading above a version's points – and versions whose points stand alone: older skipped versions' highlights are
+# not added below them (the sharing rules of 0.9.7 must not drown in old news)
+HIGHLIGHT_TITLES = {"0.9.7": 'Sync with your devices – and new rules for friends, sharing and prices'}
+HIGHLIGHT_ONLY = {"0.9.7"}
+
+
+def _vkey(v):
+    """Shipped version (three digits) includes all its work-in-progress builds: 0.9.1 = 0.9.1.∞."""
+    parts = [int(x) for x in str(v).split(".") if x.isdigit()]
+    return tuple(parts + [10 ** 9] * (4 - len(parts)))
+
+
+def highlights_since(seen, current=None):
+    """„What's new?“ after an update: (title, points) of the shipped versions after `seen` up to `current` – the
+    newest first, at most 5 points. A version in HIGHLIGHT_ONLY stands alone (with its title); without one the title is
+    "". Work-in-progress builds never show a shipped version's points (0.9.7 > 0.9.7.45)."""
+    cur = _vkey(current or VERSION)
+    rel = [r for r in sorted(HIGHLIGHTS, key=_vkey, reverse=True) if (not seen or _vkey(seen) < _vkey(r)) and _vkey(r) <= cur]
+    only = [r for r in rel if r in HIGHLIGHT_ONLY]
+    if only:
+        return HIGHLIGHT_TITLES.get(only[0], ""), list(HIGHLIGHTS[only[0]])[:5]
+    return (HIGHLIGHT_TITLES.get(rel[0], "") if len(rel) == 1 else ""), [t for r in rel for t in HIGHLIGHTS[r]][:5]
+
+
 def is_release(v=None):
     """Version zum Veröffentlichen (drei Stellen)? Vier Stellen = Arbeitsstand."""
     return len(str(v or VERSION).split(".")) == 3
@@ -91,6 +122,9 @@ def write_version_info():
 
 # corrections of old lines (committed in English, or wording that changed since) – the history shows these
 NOTE_FIX = {
+    # 0.9.7.35: vier Commits – die Zeile soll die neue Einstellungsseite nennen, nicht den letzten Test
+    "0.9.7.35": "Einstellungen → „Bent°Corner löschen“: deine Daten auf dem Server und/oder deine Sammlung auf diesem PC "
+                "löschen – alles auf einer Seite, mit klarer Rückmeldung, ob der Server wirklich gelöscht hat",
     # 0.9.7.7: zwei Commits – der Abschnitt ist bis zum Öffentlich-Machen ausgeschaltet
     "0.9.7.7": "Vorbereitung Open Source: Lizenz-Abschnitt (GPL-3.0) für Einstellungen → Rechtliches mit der "
                "mitgelieferten LICENSE zum Lesen ohne Internet – bleibt ausgeschaltet, bis der Quellcode öffentlich ist",

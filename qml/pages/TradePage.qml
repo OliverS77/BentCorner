@@ -79,7 +79,7 @@ Item {
                 width: parent.width; height: parent.height
                 Loader {   // no friends yet: explain briefly (no frame – content next to the rail)
                     id: noFriends
-                    active: !tf.hasFriends && me.fold !== "alarms"
+                    active: shell.friendsOn && !tf.hasFriends && me.fold !== "alarms" && me.fold !== "shared" && me.fold !== "offers"
                     visible: active
                     width: parent.width; height: visible ? 120 : 0
                     sourceComponent: Item {
@@ -87,13 +87,18 @@ Item {
                     Column {
                         anchors.centerIn: parent; spacing: 12; width: Math.min(parent.width - 60, 680)
                         Text { width: parent.width; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter
-                               text: shell.text("Trading works with small files: send your friend your trade file and load theirs here – then you see right away who wants and has what.")
+                               text: shell.fileFriends ? shell.text("Trading works with small files: send your friend your trade file and load theirs here – then you see right away who wants and has what.")
+                                     : shell.text("Add friends by their ID – in the friends menu at the top right. What they share with you then arrives on its own; what you share, you choose per friend.")
                                color: T.text2; font.family: T.font; font.pixelSize: 14 }
-                        Row {
+                        Row {   // friends by file (orbit.FILE_FRIENDS) – off since 06.11., kept for a comeback
+                            visible: shell.fileFriends
                             anchors.horizontalCenter: parent.horizontalCenter; spacing: 12
                             Btn { height: 36; width: 210; text: shell.text("Import friend …"); primary: true; onClicked: tf.importFriend() }
                             Btn { height: 36; width: 250; text: shell.text("Create my trade file …"); onClicked: tf.exportFriend() }
                         }
+                        Text { width: parent.width; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter   // instead of a box with OK
+                               visible: text !== ""; text: tf.importError
+                               color: T.text2; font.family: T.font; font.pixelSize: 13 }
                     }
                     }
                 }
@@ -118,13 +123,13 @@ Item {
                     ScrollHint {}
                     EdgeFade {}
                     id: tgrid
-                    visible: me.fold !== "alarms"
+                    visible: me.fold !== "alarms" && me.fold !== "shared"
                     y: (wishDecks.visible ? wishDecks.y + wishDecks.height : fhead2.y + fhead2.height) + 14
                     width: parent.width; height: parent.height - y - (tundo.visible ? tundo.height + 10 : 0)
                     clip: true; boundsBehavior: Flickable.StopAtBounds
                     readonly property int cols: Math.max(1, Math.floor(width / 250))
                     cellWidth: Math.floor(width / cols); cellHeight: cellWidth * 1.08
-                    model: me.fold === "alarms" || me.fold === "offers" || me.fold === "binders" ? [] : [{"new": true}].concat(tp.tiles)
+                    model: me.fold === "alarms" || me.fold === "offers" || me.fold === "binders" || me.fold === "shared" ? [] : [{"new": true}].concat(tp.tiles)
                     delegate: Item {
                         id: tc
                         required property var modelData
@@ -357,9 +362,137 @@ Item {
                         BinderGrid { id: tbg; width: Math.min(parent.width - 14, 1100) }
                     }
                 }
+                // folder „Shared with friends“ (lead/legal 06.11.): the (c′) question for whoever shares from before, then
+                // per friend a switch with chips (bright = goes out), then per content a switch – all from the same
+                // source as the parcel (ui/qshared.py). No window; rows 46 px, nothing moves when switching
+                PriceVeil {   // Core and Near Orbit: friends, sharing and trade tickets live in Full Orbit (Oliver 06.11.)
+                    visible: (me.fold === "shared" || me.fold === "offers") && !shell.friendsOn
+                    note: me.fold === "offers" ? shell.text("Friends and trading are available in Full Orbit.")
+                                               : shell.text("Friends are available in Full Orbit.")
+                    y: fhead2.y + fhead2.height + 14
+                    width: parent.width; height: Math.max(160, parent.height - y - 14)
+                }
+                Loader {
+                    active: me.fold === "shared" && shell.friendsOn
+                    y: fhead2.y + fhead2.height + 14
+                    width: Math.min(parent.width, 1100); height: parent.height - y
+                    sourceComponent: Flickable {
+                        id: shf
+                        readonly property var v: tradeShared.view
+                        clip: true; boundsBehavior: Flickable.StopAtBounds
+                        contentHeight: shcol.implicitHeight + 20
+                        ScrollHint {}
+                        component ShHead: Text { color: T.dim; font.family: T.font; font.pixelSize: 11; font.bold: true
+                                                 font.letterSpacing: 1.5; topPadding: 14; bottomPadding: 6 }
+                        Column {
+                            id: shcol
+                            width: shf.width - 14
+                            spacing: 0
+                            Rectangle {   // (c′): two equal buttons, nothing preselected, nothing on Enter
+                                visible: !!shf.v.card && !!shf.v.card.text
+                                width: Math.min(parent.width, 640); height: visible ? askc.implicitHeight + 24 : 0
+                                radius: 12; color: T.surface2; border.width: 1; border.color: T.line2
+                                Column {
+                                    id: askc
+                                    x: 12; y: 12; width: parent.width - 24; spacing: 8
+                                    Text { width: parent.width; wrapMode: Text.Wrap; text: (shf.v.card || {}).text || ""
+                                           color: T.text; font.family: T.font; font.pixelSize: 14 }
+                                    Text { width: parent.width; wrapMode: Text.Wrap; text: (shf.v.card || {}).small || ""
+                                           color: T.muted; font.family: T.font; font.pixelSize: 12 }
+                                    Row {
+                                        spacing: 8
+                                        Btn { width: (askc.width - 8) / 2; height: 44; text: (shf.v.card || {}).keep || ""
+                                              onClicked: tradeShared.answer(true) }
+                                        Btn { width: (askc.width - 8) / 2; height: 44; text: (shf.v.card || {}).stop || ""
+                                              onClicked: tradeShared.answer(false) }
+                                    }
+                                }
+                            }
+                            Text { visible: (shf.v.also || "") !== ""; width: parent.width; wrapMode: Text.Wrap; topPadding: 8
+                                   text: shf.v.also || ""; color: T.text2; font.family: T.font; font.pixelSize: 13 }
+                            Text { visible: (shf.v.slots || "") !== ""; width: parent.width; wrapMode: Text.Wrap; topPadding: 8
+                                   text: shf.v.slots || ""; color: T.text2; font.family: T.font; font.pixelSize: 13 }
+                            Text { visible: (shf.v.empty || "") !== ""; width: parent.width; wrapMode: Text.Wrap; topPadding: 8
+                                   text: shf.v.empty || ""; color: T.muted; font.family: T.font; font.pixelSize: 13 }
+
+                            ShHead { visible: (shf.v.friends || []).length > 0; text: shell.text("FRIENDS · WHO GETS SOMETHING") }
+                            Repeater {
+                                model: shf.v.friends || []
+                                Item {
+                                    id: frow
+                                    required property var modelData
+                                    width: shcol.width; height: Math.max(52, chipFlow.implicitHeight + 16)
+                                    Rectangle { width: parent.width; height: 1; color: T.line }
+                                    Text { id: fname; x: 4; width: 150; anchors.verticalCenter: parent.verticalCenter
+                                           elide: Text.ElideRight; text: frow.modelData.name
+                                           color: frow.modelData.on ? T.text : T.muted; font.family: T.font; font.pixelSize: 14; font.bold: true }
+                                    Flow {
+                                        id: chipFlow
+                                        x: 160; width: parent.width - 160 - 70
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 6
+                                        Repeater {
+                                            model: frow.modelData.chips
+                                            Rectangle {
+                                                required property var modelData
+                                                height: 24; radius: 8; width: ct.implicitWidth + 18
+                                                color: modelData.on ? T.button : "transparent"
+                                                border.width: modelData.on ? 0 : 1; border.color: T.line
+                                                Text { id: ct; anchors.centerIn: parent; text: parent.modelData.text
+                                                       color: parent.modelData.on ? T.text2 : T.dim; font.family: T.font; font.pixelSize: 12 }
+                                            }
+                                        }
+                                    }
+                                    CheckBox { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                               checked: frow.modelData.on
+                                               tip: shell.text("Gets everything you share – or nothing but your name and card back")
+                                               onToggled: function (on) { tradeShared.setFriend(frow.modelData.code, on) } }
+                                }
+                            }
+                            Text { visible: tradeShared.note !== ""; width: parent.width; wrapMode: Text.Wrap; topPadding: 6
+                                   text: tradeShared.note; color: T.muted; font.family: T.font; font.pixelSize: 12 }
+
+                            ShHead { visible: shf.v.full === true; text: shell.text("WHAT YOU SHARE") }
+                            Repeater {
+                                model: shf.v.full === true ? (shf.v.items || []) : []
+                                Item {
+                                    id: irow
+                                    required property var modelData
+                                    width: shcol.width; height: 46
+                                    opacity: modelData.on ? 1 : 0.55
+                                    Rectangle { width: parent.width; height: 1; color: T.line }
+                                    Row {
+                                        x: 4; anchors.verticalCenter: parent.verticalCenter; spacing: 10
+                                        Text { text: irow.modelData.name; color: T.text; font.family: T.font; font.pixelSize: 14 }
+                                        Text { anchors.baseline: parent.children[0].baseline; text: irow.modelData.sub
+                                               color: T.muted; font.family: T.font; font.pixelSize: 12 }
+                                    }
+                                    CheckBox { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                               checked: irow.modelData.on
+                                               onToggled: function (on) { tradeShared.setItem(irow.modelData.kind, irow.modelData.key, irow.modelData.game, on) } }
+                                }
+                            }
+                            Item {
+                                visible: shf.v.full === true
+                                width: shcol.width; height: visible ? 46 : 0
+                                Rectangle { width: parent.width; height: 1; color: T.line }
+                                Row {
+                                    x: 4; anchors.verticalCenter: parent.verticalCenter; spacing: 10
+                                    Text { text: shell.text("Profile"); color: T.text; font.family: T.font; font.pixelSize: 14 }
+                                    Text { anchors.baseline: parent.children[0].baseline; text: shf.v.profile || ""
+                                           color: T.muted; font.family: T.font; font.pixelSize: 12 }
+                                }
+                                Text { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                       text: shell.text("always"); color: T.muted; font.family: T.font; font.pixelSize: 13 }
+                            }
+                            Text { visible: shf.v.full === true; width: parent.width; wrapMode: Text.Wrap; topPadding: 10
+                                   text: shf.v.others || ""; color: T.dim; font.family: T.font; font.pixelSize: 12 }
+                        }
+                    }
+                }
                 // folder „Trade offers“: each offer with status, version, trade ID and replies (form from Python)
                 Loader {
-                    active: me.fold === "offers"
+                    active: me.fold === "offers" && shell.friendsOn
                     asynchronous: true   // (built over a few frames – no stutter when switching)
                     y: fhead2.y + fhead2.height + 14
                     width: Math.min(parent.width, 980); height: parent.height - y
@@ -373,8 +506,13 @@ Item {
                 }
                 // folder „Price alerts“: table in three sections (whole lists · wish cards · trade cards),
                 // sortable via the column headers; click = detail view on the right, ✎ = editor expands in the row
+                PriceVeil {   // Orbit's Core: the whole folder is the note (the alerts stay saved for Near Orbit)
+                    visible: me.fold === "alarms" && !shell.pricesOn
+                    y: fhead2.y + fhead2.height + 14
+                    width: parent.width; height: Math.max(160, parent.height - y - 14)
+                }
                 Loader {   // (built only while the folder is open)
-                    active: me.fold === "alarms"
+                    active: me.fold === "alarms" && shell.pricesOn
                     asynchronous: true   // (built over a few frames – no stutter when switching)
                     y: fhead2.y + fhead2.height + 14
                     width: parent.width; height: parent.height - y
@@ -1080,7 +1218,7 @@ Item {
                         x: book.x + book.width + 12; y: sumBox.y; height: 46; width: 200
                         text: tp.offerCtx !== "" ? shell.text("Share counteroffer …") : shell.text("Share as ticket …")
                         enabled: tp.canOffer
-                        tip: shell.text("The checked cards of both sides as a trade ticket – to copy into WhatsApp/Discord or as PNG. Your partner loads it under Orbit → Import and books the trade with one click")
+                        tip: shell.text("The checked cards of both sides as a trade ticket – to copy into WhatsApp/Discord or as PNG. Your partner opens it with “Import friend …” and gets it as a trade offer")
                         onClicked: tp.shareOffer()
                     }
                     DetailView {
@@ -1213,6 +1351,11 @@ Item {
                 }
             }
             } }   // lazy
+            PriceVeil {   // a friend open while the level drops below Full Orbit: the note, their data stays saved
+                visible: !shell.friendsOn
+                note: shell.text("Friends are available in Full Orbit.")
+                anchors.fill: parent; z: 50
+            }
         }
     }
 

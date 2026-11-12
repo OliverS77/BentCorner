@@ -24,6 +24,9 @@ INK, MUTED, DIM = "#eeeeee", "#8e8e8e", "#5e5e5e"
 
 
 def eur(v):
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
+        return ""
     return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -189,6 +192,7 @@ def _single(it, art_for, prof):
             (tr("Ø mana value"), f"{it.get('avg_mv') or 0:.2f}".replace(".", ","))]
     if it.get("owned_pct") is not None:
         kpis.append((tr("I own"), f"{it['owned_pct']} %"))
+    kpis = [k for k in kpis if k[1] != ""]   # Orbit's Core: no "Value" row
     y = 196
     for label, value in kpis:
         _label(p, 66, y, 400, label)

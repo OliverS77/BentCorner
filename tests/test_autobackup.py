@@ -203,10 +203,10 @@ class RunAndZip(_Home):
         folder.mkdir()
         now = time.time()
         files = []
-        for d in range(40):                                    # one backup per day for 40 days
-            f = folder / f"BentCorner backup {d:02d}.zip"
-            f.write_bytes(b"x")
+        for d in range(40):                                    # one backup per day for 40 days (our names: the time)
             ts = now - d * 86400
+            f = folder / time.strftime("BentCorner backup %Y-%m-%d %H-%M.zip", time.localtime(ts))
+            f.write_bytes(b"x")
             os.utime(f, (ts, ts))
             files.append(f)
         old_part = folder / "x.zip.partial"
@@ -228,9 +228,9 @@ class RunAndZip(_Home):
         hour = (int(time.time()) // 3600) * 3600               # a whole hour: the slots are exact
         files = []
         for m in range(0, 10 * 60, 20):                        # every 20 minutes for 10 hours
-            f = folder / f"BentCorner backup {m:05d}.zip"
-            f.write_bytes(b"x")
             ts = hour + 3599 - m * 60
+            f = folder / time.strftime("BentCorner backup %Y-%m-%d %H-%M.zip", time.localtime(ts))
+            f.write_bytes(b"x")
             os.utime(f, (ts, ts))
             files.append(f)
         autobackup._prune(folder)
@@ -266,6 +266,9 @@ class Restore(_Home):
         self.assertTrue(datastore.restore_backup(str(z)))
         now = _files(self.home)
         for k, v in original.items():
+            if k == "settings.json":   # written anew (device-bound keys stay this PC's – review 08.11. F1): same content
+                self.assertEqual(json.loads(now.get(k)), json.loads(v), k)
+                continue
             self.assertEqual(now.get(k), v, k)
         self.assertNotIn("data/my-data/sessions/new.json", now)                # exactly the backed-up state
         self.assertIn("data/my-data/trash/1-deck.json", now)                   # trash is kept, not replaced

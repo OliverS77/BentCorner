@@ -1,0 +1,79 @@
+{
+ "about": "Writes docs/web/code-vectors-v2.json: the protection/rescue code with a salt per ID (S5 = b, Oliver 08.11.; A2: a new\ndevice joins with the code). The PC and the web check against the same file BEFORE either builds (lead 08.11.).\nMade-up codes and a test seed only – never real ones.\n\nTwo stages (docs/web/PAIRING.md §4a):\n  stage 1 (finding):  s1 = Argon2id(norm(code), salt \"bentcorner-code2\", ops 3, mem 64 MiB, 32 B)\n                      rid = BLAKE2b-128(key=s1, msg=\"bentcorner-rescue-id-v2\") as 32 lowercase hex\n  stage 2 (the keys): s2 = Argon2id(norm(code), salt = the ID's 16 random bytes, ops 3, mem 128 MiB, 32 B)\n                      rk   = BLAKE2b-256(key=s2, msg=\"bentcorner-rescue-v2\")   (envelope key, secretbox)\n                      main = BLAKE2b-256(key=s2, msg=\"bentcorner-main-v2\")     (Ed25519 seed of the protection key)\n  salt: 16 random bytes, made by the device that sets the FIRST code of the ID; standard base64 (24 characters).\n  envelope v2 = base64( JSON sorted, no spaces: {\"box\": b64(nonce + secretbox(inner)), \"salt\": salt_b64, \"v\": 2} )\n     inner    =          JSON sorted, no spaces: {\"code\": address, \"salt\": salt_b64, \"seed\": seed_b64, \"v\": 2}\n     (the salt in the clear header lets a device without the ID derive rk; inside the box it must be the same)\n  lines (signed by the ID key; with the code also by main as sig_main):\n     guard_set|<address>|<main_pk b64>|<t>|<salt_b64>\n     guard_req|<address>|<new main_pk b64>|<rid>|<sha256 hex of the envelope text>|<t>|<salt_b64>\n     dev_add|<address>|<dev_id>|<dev sign_pk b64>|<dev box_pk b64>|||<t>   (net/devkeys.register; joining with the\n              code: by and nonce empty) – sig_id (ID key), sig_dev (the new device's own key) and sig_main (A2)",
+ "seed_b64": "yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=",
+ "address": "8EA61A8426AB8A94",
+ "salt_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+ "salt_b64": "oKGio6SlpqeoqaqrrK2urw==",
+ "nonce_hex": "303132333435363738393a3b3c3d3e3f4041424344454647",
+ "t": 1793600000,
+ "stage1": {
+  "salt_ascii": "bentcorner-code2",
+  "ops": 3,
+  "mem_bytes": 67108864
+ },
+ "stage2": {
+  "ops": 3,
+  "mem_bytes": 134217728
+ },
+ "infos": {
+  "rid": "bentcorner-rescue-id-v2",
+  "rk": "bentcorner-rescue-v2",
+  "main": "bentcorner-main-v2"
+ },
+ "cases": [
+  {
+   "name": "generated",
+   "code_typed": "23456-789AB-CDEFG-HJKMN-PQRSE",
+   "code_norm": "23456789ABCDEFGHJKMNPQRSE",
+   "rid": "85f24b44a98a12f07db15a1a6acece51",
+   "rk_hex": "9c60944c7df37b0c4ce61ac2a1571c17369ab1c2d6a4c6eab3b8d3e88c84653f",
+   "main_seed_hex": "d701abbfd44c20e386fb617bb68cfee79b9468eb5c63f66d3f201a21a8ad4da4",
+   "main_pk_b64": "YtaNQdjhUvUDy7+0B63BIrauWj4Os68pEKWL9myRSm8=",
+   "inner_json": "{\"code\":\"8EA61A8426AB8A94\",\"salt\":\"oKGio6SlpqeoqaqrrK2urw==\",\"seed\":\"yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=\",\"v\":2}",
+   "envelope": "eyJib3giOiJNREV5TXpRMU5qYzRPVG83UEQwK1AwQkJRa05FUlVaSDB1TDhGSnFLVnA4OXJ1YUVmd0NUVzVRRDBFdWQ4aVc4OEpBYk0rTXgrYU54THVMdWFpZUg0RGhXOTBGUHpoRGFXNHBvVWdlb05ST2N5QnE4RElMWUdsNjY5eTdmeFJWU0FTSm0rWTd1MEpWakdEdDNjdlJXWUEzZXN4dVFUL3dVUEwwVERnc2ZEcUM2TUVZTW9wdmtGMmNJSnZGa2tybUdUVTdVWDFpb1ZtdFBaZ0ZVT1haTktrVT0iLCJzYWx0Ijoib0tHaW82U2xwcWVvcWFxcnJLMnVydz09IiwidiI6Mn0=",
+   "guard_set_line": "guard_set|8EA61A8426AB8A94|YtaNQdjhUvUDy7+0B63BIrauWj4Os68pEKWL9myRSm8=|1793600000|oKGio6SlpqeoqaqrrK2urw==",
+   "guard_set_sig": "/AX1ZsL4bHVOOowSCc61TKaIxCrpvGTnpc2AcT2LP90U4CCV1wGAlXhDGQIcf3HvAnOH+8gZ7fovtIwNPHmLDw==",
+   "guard_set_sig_main": "SWqCuLCnbqxmGoeqo/tAjmr8JYLVUm89KjyDRLFBrrTtm5fFgdMeiEJuxPyag8tbtnj3zu+a/apNKHdOxJWvDw==",
+   "guard_req_line": "guard_req|8EA61A8426AB8A94|YtaNQdjhUvUDy7+0B63BIrauWj4Os68pEKWL9myRSm8=|85f24b44a98a12f07db15a1a6acece51|1f93f863f31c8b22fd9ae9897f50936c1b3072ad570d340fd3b6b4fafb372be9|1793600000|oKGio6SlpqeoqaqrrK2urw==",
+   "guard_req_sig": "JlTeamlXXbQij7DpiP8Uxzts0SAwCrNPFnikmtKSGF/3g5PvIrdBUCBpuSPia92a2K+TwbS4brdB406yUaOQCA==",
+   "dev_add": {
+    "dev_id": "d0123456789abcdef",
+    "dev_sign_seed_hex": "505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f",
+    "dev_sign_pk_b64": "P3cI1fXMK8YztZ0rOi7ZLnR5IgxvCK3iCL682FgKuTs=",
+    "dev_box_sk_hex": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f",
+    "dev_box_pk_b64": "I7e7jJGuAIcR+xKEZ4C83x4GX4Ib3+xJ9X58fc1MSCM=",
+    "line": "dev_add|8EA61A8426AB8A94|d0123456789abcdef|P3cI1fXMK8YztZ0rOi7ZLnR5IgxvCK3iCL682FgKuTs=|I7e7jJGuAIcR+xKEZ4C83x4GX4Ib3+xJ9X58fc1MSCM=|||1793600000",
+    "sig_id": "R7WoOamiycrh6DKFGDuo5QkEUs/45JbmdAAwgDPwgrd9bDog8K2f3AUDEeXHDE6cMoDf4RToQw4GYRhB7sjuBw==",
+    "sig_dev": "c+ynKzNcOr0A4r+/r5e7P6B4uihOnfzQjN8VA/iU8oGq8o7S/4Psh0QPHiUGYnEo7kjbZ/DCdhElHrRVkxz1Bg==",
+    "sig_main": "rZY+vxOPFgG427n9zNAyfG8N4oTAUrnele0KSHl9A/8KpNRFMX3keA5tyu+Ac0KsDWOIkMdlSoFl16tY7+lBBQ=="
+   }
+  },
+  {
+   "name": "own",
+   "code_typed": "  Mein   Garten 2026!  ",
+   "code_norm": "Mein Garten 2026!",
+   "rid": "b469f8855094c29499f41e27c639ddee",
+   "rk_hex": "bc57e0e93b00a8a53c1368f5c108475a3d0955042ec5b82de983aab8d148b0b2",
+   "main_seed_hex": "0ec8861ca35e3154f30442bdd85adb86bde431a16b0307694ac2c6f2e99f8969",
+   "main_pk_b64": "4LxreqXHtBVZpuMlhSTXWnmgeBz7G3pIBI6evaODKQw=",
+   "inner_json": "{\"code\":\"8EA61A8426AB8A94\",\"salt\":\"oKGio6SlpqeoqaqrrK2urw==\",\"seed\":\"yMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5uc=\",\"v\":2}",
+   "envelope": "eyJib3giOiJNREV5TXpRMU5qYzRPVG83UEQwK1AwQkJRa05FUlVaSHZrUldxcEp3TzQ1M1JXUVhXc2hHbHlZTk1VQVltZjBKLzRBQWxtRzErazJoalJneSs0azNMaGZacDNiamU0TEN0cGs4RDJKanE3K21KMHFSR3VaVEwrcm1qWjJxN2huMXAzVkIwdjZkcnJDTndPdlVac052aFk5aGtWQXVlRmJUSk9BYTd1RzYramFqam1QM2ZvUkY4eVF0SjlkZ2hFVituVEtaQjdyVmFUZGJTNW5qQTEwYXhwVT0iLCJzYWx0Ijoib0tHaW82U2xwcWVvcWFxcnJLMnVydz09IiwidiI6Mn0=",
+   "guard_set_line": "guard_set|8EA61A8426AB8A94|4LxreqXHtBVZpuMlhSTXWnmgeBz7G3pIBI6evaODKQw=|1793600000|oKGio6SlpqeoqaqrrK2urw==",
+   "guard_set_sig": "UnXHqvU5tZubvt2XWx6UsjRwNMH6Y+80701TO35BvSJMqkXZW/1EiZ1c1Wy1I7N1BUYvbGAefNgsd8AO7NmECQ==",
+   "guard_set_sig_main": "96y9e8MmGMdCKFnq5p8498e3BFeXPjD4oSkdILCjGjU8KQgidj25fdaRBevdESrEFK9CPWdBfX5wWFgoaPQyDQ==",
+   "guard_req_line": "guard_req|8EA61A8426AB8A94|4LxreqXHtBVZpuMlhSTXWnmgeBz7G3pIBI6evaODKQw=|b469f8855094c29499f41e27c639ddee|31f6da43580f7d688ccf0111c50e7c8117aa4fbf6b282fcb33c518951f777219|1793600000|oKGio6SlpqeoqaqrrK2urw==",
+   "guard_req_sig": "lTdUl7eUlGqaxOg+44sM3M/7u1MMgYIABUFOIUtPRHPzqSrgUTZGmXyNnu9a8TSyEwuTrpD2O5+0k3k/prHODg==",
+   "dev_add": {
+    "dev_id": "d0123456789abcdef",
+    "dev_sign_seed_hex": "505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f",
+    "dev_sign_pk_b64": "P3cI1fXMK8YztZ0rOi7ZLnR5IgxvCK3iCL682FgKuTs=",
+    "dev_box_sk_hex": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f",
+    "dev_box_pk_b64": "I7e7jJGuAIcR+xKEZ4C83x4GX4Ib3+xJ9X58fc1MSCM=",
+    "line": "dev_add|8EA61A8426AB8A94|d0123456789abcdef|P3cI1fXMK8YztZ0rOi7ZLnR5IgxvCK3iCL682FgKuTs=|I7e7jJGuAIcR+xKEZ4C83x4GX4Ib3+xJ9X58fc1MSCM=|||1793600000",
+    "sig_id": "R7WoOamiycrh6DKFGDuo5QkEUs/45JbmdAAwgDPwgrd9bDog8K2f3AUDEeXHDE6cMoDf4RToQw4GYRhB7sjuBw==",
+    "sig_dev": "c+ynKzNcOr0A4r+/r5e7P6B4uihOnfzQjN8VA/iU8oGq8o7S/4Psh0QPHiUGYnEo7kjbZ/DCdhElHrRVkxz1Bg==",
+    "sig_main": "zE7S5j/4ofcXbfrEkbXI0mkSXMQQgFpjH9LFeOV01fugMj7rcz6UT5zuE5nijCpHHyPL06TQ5kAhpd5zk+wxCA=="
+   }
+  }
+ ]
+}

@@ -93,30 +93,34 @@ def slot(code):
     return pair_id(code, s), derive_key(code, s)
 
 
-def seal(code, payload, nonce=None):
-    """payload (dict with at least "seed") -> sealed text for /v1/pair/put."""
+def seal(code, payload, nonce=None, key=None):
+    """payload (dict with at least "seed") -> sealed text for /v1/pair/put. key: from slot(code) – no second run."""
     from nacl.secret import SecretBox
     raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     if len(raw) > MAX_PAYLOAD:
         raise PairError("too much to pair at once")
-    box = SecretBox(derive_key(code))
+    box = SecretBox(key or derive_key(code))
     sealed = box.encrypt(raw, nonce) if nonce is not None else box.encrypt(raw)
     return base64.b64encode(bytes(sealed)).decode()
 
 
-def open_sealed(code, data):
+def open_sealed(code, data, key=None):
     """Sealed text from /v1/pair/get -> payload. Wrong code or damaged data -> PairError (the server has already
     deleted it: pair again)."""
     from nacl.exceptions import CryptoError
     from nacl.secret import SecretBox
     try:
-        raw = SecretBox(derive_key(code)).decrypt(base64.b64decode(data))
+        raw = SecretBox(key or derive_key(code)).decrypt(base64.b64decode(data))
         payload = json.loads(raw.decode("utf-8"))
-    except (CryptoError, ValueError):
+    except (CryptoError, ValueError, TypeError):
         raise PairError("wrong code or damaged data") from None
-    if not isinstance(payload, dict) or payload.get("v") != 1 or not payload.get("seed"):
+    if not isinstance(payload, dict) or payload.get("v") != 1 or not isinstance(payload.get("seed"), str)             or not payload.get("seed"):
         raise PairError("unknown pairing data")
-    if code_of_seed(payload["seed"]) != payload.get("code"):
+    try:   # a damaged seed is a PairError too – never another error that leaves the pairing half done (review 08.11.)
+        same = code_of_seed(payload["seed"]) == payload.get("code")
+    except (ValueError, TypeError):
+        same = False
+    if not same:
         raise PairError("identity does not match its address")
     return payload
 
@@ -146,30 +150,42 @@ def vault_key(seed_b64):
     return hashlib.blake2b(VAULT_INFO, digest_size=32, key=base64.b64decode(seed_b64)).digest()
 
 
-def vault_seal(seed_b64, obj, nonce=None):
-    """One vault item ("add" package or "snap" snapshot): JSON -> base64(nonce(24) + crypto_secretbox)."""
+def vault_seal_bytes(seed_b64, raw, nonce=None):
+    """Bytes -> base64(nonce(24) + crypto_secretbox). The sync packages (collection/syncops.pack: zlib of canonical
+    JSON) go through this one."""
     from nacl.secret import SecretBox
-    raw = json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     box = SecretBox(vault_key(seed_b64))
     return base64.b64encode(bytes(box.encrypt(raw, nonce) if nonce is not None else box.encrypt(raw))).decode()
 
 
-def vault_open(seed_b64, data):
+def vault_open_bytes(seed_b64, data):
     from nacl.exceptions import CryptoError
     from nacl.secret import SecretBox
     try:
-        return json.loads(SecretBox(vault_key(seed_b64)).decrypt(base64.b64decode(data)).decode("utf-8"))
+        return SecretBox(vault_key(seed_b64)).decrypt(base64.b64decode(data))
     except (CryptoError, ValueError):
+        raise PairError("vault item not readable with this identity") from None
+
+
+def vault_seal(seed_b64, obj, nonce=None):
+    """One vault item as JSON (the rescue envelope): JSON -> base64(nonce(24) + crypto_secretbox)."""
+    raw = json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    return vault_seal_bytes(seed_b64, raw, nonce)
+
+
+def vault_open(seed_b64, data):
+    try:
+        return json.loads(vault_open_bytes(seed_b64, data).decode("utf-8"))
+    except ValueError:
         raise PairError("vault item not readable with this identity") from None
 
 
 # ---------- Rescue code (Wiederherstellungscode, docs/SYNC-PLAN.md §2): all devices gone, the vault still there ----------
 # The code opens a small envelope on the server that holds the CURRENT seed – the code is not the seed, so it stays
-# the same when the seed changes ("new code" / "remove device"). 24 random characters (31^24 ≈ 2^119, no Argon2
-# needed) + 1 check character; shown as XXXXX-XXXXX-XXXXX-XXXXX-XXXXX, typed with dashes/spaces/lowercase as you like.
+# the same when the seed changes ("new code" / "remove device"). Generated: 24 random characters (31^24 ≈ 2^119) + 1
+# check character, shown in blocks of 5, typed with dashes/spaces/lowercase as you like; or chosen by the user (Oliver
+# 07.11., minimum strength: collection/codestrength). Either way one Argon2id run (code_keys).
 RESCUE_LEN = 24
-RESCUE_INFO = b"bentcorner-rescue-v1"
-RESCUE_ID_INFO = b"bentcorner-rescue-id-v1"
 MAX_RESCUE = 4096                     # the sealed envelope on the server (base64)
 
 
@@ -186,44 +202,126 @@ def new_rescue_code():
 
 
 def norm_rescue(code):
-    """Typed rescue code -> the 25 characters. Wrong length/characters or a typo (check character) -> PairError."""
-    c = "".join(str(code or "").upper().split()).replace("-", "")
-    if len(c) != RESCUE_LEN + 1 or any(ch not in ALPHABET for ch in c):
-        raise PairError("the rescue code has 25 characters (letters and digits)")
-    if _check_char(c[:-1]) != c[-1]:
-        raise PairError("the rescue code has a typo")
-    return c
+    """Typed code -> the text the keys come from. In the generated format (25 characters of the alphabet, dashes/spaces/
+    lowercase as you like) -> those 25 characters, a typo (check character) -> PairError. Anything else is a code the
+    user chose (Oliver 07.11.): Unicode NFKC, outer spaces away, inner runs of spaces as one – upper/lower case count.
+    Empty -> PairError."""
+    raw = str(code or "")
+    c = "".join(raw.upper().split()).replace("-", "")
+    if len(c) == RESCUE_LEN + 1 and all(ch in ALPHABET for ch in c):
+        if _check_char(c[:-1]) != c[-1]:
+            raise PairError("the code has a typo")
+        return c
+    import unicodedata
+    own = " ".join(unicodedata.normalize("NFKC", raw).split())
+    if not own:
+        raise PairError("no code")
+    return own
 
 
-def rescue_keys(code):
-    """-> (rid: 32 lowercase hex – the envelope's number on the server, rk: 32-byte key). Keyed BLAKE2b, key = the 25
-    characters as ASCII."""
-    k = norm_rescue(code).encode("ascii")
-    rid = hashlib.blake2b(RESCUE_ID_INFO, digest_size=16, key=k).hexdigest()
-    rk = hashlib.blake2b(RESCUE_INFO, digest_size=32, key=k).digest()
-    return rid, rk
+# The code with a salt per ID (S5 = b, Oliver 08.11.; docs/web/PAIRING.md §4a, vectors docs/web/code-vectors-v2.json).
+# Two stages so a restore without a device still works with the code alone:
+#   finding: a fixed salt, 64 MiB – it only says where the envelope lies (the box brakes rescue/get, a rid of another
+#            address -> 409); legal's floor (>= 64 MiB, >= 3)
+#   keys:    the ID's own 16-byte salt, 128 MiB (lead 07.11.) – the seed is attackable offline, now only per ID
+STAGE1_SALT = b"bentcorner-code2"   # 16 bytes
+STAGE1_OPS, STAGE1_MEM = 3, 64 * 1024 * 1024
+CODE_OPS, CODE_MEM = 3, 128 * 1024 * 1024
+RESCUE_ID_INFO = b"bentcorner-rescue-id-v2"
+RESCUE_INFO = b"bentcorner-rescue-v2"
+MAIN_INFO = b"bentcorner-main-v2"
+SALT_LEN = 16
 
 
-def rescue_seal(code, seed_b64, nonce=None):
-    """The envelope: base64(nonce(24) + secretbox({"code": address, "seed", "v": 1})) – JSON sorted, no spaces."""
+def new_salt():
+    """The ID's salt (standard base64) – made by the device that sets the FIRST code of the ID."""
+    return base64.b64encode(secrets.token_bytes(SALT_LEN)).decode()
+
+
+def _salt_bytes(salt_b64):
+    try:
+        raw = base64.b64decode(str(salt_b64 or ""), validate=True)
+    except (ValueError, TypeError):
+        raw = b""
+    if len(raw) != SALT_LEN:
+        raise PairError("no valid salt for this ID")
+    return raw
+
+
+def rescue_rid(code):
+    """Stage 1: the envelope's number (32 lowercase hex) – finding only."""
+    from nacl.pwhash import argon2id
+    s1 = argon2id.kdf(32, norm_rescue(code).encode("utf-8"), STAGE1_SALT, opslimit=STAGE1_OPS, memlimit=STAGE1_MEM)
+    return hashlib.blake2b(RESCUE_ID_INFO, digest_size=16, key=s1).hexdigest()
+
+
+def guard_keys(code, salt_b64):
+    """Stage 2: -> {"rk": 32 B envelope key, "main": 32 B Ed25519 seed of the protection key, "salt"}."""
+    from nacl.pwhash import argon2id
+    s2 = argon2id.kdf(32, norm_rescue(code).encode("utf-8"), _salt_bytes(salt_b64), opslimit=CODE_OPS,
+                      memlimit=CODE_MEM)
+    return {"rk": hashlib.blake2b(RESCUE_INFO, digest_size=32, key=s2).digest(),
+            "main": hashlib.blake2b(MAIN_INFO, digest_size=32, key=s2).digest(), "salt": str(salt_b64)}
+
+
+def code_keys(code, salt_b64):
+    """Both stages: -> {"rid", "rk", "main", "salt"} (setting a code: its envelope and its key in one go)."""
+    return dict(guard_keys(code, salt_b64), rid=rescue_rid(code))
+
+
+def main_signing(code, salt_b64):
+    """The protection code (= the rescue code, one code) -> the Ed25519 key whose public half the server keeps."""
+    from nacl.signing import SigningKey
+    return SigningKey(guard_keys(code, salt_b64)["main"])
+
+
+def _js(obj):
+    return json.dumps(obj, separators=(",", ":"), sort_keys=True)
+
+
+def rescue_seal(code, seed_b64, salt_b64, nonce=None, keys=None):
+    """Envelope v2: base64(JSON {"box": b64(nonce + secretbox(inner)), "salt", "v": 2}),
+    inner = JSON {"code": address, "salt", "seed", "v": 2} – the salt in the clear for a device without the ID, inside
+    it must be the same. keys: guard_keys/code_keys already made (one Argon2id run per stage)."""
     from nacl.secret import SecretBox
-    raw = json.dumps({"code": code_of_seed(seed_b64), "seed": seed_b64, "v": 1}, separators=(",", ":"),
-                     sort_keys=True).encode("utf-8")
-    box = SecretBox(rescue_keys(code)[1])
-    out = base64.b64encode(bytes(box.encrypt(raw, nonce) if nonce is not None else box.encrypt(raw))).decode()
+    keys = keys or guard_keys(code, salt_b64)
+    inner = _js({"code": code_of_seed(seed_b64), "salt": str(salt_b64), "seed": seed_b64, "v": 2}).encode("utf-8")
+    box = SecretBox(keys["rk"])
+    sealed = bytes(box.encrypt(inner, nonce) if nonce is not None else box.encrypt(inner))
+    out = base64.b64encode(_js({"box": base64.b64encode(sealed).decode(), "salt": str(salt_b64), "v": 2})
+                           .encode("utf-8")).decode()
     if len(out) > MAX_RESCUE:
         raise PairError("rescue envelope too large")
     return out
 
 
-def rescue_open(code, data):
-    """-> the seed (base64). Checked: the envelope opens with this code and its seed belongs to its address."""
+def rescue_header(data):
+    """-> the clear header {"box", "salt", "v": 2} of an envelope, PairError if it is none (v1, damaged)."""
+    try:
+        head = json.loads(base64.b64decode(str(data or ""), validate=True).decode("utf-8"))
+    except (ValueError, TypeError):
+        head = None
+    if not isinstance(head, dict) or head.get("v") != 2 or not isinstance(head.get("box"), str):
+        raise PairError("rescue envelope not readable with this code")
+    _salt_bytes(head.get("salt"))
+    return head
+
+
+def rescue_open(code, data, keys=None):
+    """-> (seed b64, salt b64). Checked: the envelope opens with this code (and the salt of its header), the salt inside
+    is the same, and its seed belongs to its address. A v1 envelope (no salt) is not opened any more."""
     from nacl.exceptions import CryptoError
     from nacl.secret import SecretBox
+    head = rescue_header(data)
+    keys = keys or guard_keys(code, head["salt"])
     try:
-        d = json.loads(SecretBox(rescue_keys(code)[1]).decrypt(base64.b64decode(data)).decode("utf-8"))
-    except (CryptoError, ValueError):
+        d = json.loads(SecretBox(keys["rk"]).decrypt(base64.b64decode(head["box"])).decode("utf-8"))
+        ok = (isinstance(d, dict) and d.get("v") == 2 and d.get("salt") == head["salt"]
+              and isinstance(d.get("seed"), str) and code_of_seed(d.get("seed") or "") == d.get("code"))
+    except (CryptoError, ValueError, TypeError):
         raise PairError("rescue envelope not readable with this code") from None
-    if d.get("v") != 1 or code_of_seed(d.get("seed") or "") != d.get("code"):
+    if not ok:
         raise PairError("rescue envelope does not match its address")
-    return d["seed"]
+    return d["seed"], head["salt"]
+
+

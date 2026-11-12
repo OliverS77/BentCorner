@@ -33,7 +33,7 @@ class Dedupe(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_same_address_is_fetched_once(self):
-        url = "https://example.org/img/89631139.jpg"
+        url = "https://assets.tcgdex.net/img/89631139.jpg"
         calls = []
         with mock.patch.object(games, "current", lambda: pokemon.GAME), \
                 mock.patch.object(netpolite, "get", lambda u, **kw: calls.append(u) or FakeResponse()), \
@@ -48,8 +48,8 @@ class Dedupe(unittest.TestCase):
         with mock.patch.object(games, "current", lambda: pokemon.GAME), \
                 mock.patch.object(netpolite, "get", lambda u, **kw: calls.append(u) or FakeResponse()), \
                 mock.patch.object(netpolite, "note_missing", lambda u, r: None):
-            imgcache.fetch(self.dir / "a.jpg", "https://example.org/a.jpg")
-            imgcache.fetch(self.dir / "b.jpg", "https://example.org/b.jpg")
+            imgcache.fetch(self.dir / "a.jpg", "https://assets.tcgdex.net/a.jpg")
+            imgcache.fetch(self.dir / "b.jpg", "https://assets.tcgdex.net/b.jpg")
         self.assertEqual(len(calls), 2)
 
 

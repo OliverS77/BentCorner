@@ -151,6 +151,31 @@ def offline():
 
 _by_url = {}   # image address -> a file on disk with it (prints sharing one image: fetched once)
 
+# image addresses come from the card data – foreign (cards/datakeys.py): only https to these hosts (and their
+# subdomains), so changed data can never send the app to any address it likes
+IMAGE_HOSTS = {"scryfall.io", "assets.tcgdex.net", "api.lorcana.ravensburger.com",
+               *__import__("games").extra("IMAGE_HOSTS", ())}   # + ours (and the private additions')
+
+
+def host_ok(url):
+    from urllib.parse import urlparse
+    from system import contacts
+    try:
+        u = urlparse(url)
+        host = (u.hostname or "").lower()
+        port = u.port
+    except ValueError:
+        return False
+    if u.username or u.password:
+        return False
+    own = {urlparse(contacts.SERVER).hostname, urlparse(contacts.SERVER_OLD).hostname}
+    if u.scheme == "http" and host in ("127.0.0.1", "localhost") and host in own:   # local test server only
+        return True
+    if u.scheme != "https" or port not in (None, 443):
+        return False
+    hosts = IMAGE_HOSTS | own | set(netpolite.MIRROR) | set(netpolite.extra("IMAGE_HOSTS", set()))
+    return any(host == h or host.endswith("." + h) for h in hosts)
+
 
 def _same_image_on_disk(url):
     """A file on disk that already holds this address – this session's downloads, or (games with shared images,
@@ -193,6 +218,8 @@ def fetch(path, url, timeout=8):
             shutil.copyfile(same, path)
             return True
     if not url or offline() or netpolite.is_missing(url) or _images_off():
+        return False
+    if not host_ok(url):
         return False
     try:
         r = netpolite.get(url, headers=HEADERS, timeout=timeout)

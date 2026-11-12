@@ -97,7 +97,8 @@ class Updates(unittest.TestCase):
         u = self.run_check(Server(raw, sig, data=EXE[:-1] + b"X"))     # the file on the server was swapped
         self.assertEqual(u.state, "error")
         self.assertIn("Checksum", u.error)
-        left = [x.name for x in pathlib.Path(self.tmp.name).iterdir() if x.name != "last_check_day.txt"]
+        kept = ("last_check_day.txt", "release-manifest.json", "release-manifest.json.sig")   # + data keys' source
+        left = [x.name for x in pathlib.Path(self.tmp.name).iterdir() if x.name not in kept]
         self.assertEqual(left, [])   # no half or wrong exe left behind (only the daily check marker)
 
     def test_not_newer_nothing_downloaded(self):
@@ -127,6 +128,19 @@ class Highlights(unittest.TestCase):
             for p in points:
                 self.assertLess(len(p), 300, p[:40])
                 self.assertIn(p, de.TEXTS, f"not translated: {p[:50]}")
+
+    def test_sharing_rules_stand_alone(self):
+        """0.9.7 (Oliver 06.11.): only the sharing rules with their heading – also for whoever skipped versions;
+        work-in-progress builds show nothing of it yet."""
+        for seen in ("0.9.6", "0.9.5.12", "0.9.4", None):
+            title, pts = version.highlights_since(seen, "0.9.7")
+            self.assertEqual(title, "Sync with your devices – and new rules for friends, sharing and prices", seen)   # ONE note (lead/legal 07.11.)
+            self.assertEqual(pts, version.HIGHLIGHTS["0.9.7"], seen)
+        self.assertIn(version.HIGHLIGHT_TITLES["0.9.7"], de.TEXTS)
+        self.assertEqual(version.highlights_since("0.9.6", "0.9.7.50"), ("", []))   # not shipped yet
+        title, pts = version.highlights_since("0.9.4", "0.9.6")                        # before: as always
+        self.assertEqual(title, "")
+        self.assertEqual(pts, (version.HIGHLIGHTS["0.9.6"] + version.HIGHLIGHTS["0.9.5"])[:5])
 
 
 if __name__ == "__main__":

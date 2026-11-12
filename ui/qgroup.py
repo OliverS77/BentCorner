@@ -76,7 +76,9 @@ class GroupBackend(QtCore.QObject):
         if self._off:
             self._idx = []
         else:
-            self._idx = [i for i, k in enumerate(self._chain) if k not in self._disabled]
+            from system import orbit   # Orbit's Core: a "Price" level rests (kept for Near Orbit, not stored as off)
+            self._idx = [i for i, k in enumerate(self._chain) if k not in self._disabled
+                         and (k != "price" or orbit.prices_shown())]
         chain = [self._chain[i] for i in self._idx]
         path = []
         for i in self._idx:

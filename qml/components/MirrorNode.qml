@@ -7,6 +7,7 @@ Item {
     property var node: ({})
     property var mirror
     readonly property string t: node && node.t ? node.t : ""
+    property bool rowHover: false   // the mouse over the row this element sits in (buttons with "hover")
     property var hub: null   // Mirror.qml's key -> node table (its one Connections hands out value changes)
     // values (text, checkmark, number …) come separately from the structure: they change without rebuilding the element.
     // Re-read only when the form names this node's key (valsChanged) – a form-wide rev made every node re-read and
@@ -23,8 +24,9 @@ Item {
         ignoreUnknownSignals: true
         function onValsChanged(keys) { if (n.node && n.node.k !== undefined && keys[n.node.k] === true) n.nv = n.read() }
     }
-    implicitWidth: ld.item && (n.t !== "label" || n.nv.fixed === true) && n.t !== "row" && n.t !== "col" && n.t !== "form" && n.t !== "grid"
-                   && n.t !== "group" ? ld.item.implicitWidth : 0
+    // a wrapping choice row reports its natural width (the parent row gives it at most what is left)
+    implicitWidth: ld.item && (n.t !== "label" || n.nv.fixed === true) && (n.t !== "row" || n.nv.wrap === true) && n.t !== "col"
+                   && n.t !== "form" && n.t !== "grid" && n.t !== "group" ? ld.item.implicitWidth : 0
     implicitHeight: ld.item && n.nv.hidden !== true ? ld.item.implicitHeight : 0
     height: implicitHeight
     visible: n.nv.hidden !== true   // empty hint slot (ui.slot_note): no space, no gap
@@ -81,12 +83,12 @@ Item {
         width: n.width
         sourceComponent: n.t === "label" ? cLabel : n.t === "button" ? cButton : n.t === "check" ? cCheck
                        : n.t === "combo" ? cCombo : n.t === "spin" ? cSpin : n.t === "edit" ? cEdit
-                       : n.t === "row" ? cRow : n.t === "col" ? cCol : n.t === "form" ? cForm
+                       : n.t === "row" ? (n.nv.wrap === true ? cFlow : cRow) : n.t === "col" ? cCol : n.t === "form" ? cForm
                        : n.t === "grid" ? cGrid : n.t === "group" ? cGroup : n.t === "line" ? cLine
                        : n.t === "stretch" ? cStretch : n.t === "list" ? cList : n.t === "textarea" ? cTextArea
                        : n.t === "slider" ? cSlider : n.t === "progress" ? cProgress
-                       : n.t === "image" ? cImage : n.t === "tabs" ? cTabs : n.t === "chart" ? cChart
-                       : n.t === "camera" ? cCamera : n.t === "table" ? cTable : n.t === "pixel" ? cPixel
+                       : n.t === "image" ? cImage : n.t === "frames" ? cFrames : n.t === "tabs" ? cTabs : n.t === "chart" ? cChart
+                       : n.t === "camera" ? cCamera : n.t === "live" ? cLive : n.t === "table" ? cTable : n.t === "pixel" ? cPixel
                        : n.t === "datetime" ? cDateTime : n.t === "tags" ? cTags : n.t === "space" ? cSpace : n.t === "cards" ? cCards
                        : n.t === "swatch" ? cSwatch : n.t === "scroll" ? cScroll : n.t === "picker" ? cPicker : n.t === "checklist" ? cCheckList : n.t === "game" ? cGame : n.t === "fortune" ? cFortune : n.t === "tag" ? cTag : n.t === "orbit" ? cOrbit : null
     }
@@ -101,7 +103,8 @@ Item {
             elide: n.nv.wrap || n.nv.fixed ? Text.ElideNone : Text.ElideRight
             color: n.nv.color && n.nv.color !== "gray" ? n.nv.color : (n.nv.color === "gray" ? T.muted : T.text2)
             font.family: n.nv.font || T.font; font.pixelSize: n.nv.px || (n.nv.big ? 16 : 13); font.bold: n.nv.bold === true
-            onLinkActivated: function (link) { Qt.openUrlExternally(link) }
+            // only web and mail links – never file:, search-ms: & co. from a friend's or a file's text (review 08.11.)
+            onLinkActivated: function (link) { if (/^(https:|mailto:)/i.test(link)) Qt.openUrlExternally(link) }
             // Text with a set width works out its own height only when first asked – and reports the change during
             // that very query (binding loop in n.implicitHeight). Ask once here, before n reads it.
             Component.onCompleted: implicitHeight
@@ -116,10 +119,14 @@ Item {
             height: 30
             enabled: n.nv.enabled !== false
             danger: n.nv.danger === true
+            alertInk: n.nv.alert ? n.nv.alert : "transparent"   // e.g. "Delete Bent°Corner": red text
             active: n.nv.active === true || !!(n.nv.checkable && n.nv.checked)
             primary: n.nv.primary === true
             checkable: n.nv.checkable === true
+            led: n.nv.checkable === true || n.nv.led === true   // a choice row (seg): the dot like the top bar's tabs
             ledAlways: n.nv.checkable === true   // choice with a little lamp: off grey, on white
+            // a choice not taken: dimmed, almost normal on hover; "hover": only while the mouse is over its row (the ✕)
+            opacity: n.nv.hover === true && !n.rowHover && !activeFocus ? 0 : n.nv.dim === true ? 0.45 + 0.4 * h : 1
             tip: n.nv.tip || ""
             onClicked: n.mirror.act(n.nv.id, null)
         }
@@ -180,9 +187,14 @@ Item {
             text: n.nv.text || ""
             placeholder: n.nv.placeholder || ""
             clearable: false
+            secret: n.nv.secret === true
+            revealable: n.nv.reveal === true
+            showText: n.nv.show_text || "Show"
+            hideText: n.nv.hide_text || "Hide"
             enabled: n.nv.enabled !== false
+            keyHook: n.nv.nopaste ? function (ev) { return ev.matches(StandardKey.Paste) } : null   // swallowed: no paste
             onEdited: function (t) { n.mirror.act(n.nv.id, ["live", t]) }   // typed text stays (values keep updating)
-            onAccepted: n.mirror.act(n.nv.id, text)
+            onAccepted: n.mirror.act(n.nv.id, n.nv.enter === true ? ["enter", text] : text)   // enter: Enter sends
             onActiveFocusChanged: if (!activeFocus) n.mirror.act(n.nv.id, text)
             Component.onCompleted: if (n.nv.focus) focusAll()
         }
@@ -191,6 +203,7 @@ Item {
         id: cRow
         Item {
             implicitHeight: row.implicitHeight
+            HoverHandler { id: rowHov }
             Row {
                 id: row
                 x: 0
@@ -210,13 +223,27 @@ Item {
                     var w = 0, cs = row.children
                     for (var i = 0; i < cs.length; i++) {
                         var c = cs[i]
-                        if (c.nd === undefined || row.isFlex(c.nd)) continue
+                        if (c.nd === undefined || row.isFlex(c.nd) || row.isWrap(c.nd)) continue
                         w += c.width
                     }
                     return w + spacing * Math.max(0, kids.length - 1)
                 }
+                // a choice row that wraps (lead 07.11.): its natural width, at most what the fixed elements leave
+                // (40 px kept per text/field beside it) – the flexible ones share what remains after it
+                function isWrap(k) { if (!k || k.t !== "row") return false; try { var v = n.mirror.val(k.k); return !!v && v.wrap === true } catch (e) { return false } }
+                readonly property real keep: {
+                    var c = 0; for (var i = 0; i < kids.length; i++) { var t = kids[i] ? kids[i].t : ""; if (isFlex(kids[i]) && t !== "stretch") c++ }
+                    return 40 * c
+                }
+                function wrapW(c) { return Math.max(0, Math.min(c && c.item ? c.item.implicitWidth : 0, row.width - row.fixedW - row.keep)) }
+                readonly property real wrapSum: {
+                    var w = 0, cs = row.children
+                    for (var i = 0; i < cs.length; i++) if (cs[i].nd !== undefined && row.isWrap(cs[i].nd)) w += row.wrapW(cs[i])
+                    return w
+                }
                 function isFlex(k) {
                     var t = k ? k.t : ""
+                    if (t === "row" && isWrap(k)) return false   // a wrapping choice row: its own width (wrapW)
                     if (t === "label") { try { if (n.mirror.val(k.k).fixed) return false } catch (e) {} }
                     return t === "label" || t === "stretch" || t === "slider" || t === "line" || t === "row" || t === "col" || t === "list" || t === "textarea"
                         || t === "progress" || t === "form" || t === "grid" || t === "group" || t === "chart" || t === "camera"
@@ -232,9 +259,12 @@ Item {
                     id: rep
                     model: row.kids
                     delegate: Child {
+                        id: rc
                         required property var modelData
                         nd: modelData
-                        flexW: row.isFlex(modelData) ? Math.max(0, (row.width - row.fixedW) / row.flex * row.weight(modelData)) : -1
+                        rowHover: rowHov.hovered
+                        flexW: row.isWrap(modelData) ? row.wrapW(rc)
+                               : row.isFlex(modelData) ? Math.max(0, (row.width - row.fixedW - row.wrapSum) / row.flex * row.weight(modelData)) : -1
                         anchors.verticalCenter: parent && !row.alignTop ? parent.verticalCenter : undefined
                     }
                 }
@@ -318,7 +348,7 @@ Item {
             readonly property bool flat: n.nv.flat === true   // no box: divider + heading
             readonly property real pad: flat ? 0 : 20
             // more air inside: 20 px at the sides, equal at top/bottom (previously only 6 px at the bottom)
-            implicitHeight: col.implicitHeight + (flat ? (titled ? 50 : 16) : (titled ? 62 : 36))
+            implicitHeight: col.implicitHeight + (flat ? (titled ? 54 : 16) : (titled ? 66 : 36))
             radius: Math.min(16, T.panelRadius)
             color: flat ? "transparent" : Qt.darker(T.surface, 1.0)
             border.width: flat ? 0 : 1; border.color: T.line
@@ -328,12 +358,12 @@ Item {
                 visible: parent.titled
                 CheckBox { visible: n.nv.id !== undefined; checked: n.nv.checked === true; text: ""
                            onToggled: function (on) { n.mirror.act(n.nv.id, on) } }
-                Text { text: n.nv.title || ""; color: T.text2; font.family: T.font; font.pixelSize: 13; font.bold: true }
+                Text { text: n.nv.title || ""; color: T.text2; font.family: T.font; font.pixelSize: 16; font.bold: true }
                 Lamp { visible: n.nv.lamp === true; anchors.verticalCenter: parent.verticalCenter }
             }
             Column {
                 id: col
-                x: parent.pad; y: parent.titled ? (parent.flat ? 42 : 44) : (parent.flat ? 14 : 18)
+                x: parent.pad; y: parent.titled ? (parent.flat ? 46 : 48) : (parent.flat ? 14 : 18)
                 width: parent.width - 2 * parent.pad
                 spacing: 8
                 Repeater {
@@ -344,15 +374,41 @@ Item {
         }
     }
     // child element: via a Loader (QML does not allow an element that directly contains itself)
+    Component {   // a row that wraps when too narrow (choice rows – lead 07.11.): buttons in their own width
+        id: cFlow
+        Item {
+            width: n.width
+            implicitHeight: fl.implicitHeight
+            // natural width: all buttons in one line (the parent row gives at most what is left)
+            implicitWidth: {
+                var w = 0, k = 0, cs = fl.children
+                for (var i = 0; i < cs.length; i++) if (cs[i].nd !== undefined) { w += cs[i].width; k++ }
+                return w + fl.spacing * Math.max(0, k - 1)
+            }
+            Flow {
+                id: fl
+                width: parent.width
+                spacing: Math.max(6, n.nv.spacing || 6)
+                Repeater {
+                    model: n.node.items || []
+                    delegate: Child { required property var modelData; nd: modelData }
+                }
+            }
+        }
+    }
     component Child: Loader {
         id: ch
         property var nd: ({})
         property real flexW: -1
+        property bool rowHover: false
         width: flexW >= 0 ? flexW : (item ? item.implicitWidth : 0)
         height: item ? item.implicitHeight : 0
         Component.onCompleted: setSource(Qt.resolvedUrl("MirrorNode.qml"), {node: ch.nd, mirror: n.mirror, hub: n.hub})
         onNdChanged: if (item) item.node = nd
-        onLoaded: item.width = Qt.binding(function () { return ch.width })
+        onLoaded: {
+            item.width = Qt.binding(function () { return ch.width })
+            item.rowHover = Qt.binding(function () { return ch.rowHover })
+        }
     }
     Component {
         id: cList
@@ -453,6 +509,25 @@ Item {
         }
     }
     Component {
+        id: cLive   // a picture that reloads itself (ui.live – the webcam preview, no form rebuild per frame)
+        // a fixed box around the picture: the node takes ITS implicit size – an Image reports the delivered frame's
+        // size (the camera's 640×480, the provider ignores sourceSize), which left ~240 px empty below (performance)
+        Item {
+            implicitWidth: n.nv.w || 320; implicitHeight: n.nv.h || 240
+            width: implicitWidth; height: implicitHeight
+            Image {
+                id: live
+                property int k: 0
+                anchors.fill: parent
+                sourceSize.width: width; sourceSize.height: height
+                fillMode: Image.PreserveAspectFit
+                cache: false; asynchronous: true; retainWhileLoading: true
+                source: "image://cards/" + (n.nv.key || "") + "?" + k
+                Timer { interval: n.nv.ms || 125; repeat: true; running: live.visible; onTriggered: live.k++ }
+            }
+        }
+    }
+    Component {
         id: cTable
         DataTable {
             implicitHeight: n.nv.h || 220
@@ -490,12 +565,15 @@ Item {
             level: n.nv.level === undefined ? 1 : n.nv.level
             compact: n.nv.compact || false
             names: n.nv.names || []; lines: n.nv.lines || []; outs: n.nv.outs || []; points: n.nv.points || [[], [], []]
-            terms: n.nv.terms || ""; foot: n.nv.foot || ""; privacy: n.nv.privacy || ""
+            terms: n.nv.terms || ""; foots: n.nv.foots || []; privacy: n.nv.privacy || ""
             moreText: n.nv.more || "More"; lessText: n.nv.less || "Less"
             leaveNote: n.nv.leave || ""
             confirm: n.nv.confirm === true; leaveAsk: n.nv.leaveAsk || ""; stayText: n.nv.stay || ""; leaveText: n.nv.leaveBtn || ""
             onDecided: function (leave) { n.mirror.act(n.nv.id, [leave ? "leave" : "stay"]) }
             onPicked: function (lv) { n.mirror.act(n.nv.id, [lv]) }
+            syncText: (n.nv.sync || {}).text || ""; syncOn: (n.nv.sync || {}).on === true
+            syncEnabled: (n.nv.sync || {}).enabled !== false; syncNotes: (n.nv.sync || {}).notes || []
+            onSyncToggled: function (on) { n.mirror.act(n.nv.id, ["sync", on]) }
         }
     }
     Component {
@@ -590,6 +668,35 @@ Item {
                                else shell.tip("", 0, 0)
                            } }
             TapHandler { enabled: !!n.nv.link; onTapped: Qt.openUrlExternally(n.nv.link) }
+        }
+    }
+    Component {
+        id: cFrames   // a turning picture (the pairing sphere): <prefix>0 … <prefix>count-1 in a loop
+        Item {
+            id: frm
+            implicitWidth: n.nv.w || 0
+            implicitHeight: n.nv.h || 0
+            // every frame its own Image, all loaded once; only the current one is visible. Switching ONE Image's source
+            // 30 times a second went through the asynchronous provider every time: empty or stuttering on Direct3D
+            // (Oliver 06.11.). One sheet for AnimatedSprite is too big for the software renderer's texture limit.
+            property int frame: 0
+            Repeater {
+                model: n.nv.count || 0
+                delegate: Image {
+                    required property int index
+                    anchors.fill: parent
+                    source: n.nv.prefix ? "image://cards/" + n.nv.prefix + index : ""
+                    cache: true
+                    visible: index === frm.frame
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+            }
+            Timer {   // the frame from the clock: the settings page rebuilds every second – the turn goes on, evenly
+                interval: Math.round(1000 / (n.nv.fps || 30)); repeat: true; triggeredOnStart: true
+                running: (n.nv.count || 0) > 1 && frm.visible
+                onTriggered: frm.frame = Math.floor(Date.now() * (n.nv.fps || 30) / 1000) % n.nv.count
+            }
         }
     }
     Component {

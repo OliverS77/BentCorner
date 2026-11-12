@@ -21,6 +21,7 @@ Item {
     property url iconSource: ""        // small image before the text (e.g. the game's pixel icon), scaled crisply
     property int navLevel: 0           // 0 normal, 1 small text, 2 icon only
     property bool badge: false         // „something is ready here“
+    property bool badgeUrgent: false   // a request waiting to be seen: the drop every 2 s (PLAN-EINFACH D)
     property int badgeCount: 0         // a number instead of the dot (e.g. open requests)
     property string badgeText: ""      // a character instead of the dot (e.g. ∞ – all games)
     readonly property bool badgePill: badgeCount > 0 || badgeText !== ""
@@ -41,7 +42,8 @@ Item {
     Behavior on h { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
 
     // origin tab: the arrow sits where the active tab's dot would otherwise be (statusSlot)
-    readonly property real ledRoom: T.gray && led && !glyph ? 16 : 0   // space for the lamp on the left
+    // space for the lamp on the left – less in small buttons (the choice rows with their dot, PLAN-EINFACH C)
+    readonly property real ledRoom: T.gray && led && !glyph ? (compact ? 10 : 16) : 0
     readonly property bool statusSlot: !glyph && width - txt.implicitWidth - (navIcon ? 26 : 0) > (led ? 22 : 30)
     readonly property string label: backDir !== 0 && (statusSlot || navLevel >= 2) ? text
                                     : (backDir < 0 ? "←  " + text : (backDir > 0 ? text + "  →" : text))
@@ -251,16 +253,16 @@ Item {
                     SequentialAnimation on scale {
                         running: shell.animate
                         loops: Animation.Infinite
-                        PauseAnimation { duration: 2500 }
+                        PauseAnimation { duration: b.badgeUrgent ? 100 : 2500 }
                         NumberAnimation { from: 1; to: 3.2; duration: 1600; easing.type: Easing.OutCubic }
-                        PauseAnimation { duration: 27000 }
+                        PauseAnimation { duration: b.badgeUrgent ? 300 : 27000 }
                     }
                     SequentialAnimation on opacity {
                         running: shell.animate
                         loops: Animation.Infinite
-                        PauseAnimation { duration: 2500 }
+                        PauseAnimation { duration: b.badgeUrgent ? 100 : 2500 }
                         NumberAnimation { from: 0.7; to: 0; duration: 1600; easing.type: Easing.OutCubic }
-                        PauseAnimation { duration: 27000 }
+                        PauseAnimation { duration: b.badgeUrgent ? 300 : 27000 }
                     }
                 }
             }

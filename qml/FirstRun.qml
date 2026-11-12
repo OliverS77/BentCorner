@@ -7,7 +7,7 @@ import "components"
 
 Window {
     id: win
-    width: 760; height: 600
+    width: 760; height: 600 + (setup.found.length > 0 ? 70 + 68 * Math.min(setup.found.length, 3) : 0)
     minimumWidth: 640; minimumHeight: 560
     visible: false
     color: T.bg
@@ -42,6 +42,31 @@ Window {
         }
         HoverHandler { id: chh; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: setup.setChoice(ch.key) }
+    }
+
+    // A collection already on this PC: chosen by brightness only (dim → nearly normal on hover → normal when chosen),
+    // nothing preselected (lead 06.11.2026). Not reachable: [Check again] instead.
+    component Found: Rectangle {
+        id: fd
+        property var entry
+        readonly property bool on: setup.choice === entry.key
+        width: parent.width; height: 56; radius: 12
+        color: on ? T.surface2 : "transparent"
+        border.width: 1; border.color: on ? T.line2 : T.line
+        opacity: on ? 1.0 : (fdh.hovered ? 0.85 : 0.6)
+        Column {
+            x: 16; anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - 32 - (recheckBtn.visible ? recheckBtn.width + 12 : 0)
+            Text { text: fd.entry.path; width: parent.width; elide: Text.ElideMiddle
+                   color: T.text; font.family: T.font; font.pixelSize: 15; font.bold: fd.on }
+            Text { text: fd.entry.sub; width: parent.width; elide: Text.ElideRight
+                   color: T.dim; font.family: T.font; font.pixelSize: 12 }
+        }
+        Btn { id: recheckBtn; visible: !fd.entry.reachable; anchors.right: parent.right; anchors.rightMargin: 12
+              anchors.verticalCenter: parent.verticalCenter; height: 34; compact: true
+              text: shell.text("Check again"); onClicked: setup.recheck() }
+        HoverHandler { id: fdh; cursorShape: fd.entry.reachable ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        TapHandler { enabled: fd.entry.reachable; onTapped: setup.setChoice(fd.entry.key) }
     }
 
     // Flag (drawn): "en" = Union Jack, "de" = black-red-gold
@@ -134,8 +159,20 @@ Window {
                        text: shell.text("Scan cards, collect them and open boosters live. Where should your data live? That's where Bent°Corner keeps your collection, logs, settings and card data.")
                        color: T.text2; font.family: T.font; font.pixelSize: 14 }
                 Item { width: 1; height: 4 }
+                // collections already on this PC (only shown – nothing is copied or moved)
+                Text { visible: setup.found.length > 0; width: parent.width; wrapMode: Text.Wrap
+                       text: setup.found.length === 1 ? shell.text("Found a collection on this PC – use it?")
+                                                     : shell.text("Found collections on this PC – which one is yours?")
+                       color: T.text; font.family: T.font; font.pixelSize: 15; font.bold: true }
+                Repeater { model: setup.found; Found { required property var modelData; entry: modelData } }
+                Text { text: shell.text("I already have a collection – choose its folder")
+                       color: T.text2; font.family: T.font; font.pixelSize: 13; font.underline: hav.hovered
+                       HoverHandler { id: hav; cursorShape: Qt.PointingHandCursor }
+                       TapHandler { onTapped: setup.browse() } }
+                Text { visible: setup.found.length > 0; text: shell.text("Or start a new, empty collection:")
+                       color: T.dim; font.family: T.font; font.pixelSize: 13; topPadding: 6 }
                 Choice { key: "docs"; label: shell.text("In “Documents” (recommended)"); sub: setup.docsPath }
-                Choice { key: "port"; label: shell.text("Next to the program (portable, e.g. for a USB stick)"); sub: setup.portPath }
+                Choice { key: "port"; visible: setup.portableOk; label: shell.text("Next to the program (portable, e.g. for a USB stick)"); sub: setup.portPath }
                 Choice {
                     id: other
                     key: "other"; label: shell.text("Other folder …")
@@ -220,7 +257,7 @@ Window {
                 id: nextBtn
                 anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 28
                 height: 42; width: 170; primary: true
-                enabled: setup.page !== 2 || setup.games.length > 0
+                enabled: setup.canGoOn && (setup.page !== 2 || setup.games.length > 0)
                 text: setup.page === 2 ? shell.text("Let's go") : shell.text("Next")
                 onClicked: setup.next()
             }

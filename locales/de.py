@@ -190,7 +190,6 @@ TEXTS = {
     'Best pack': 'Bestes Pack',
     'Best partner': 'Bester Partner',
     'Best pull': 'Bester Pull',
-    'Binder is private again – it disappears for your friends.': 'Binder ist wieder privat – bei deinen Freunden verschwindet er.',
     'Binders': 'Binder',
     'Black': 'Schwarz',
     'Block': 'Blockieren',
@@ -416,6 +415,8 @@ TEXTS = {
     'Delete binder': 'Binder löschen',
     'Delete custom type (packs of this type then count as “Booster”)': 'Eigenen Typ löschen (Packs mit diesem Typ zählen dann als „Booster“)',
     'Delete deck': 'Deck löschen',
+    'Delete deck …': 'Deck löschen …',   # last entry of the „⋯“ menu in a narrow deck header (lead 06.11.)
+    'Export, versions, delete': 'Exportieren, Versionen, Löschen',
     'Delete entry only': 'Nur Eintrag löschen',
     'Delete everything except sets': 'Alles außer Sets löschen',
     'Delete everything in the trash for good?': 'Alles im Papierkorb endgültig löschen?',
@@ -844,7 +845,6 @@ TEXTS = {
     'No sets downloaded yet.': 'Noch keine Sets heruntergeladen.',
     'No trade offers yet. In a trade with a friend: check cards → “Share as ticket”. A ticket from someone else: Import friend … (choose the image) or New log → Trade ticket.': 'Noch keine Tauschangebote. Im Tausch mit einem Freund: Karten anhaken → „Als Ticket teilen“. Ein Ticket von jemand anderem: Freund importieren … (Bild wählen) oder Neues Log → Tauschticket.',
     'No upgrades found – your collection has nothing that makes this deck better.': 'Keine Upgrades gefunden – deine Sammlung hat nichts, was dieses Deck besser macht.',
-    'No, keep private': 'Nein, privat lassen',
     'No, thanks': 'Nein, danke',
     'Not (or no longer) in your collection – skipped:': 'Nicht (mehr) in deiner Sammlung – wird übersprungen:',
     'Not English': 'Nicht Englisch',
@@ -920,6 +920,7 @@ TEXTS = {
     'Only types that count as packs (setting in “Pack types …”), no tags': 'Nur Typen, die als Pack zählen (Einstellung in „Pack-Typen …“), keine Tags',
     'Only unpinned ones': 'Nur nicht angepinnte',
     "Only what you share with friends: shared lists, your library (if you share it) and shared binders – encrypted, only your friends can read it. It stays for 6 months after you last shared it (while you use the app, it re-shares regularly); if you take something back, it's gone at once. This is not a backup: logs, decks, private lists and settings are never there.": 'Nur was du mit Freunden teilst: geteilte Listen, deine Bibliothek (wenn du sie teilst) und geteilte Binder – verschlüsselt, lesen können es nur deine Freunde. Es bleibt 6 Monate nach dem letzten Teilen (solange du die App nutzt, teilt sie regelmäßig neu); nimmst du etwas zurück, ist es sofort weg. Das ist kein Backup: Logs, Decks, private Listen und Einstellungen liegen nie dort.',
+    "Only what you share with friends: shared lists, your library (if you share it) and shared binders – encrypted, only your friends can read it. It stays for 6 months after you last shared it (while you use the app, it re-shares regularly); if you take something back, it's gone at once.": 'Nur was du mit Freunden teilst: geteilte Listen, deine Bibliothek (wenn du sie teilst) und geteilte Binder – verschlüsselt, lesen können es nur deine Freunde. Es bleibt 6 Monate nach dem letzten Teilen (solange du die App nutzt, teilt sie regelmäßig neu); nimmst du etwas zurück, ist es sofort weg.',
     'Only your friends can see your name – a nickname is fine. Everything here stays on this computer unless you share it yourself.': 'Dein Name ist nur für deine Freunde sichtbar – ein Spitzname reicht. Alles hier bleibt auf diesem Rechner, außer du teilst es selbst.',
     'Open': 'Öffnen',
     'Open Bent°Corner': 'Bent°Corner öffnen',
@@ -1252,9 +1253,15 @@ TEXTS = {
     'Share as ticket …': 'Als Ticket teilen …',
     'Share collection': 'Sammlung teilen',
     'Share counteroffer …': 'Gegenangebot teilen …',
-    'Share library with friends (visible to friends, encrypted)': 'Bibliothek mit Freunden teilen (für Freunde sichtbar, verschlüsselt)',
+    'Do you want to keep doing that?': 'Willst du das weiter?',
+    'Keep sharing': 'Weiter teilen',
+    'Stop sharing': 'Nicht mehr teilen',
+    'Share library with friends – your friends see your whole library (all cards and counts)': 'Bibliothek mit Freunden teilen – deine Freunde sehen deine ganze Bibliothek (alle Karten und Anzahlen)',
     'Share with friends': 'Mit Freunden teilen',
-    'Share your library with friends?': 'Bibliothek mit Freunden teilen?',
+    'Send to friends now': 'Jetzt an Freunde senden',
+    'Whoever gets your request sees your name and your card back.': 'Wer deine Anfrage bekommt, sieht deinen Namen und deinen Kartenrücken.',
+    'Shared with friends': 'Mit Freunden geteilt',
+    'What your friends get from you. New things always start off – new friends too.': 'Was deine Freunde von dir bekommen. Neues startet immer aus – auch neue Freunde.',
     'Share: log recap as an image – packs, value, balance and the best hits; to copy for WhatsApp/Discord or as PNG': 'Teilen: Recap des Logs als Bild – Packs, Wert, Bilanz und die besten Hits; zum Kopieren für WhatsApp/Discord oder als PNG',
     'Shared': 'Geteilt',
     'Shared profile – your friends see ': 'Geteiltes Profil – deine Freunde sehen ',
@@ -1377,7 +1384,7 @@ TEXTS = {
     "The card wasn't actually there: remove it and keep it as a scanner mistake (scan data, stays on this computer)": 'Die Karte lag gar nicht da: entfernen und als Fehlgriff merken (Scan-Daten, bleiben auf dem Rechner)',
     'The cards do not go into your collection.': 'Die Karten kommen nicht in die Sammlung.',
     'The cards go into your collection.': 'Die Karten kommen in deine Sammlung.',
-    'The checked cards of both sides as a trade ticket – to copy into WhatsApp/Discord or as PNG. Your partner loads it under Orbit → Import and books the trade with one click': 'Die angehakten Karten beider Seiten als Tauschticket – zum Kopieren für WhatsApp/Discord oder als PNG. Dein Gegenüber lädt es unter Orbit → Importieren und bucht den Tausch mit einem Klick',
+    'The checked cards of both sides as a trade ticket – to copy into WhatsApp/Discord or as PNG. Your partner opens it with “Import friend …” and gets it as a trade offer': 'Die angehakten Karten beider Seiten als Tauschticket – zum Kopieren für WhatsApp/Discord oder als PNG. Dein Gegenüber öffnet es mit „Freund importieren …“ und bekommt es als Tauschangebot',
     'The collection is still empty.': 'Die Sammlung ist noch leer.',
     'The data is still downloading – Bent°Corner needs to stay open for that. Pass the time with Scalper Invaders. You can keep playing once everything is done, too.': 'Die Daten laden noch – Bent°Corner muss dafür offen bleiben. Vertreib dir die Zeit mit Scalper Invaders. Spielen geht auch, wenn alles fertig ist.',
     'The deck contains another printing of this card – switch to this one': 'Im Deck steckt ein anderer Druck dieser Karte – auf diesen umstellen',
@@ -1591,12 +1598,10 @@ TEXTS = {
     'Yes': 'Ja',
     "Yes, I'll help": 'Ja, ich helfe mit',
     'Yes, gladly': 'Ja, gerne',
-    'Yes, share with friends': 'Ja, mit Freunden teilen',
     'Yes, turn it on': 'Ja, einschalten',
     'You': 'Du',
     'You assign tags in the stream info (Scan) or under “Logs & stats” – e.g. “Convention” or “Local game store”.': 'Tags vergibst du in den Stream-Infos (Scannen) oder unter „Logs & Statistik“ – z. B. „Messe“ oder „Laden in der Stadt“.',
     'You can change the data folder later in the settings.': 'Den Datenordner kannst du später in den Einstellungen ändern.',
-    'You can change this later under Settings → Friends & privacy.': 'Später änderbar unter Einstellungen → Freunde & Privatsphäre.',
     "You don't own it (yet) – the deck is still built from your cards": 'Hast du (noch) nicht – das Deck wird trotzdem aus deinen Karten gebaut',
     'You get': 'Du bekommst',
     'You get from …': 'Du bekommst von …',
@@ -1604,7 +1609,6 @@ TEXTS = {
     'You set price alerts in Orbit – on lists and on single cards.': 'Preisalarme setzt du in Orbit – an Listen und einzelnen Karten.',
     'You set the scan frame with its own button in the bar.': 'Den Scanrahmen stellst du mit dem eigenen Knopf in der Leiste ein.',
     "You're continuing without a backup – the lamp is off.": 'Du machst ohne Sicherung weiter – das Lämpchen ist aus.',
-    "You're not sharing anything right now – deleted from the server, your friends no longer see it.": 'Du teilst gerade nichts – vom Server gelöscht, deine Freunde sehen es nicht mehr.',
     'Your ID': 'Deine ID',
     "Your ID is like an address: anyone who knows it can send you a friend request, but can't read anything – so it's fine to pass it on. The key to your ID lives in your settings and therefore in every backup. Without a backup a new installation gets a new ID: your friends have to add you again, and what you shared before expires after 6 months.": 'Deine ID ist wie eine Adresse: Wer sie kennt, kann dir eine Freundschaftsanfrage schicken, aber nichts lesen – darum darfst du sie ruhig weitergeben. Der Schlüssel zu deiner ID steckt in deinen Einstellungen und damit in jeder Sicherung. Ohne Sicherung bekommt eine neue Installation eine neue ID: deine Freunde müssen dich neu hinzufügen, und das alte Geteilte verfällt nach 6 Monaten.',
     'Your ID – to share': 'Deine ID – zum Weitergeben',
@@ -1619,7 +1623,6 @@ TEXTS = {
     'Your commanders – pre-sorted. At most %1 are checked in detail (EDHREC, with pauses in between – this takes a moment, you can keep working):': 'Deine Commander – vorsortiert. Höchstens %1 werden genauer geprüft (EDHREC, mit Pausen dazwischen – das dauert etwas, du kannst solange weitermachen):',
     'Your copy': 'Dein Exemplar',
     'Your data – all switches': 'Deine Daten – alle Schalter',
-    'Your friends will then see your whole collection of this game – encrypted, visible only to them. Lists are shared one by one (private / shared with friends).': 'Deine Freunde sehen dann deine ganze Sammlung dieses Spiels – verschlüsselt, nur für sie sichtbar. Listen teilst du einzeln (privat / mit Freunden geteilt).',
     'Your lists': 'Deine Listen',
     'Your name or nickname': 'Dein Name oder Spitzname',
     'Your note about this friend – only you see it, it is never shared.': 'Deine Notiz zu diesem Freund – sieht nur du, sie wird nie geteilt.',
@@ -1905,6 +1908,46 @@ TEXTS = {
     '＋ all': '＋ alle',
     '＋ any': '＋ beliebige',
     '＋ this one': '＋ diese',
+    # sync (net/sync_ctl.py, test build)
+    'A newer Bent°Corner wrote here – please update': 'Ein neueres Bent°Corner hat hier geschrieben – bitte aktualisieren',
+    'Offline – syncs again later': 'Offline – gleicht später wieder ab',
+    'Enough syncing for today – continues tomorrow': 'Für heute genug abgeglichen – geht morgen weiter',
+    'Sync paused on the server – continues later': 'Abgleich am Server pausiert – geht später weiter',
+    'Another device is writing – tries again shortly': 'Ein anderes Gerät schreibt gerade – gleich noch einmal',
+    'Sync did not work – tries again later': 'Abgleich hat nicht geklappt – später noch einmal',
+    # Settings → Your devices (ui/qsync.py, test build; legal's wording 03.11.)
+    'Your devices': 'Deine Geräte',
+    'Sync': 'Abgleich',
+    'Sync with my devices': 'Mit meinen Geräten abgleichen',
+    'What you already have is kept.': 'Was du schon hast, bleibt erhalten.',
+    'Syncing …': 'Abgleich läuft …',
+    'Not synced yet': 'Noch nicht abgeglichen',
+    'Last synced just now': 'Gerade abgeglichen',
+    'Sync now': 'Jetzt abgleichen',
+    "Your online backup is still stored, encrypted, on our server. If you delete it now, it's gone at once (in the server backups for up to 4 more weeks, encrypted). If you keep it, it's deleted 6 months after the last sync.": 'Deine Online-Sicherung liegt noch verschlüsselt auf unserem Server. Löschst du sie jetzt, ist sie sofort weg (in den Server-Sicherungen noch bis zu 4 Wochen, verschlüsselt). Behältst du sie, wird sie 6 Monate nach dem letzten Abgleich gelöscht.',
+    'Delete online backup': 'Online-Sicherung löschen',
+    'Keep': 'Behalten',
+    'Couple a device': 'Gerät koppeln',
+    'Show a code here and enter it on your phone in the Bent°Corner web app – then both stay in sync.': 'Zeig hier einen Code und gib ihn am Handy in der Bent°Corner-Web-App ein – danach bleiben beide abgeglichen.',
+    'Coupled ✓': 'Gekoppelt ✓',
+    'Making a code …': 'Code wird erstellt …',
+    "This device isn't in the list any more.": 'Dieses Gerät steht nicht mehr in der Liste.',
+    "The device list changed – please look again.": "Die Geräteliste hat sich geändert – bitte schau noch einmal.",
+    "A device on the server isn't in your own device list – nothing was changed. Try again in a minute.":
+        'Ein Gerät auf dem Server steht nicht in deiner eigenen Geräteliste – nichts wurde geändert. Versuch es in einer Minute noch einmal.',
+    "This device's key file can't be read right now – perhaps a virus scanner or OneDrive is holding it. Nothing was changed; Bent°Corner tries again by itself.":
+        "Die Schlüsseldatei dieses Geräts lässt sich gerade nicht lesen – vielleicht hält sie ein Virenscanner oder OneDrive fest. Es wurde nichts geändert; Bent°Corner versucht es von selbst wieder.",
+    "Your devices are syncing right now – nothing was changed. Try again in a minute.": "Deine Geräte gleichen gerade ab – es wurde nichts geändert. Versuch es in einer Minute noch einmal.",
+    'This device syncs first – then the code comes …': 'Dieses Gerät gleicht zuerst ab – dann kommt der Code …',
+    "Couldn't sync this device first – no code yet. Try again once you're online.":
+        'Dieses Gerät konnte vorher nicht abgleichen – noch kein Code. Versuch es nochmal, wenn du online bist.',
+    'Hide': 'Verbergen',
+    "Enter this code only on your own devices – don't show or send it to anyone. It works for 10 minutes and only once.": 'Gib diesen Code nur auf deinen eigenen Geräten ein – zeig oder schick ihn niemandem. Er gilt 10 Minuten und nur einmal.',
+    'The device the code is entered on gets access to your whole online backup and your friends – as if it were you.': 'Das Gerät, auf dem der Code eingegeben wird, bekommt Zugang zu deiner ganzen Online-Sicherung und zu deinen Freunden – so, als wärst du es.',
+    'The code has expired – make a new one.': 'Der Code ist abgelaufen – mach einen neuen.',
+    'Show a code for a new device': 'Code für ein neues Gerät zeigen',
+    'Online backup deleted': 'Online-Sicherung gelöscht',
+    'Not available in this version.': 'In dieser Fassung nicht verfügbar.',
 }
 
 RULES = [
@@ -2093,6 +2136,7 @@ RULES = [
     ('✓\\ (.+?)\\ decklists\\ saved\\ in\\ ', '✓ \\1 Decklisten gespeichert in '),
     ('Exported:\\ (.+?)\\ entries\\ →\\ (.+?)', 'Exportiert: \\1 Einträge → \\2'),
     ('(.+?)\\ silent\\ backups', '\\1 stille Sicherungen'),
+    ('(.+?)\\ crash\\ backups', '\\1 Absturz-Sicherungen'),
     ('Your\\ data:\\ (.+?)\\ cards\\ ·\\ (.+?)\\ MB\\ ·\\ last\\ backup:\\ (.+?)', 'Deine Daten: \\1 Karten · \\2 MB · letzte Sicherung: \\3'),
     ('(.+?)\\ cards\\ loaded\\ from\\ (.+?)\\ –\\ check\\ and\\ “Import”\\.', '\\1 Karten von \\2 geladen – prüfen und „Importieren“.'),
     ('<b>(.+?)</b>\\ cards\\ recognized\\ \\((.+?)\\ entries\\)', '<b>\\1</b> Karten erkannt (\\2 Einträge)'),
@@ -2122,6 +2166,7 @@ RULES = [
     ('<b>(.+?)</b>\\ cards', '<b>\\1</b> Karten'),
     ('about\\ (.+?)\\ min\\ left', 'noch ca. \\1 Min.'),
     ('Step\\ (.+?)\\ of\\ 8', 'Schritt \\1 von 8'),
+    ('Step\\ (\\d+)\\ of\\ (\\d+)', 'Schritt \\1 von \\2'),   # with the online backup's protection code step: 9 (06.11.)
     ('Turned\\ on\\.\\ Your\\ ID:\\ <b>(.+?)</b>\\ –\\ give\\ it\\ to\\ friends\\ who\\ want\\ to\\ add\\ you\\.\\ You\\ add\\ friends\\ in\\ your\\ profile\\.', 'Eingeschaltet. Deine ID: <b>\\1</b> – gib sie Freunden, die dich hinzufügen wollen. Freunde fügst du im Profil hinzu.'),
     ('Edit\\ in\\ (.+?)', 'In \\1 bearbeiten'),
     ('(.+?)\\ of\\ (.+?)\\ cards\\ owned', '\\1 von \\2 Karten da'),
@@ -2251,7 +2296,7 @@ RULES = [
     ('(.+?)\\ has\\ nothing\\ from\\ your\\ wishlists\\.', '\\1 hat nichts von deinen Wunschlisten.'),
     ('Ticket\\ Nº\\ (.+?)\\ was\\ booked', 'Ticket Nº \\1 wurde gebucht'),
     ('\\ ·\\ before\\ (.+?)\\ different,\\ now\\ (.+?)', ' · vorher \\1 verschiedene, jetzt \\2'),
-    ('(.+?):\\ (.+?)\\ cards,\\ (.+?)\\ wishes\\ loaded(.+?)', '\\1: \\2 Karten, \\3 Wünsche geladen\\4'),
+    ('(.+?):\\ (.+?)\\ cards,\\ (.+?)\\ wishes\\ loaded(.*)', '\\1: \\2 Karten, \\3 Wünsche geladen\\4'),
     ("(.+?)\\ didn't\\ include\\ any\\ trade\\ lists\\.", '\\1 hat keine Tauschlisten mitgeschickt.'),
     ("(.+?)\\ doesn't\\ want\\ anything\\ from\\ your\\ lists\\.", '\\1 sucht nichts aus deinen Listen.'),
     ("(.+?)\\ didn't\\ send\\ a\\ wishlist\\.", '\\1 hat keine Wunschliste mitgeschickt.'),
@@ -2340,6 +2385,9 @@ RULES += [  # cards/ + games/
     (r"Pack “(.*)” doesn't exist on the server", r'Paket „\1“ gibt es auf dem Server nicht'),
     (r'(.+): card data will follow with the next update\.', r'\1: Die Kartendaten kommen mit dem nächsten Update.'),
     (r'(.+): checksum mismatch – please download again', r'\1: Prüfsumme stimmt nicht – bitte nochmal laden'),
+    (r'Pack list refused \((.*)\)', r'Paketliste abgelehnt (\1)'),
+    (r'(.+): larger than announced – not used', r'\1: größer als angekündigt – nicht verwendet'),
+    (r'(.+): not a valid data file \((.*)\) – not used', r'\1: keine gültige Datendatei (\2) – nicht verwendet'),
 ]
 TEXTS.update({  # collection/
     'Attack fast and cheap before your opponent can set up.':
@@ -2522,9 +2570,12 @@ TEXTS.update({  # net/ + ui/ + app.py
         "Gegenlicht-Ausgleich hellt dunkle Bereiche auf – für den Scanner meist aus.",
 })
 RULES += [  # net/ + ui/ + app.py
+    (r"<b>(\d+)</b> cards shown", r"<b>\1</b> Karten angezeigt"),   # library status in Orbit's Core (no value)
+    (r"  —  whole collection: (\d+) cards \((\d+) different\)", r"  —  Sammlung gesamt: \1 Karten (\2 verschiedene)"),
     (r"(\S+) loaded: (\d+) cards, (\d+) with price\.", r"\1 geladen: \2 Karten, \3 mit Preis."),   # app.py set job
     (r"Server unreachable \((.*)\)", r"Server nicht erreichbar (\1)"),   # net/relay.py, net/updater.py
     (r"Error (\d+)", r"Fehler \1"),   # net/relay.py (HTTP status)
+    (r"Device (\d+)", r"Gerät \1"),   # the default device name (net/sync_ctl.sync_join_name, the device list)
     (r"No update directory \((.*)\)", r"Kein Update-Verzeichnis (\1)"),   # net/updater.py
     (r"Download error (\d+)", r"Download-Fehler \1"),   # net/updater.py
 ]
@@ -3036,6 +3087,10 @@ RULES += [  # changes by hand on the Sessions page
 
 TEXTS.update({  # changes by hand on the Sessions page (filter, list, undo per line)
     "By hand": "Manuell",
+    "1 change": "1 Änderung",
+    "No ID yet – nothing to change.": "Noch keine Kennung – es gibt nichts zu wechseln.",
+    "This device was removed – nothing is sent until you decide.": "Dieses Gerät wurde abgemeldet – es wird nichts gesendet, bis du entscheidest.",
+    "No connection – we'll delete your online data as soon as this device is back online. Until then Bent°Corner won't set up anything new.": "Keine Verbindung – deine Online-Daten löschen wir, sobald dieses Gerät wieder online ist. Bis dahin richtet Bent°Corner nichts Neues ein.",
     "Changes by hand": "Änderungen von Hand",
     "Changes by hand outside the scanner – each line can be undone on its own": "Änderungen von Hand außerhalb des Scanners – jede Zeile lässt sich einzeln zurücknehmen",
     "Changes by hand are already in your collection – undo single lines instead": "Änderungen von Hand sind schon in deiner Sammlung – nimm stattdessen einzelne Zeilen zurück",
@@ -3073,6 +3128,32 @@ TEXTS.update({  # Library: editing a picked list right there (tool row above the
     "Show all cards again": "Wieder alle Karten zeigen",
 })
 TEXTS["%1 hidden by search or filters"] = "%1 durch Suche oder Filter ausgeblendet"
+TEXTS.update({  # Orbit's Core shows no prices (Oliver/legal 06.11.) – legal's sentences
+    "Prices are available from Near Orbit on – nothing from your collection goes out.":
+        "Preise gibt es ab Naher Orbit – dabei geht nichts aus deiner Sammlung raus.",
+    "Prices from Near Orbit": "Preise ab Naher Orbit",
+    "Change level": "Stufe ändern",
+    "Nobody sees your profile.": "Niemand sieht dein Profil.",
+})
+TEXTS.update({  # friends and trade tickets only in Full Orbit, no friends by file (Oliver 06.11., B) – legal's sentences
+    "Friends are available in Full Orbit.": "Freunde gibt es im Ganzen Orbit.",
+    "Friends and trading are available in Full Orbit.": "Freunde und Tausch gibt es im Ganzen Orbit.",   # trade offers (legal)
+    "This friend is only connected by file – connect through your IDs to share via the mailbox.":
+        "Dieser Freund ist nur per Datei verbunden – verbindet euch über eure IDs, um über den Briefkasten zu teilen.",
+    "by file only": "nur per Datei",
+    "Add friends by their ID – in the friends menu at the top right. What they share with you then arrives on its own; what you share, you choose per friend.":
+        "Freunde fügst du über ihre ID hinzu – im Freunde-Menü oben rechts. Was sie mit dir teilen, kommt dann von selbst; was du teilst, legst du je Freund selbst fest.",
+    "No friends yet – add someone by their ID in the friends menu at the top right.":
+        "Noch keine Freunde – füge jemanden über seine ID im Freunde-Menü oben rechts hinzu.",
+    "Load a trade ticket": "Tauschticket laden",
+    "Trade tickets (*.png *.jpg *.jpeg *.webp)": "Tauschtickets (*.png *.jpg *.jpeg *.webp)",
+    "Your trade lists – and if you like your library – as CSV or a text list for other apps.":
+        "Deine Tauschlisten – und auf Wunsch deine Bibliothek – als CSV oder Textliste für andere Apps.",
+    "No trade offers yet. In a trade with a friend: check cards → “Share as ticket”. A ticket from someone else: New log → Trade ticket (image or camera).":
+        "Noch keine Tauschangebote. Im Tausch mit einem Freund: Karten anhaken → „Als Ticket teilen“. Ein Ticket von jemand anderem: Neues Log → Tauschticket (Bild oder Kamera).",
+    "To add cards you need this friend's cards – connect through your IDs. You can change counts and money directly.":
+        "Für neue Karten brauchst du die Karten dieses Freundes – verbindet euch über eure IDs. Anzahl und Geld kannst du direkt ändern.",
+})
 
 TEXTS.update({  # Bent°Corner Orbit (Oliver, 2026-10-29): Kern · Naher Orbit · Ganzer Orbit – the sentences word for word
     "Core": "Kern", "Near Orbit": "Naher Orbit", "Full Orbit": "Ganzer Orbit",
@@ -3107,7 +3188,7 @@ TEXTS.update({  # Bent°Corner Orbit (Oliver, 2026-10-29): Kern · Naher Orbit �
     "Full Orbit – share with friends": "Ganzer Orbit – mit Freunden teilen",
     "This lets you add friends by their ID and share lists and binders with them.\n\nEverything is end-to-end encrypted: the server only sees a random ID and encrypted parcels – no names, no cards. Parcels are deleted once fetched, IP addresses are not stored.\n\nBack to Near Orbit any time under Settings → Friends & privacy.":
         "Damit kannst du Freunde über ihre ID hinzufügen und Listen und Binder mit ihnen teilen.\n\nAlles ist Ende-zu-Ende verschlüsselt: Der Server sieht nur eine Zufalls-ID und verschlüsselte Päckchen – keine Namen, keine Karten. Päckchen werden nach dem Abholen gelöscht, IP-Adressen nicht gespeichert.\n\nZurück zu „Naher Orbit“ jederzeit unter Einstellungen → Freunde & Privatsphäre.",
-    "Switch to Full Orbit": "Zu „Ganzer Orbit“ wechseln",
+    "Switch to Full Orbit": "In den Ganzen Orbit wechseln",   # legal 07.11. (one wording for the key everywhere)
     "prices and friends off": "Preise und Freunde aus", "prices and alerts on, friends off": "Preise und Alarme an, Freunde aus",
     "prices, alerts and friends on": "Preise, Alarme und Freunde an",
     "Leave Full Orbit?": "Ganzen Orbit verlassen?",
@@ -3116,7 +3197,7 @@ TEXTS.update({  # Bent°Corner Orbit (Oliver, 2026-10-29): Kern · Naher Orbit �
     "Leave": "Verlassen", "Stay": "Bleiben",
     # backup notice (Oliver, 29.10.)
     'Why is this important?': 'Warum ist das wichtig?',
-    "Bent°Corner has no server for your collection: it lives only on this computer. If the computer breaks, gets lost or is set up anew, it is gone without a backup – we can't restore it either. The copies Bent°Corner makes on this computer at start only help with errors. That's why: a place outside – a USB stick, an external drive or a cloud folder. Bent°Corner backs up there by itself, as often as you set it below, keeps the last 7 and one per week for four weeks, and catches up as soon as the stick is back.": 'Bent°Corner hat keinen Server für deine Sammlung: Sie liegt nur auf diesem Computer. Geht er kaputt, verloren oder wird er neu aufgesetzt, ist sie ohne Sicherung weg – auch wir können sie nicht wiederherstellen. Die Kopien, die Bent°Corner beim Start auf diesem Computer anlegt, helfen nur bei Fehlern. Darum ein Ort außerhalb: ein USB-Stick, eine externe Festplatte oder ein Cloud-Ordner. Bent°Corner sichert dorthin von selbst, so oft du es unten einstellst, behält die letzten 7 und vier Wochen lang je eine, und holt verpasste Sicherungen nach, sobald der Stick wieder da ist.',
+    "Bent°Corner has no server for your collection: it lives only on this computer. If the computer breaks, gets lost or is set up anew, it is gone without a backup – we can't restore it either. The copies Bent°Corner makes on this computer at start only help with errors. That's why: a place outside – a USB stick, an external drive or a cloud folder. Bent°Corner backs up there by itself, as often as you set it below, keeps your last 5 backups (at most one per hour) and catches up as soon as the stick is back.": 'Bent°Corner hat keinen Server für deine Sammlung: Sie liegt nur auf diesem Computer. Geht er kaputt, verloren oder wird er neu aufgesetzt, ist sie ohne Sicherung weg – auch wir können sie nicht wiederherstellen. Die Kopien, die Bent°Corner beim Start auf diesem Computer anlegt, helfen nur bei Fehlern. Darum ein Ort außerhalb: ein USB-Stick, eine externe Festplatte oder ein Cloud-Ordner. Bent°Corner sichert dorthin von selbst, so oft du es unten einstellst, behält die letzten 7 und vier Wochen lang je eine, und holt verpasste Sicherungen nach, sobald der Stick wieder da ist.',
     'Bent°Corner supports local backups – automatically, too, into a cloud folder (OneDrive, Google Drive …) or onto a USB stick.': 'Bent°Corner unterstützt lokale Sicherungen – auch automatisch in einen Cloud-Ordner (OneDrive, Google Drive …) oder auf einen USB-Stick.',
     'Set up ›': 'Einrichten ›',
     'Opens after the setup ✓': 'Öffnet sich nach der Einrichtung ✓',
@@ -3128,9 +3209,7 @@ TEXTS.update({  # Bent°Corner Orbit (Oliver, 2026-10-29): Kern · Naher Orbit �
     'Your collection stays with you': 'Deine Sammlung bleibt bei dir',
     'Prices & marketplaces': 'Preise & Märkte',
     '+ Friends & trading': '+ Freunde & Tausch',
-    'Shared lists & binders': 'Geteilte Listen & Binder',
-    'End-to-end encrypted': 'Ende-zu-Ende verschlüsselt',
-    'What you share is end-to-end encrypted. Card data, images and prices come from sources like Scryfall, which see your IP address.': 'Was du teilst, ist Ende-zu-Ende-verschlüsselt. Kartendaten, Bilder und Preise kommen von Quellen wie Scryfall, die dabei deine IP-Adresse sehen.',
+    'Share lists & binders end-to-end encrypted': 'Listen & Binder Ende-zu-Ende verschlüsselt teilen',
     'More about it': 'Mehr dazu',
     'Less': 'Weniger',
     "<a href='{url}'>Terms of use</a> · age 13+": "<a href='{url}'>Nutzungsbedingungen</a> · ab 13 Jahren",
@@ -3456,6 +3535,25 @@ TEXTS.update({  # „Was ist neu?“ – Highlights von 0.9.6 (version.HIGHLIGHT
         "Mehrere Bent°Corner-Ordner (z. B. USB-Stick und PC) kommen sich nicht mehr in die Quere",
 })
 
+TEXTS.update({  # „Was ist neu?“ – 0.9.7: EIN Hinweis zu Freunden, Teilen und Preisen (Oliver/lead 06.11.2026, Wortlaut legal)
+    "Friends, sharing and prices – new rules": "Freunde, Teilen und Preise – neu geregelt",
+    "Friends and trading are now only available in Full Orbit. Your saved friends are kept and reappear when you turn on Full Orbit.":
+        "Freunde und Tausch gibt es jetzt nur noch im Ganzen Orbit. Deine gespeicherten Freunde bleiben erhalten und erscheinen wieder, wenn du den Ganzen Orbit einschaltest.",
+    "Sharing is now off by default for new friends. What you share with which friend, you choose per friend on the new page “Shared with friends” in Orbit.":
+        "Für neue Freunde ist Teilen jetzt standardmäßig aus. Was du mit welchem Freund teilst, legst du je Freund auf der neuen Seite „Mit Freunden geteilt“ im Orbit fest.",
+    "The old question “Share library?” is gone. If you said yes back then, we'll ask you once in Full Orbit whether you want to keep sharing – until then everything stays as it is.":
+        "Die alte Frage „Bibliothek teilen?“ ist weg. Hast du damals Ja gesagt, fragen wir dich im Ganzen Orbit einmal, ob du weiter teilen willst – bis dahin bleibt alles, wie es ist.",
+    "In Core the app no longer shows prices – prices are available from Near Orbit on.":
+        "Im Kern zeigt die App keine Preise mehr – Preise gibt es ab dem Nahen Orbit.",
+    # the card in "Shared with friends" for whoever was not in Full Orbit at the update (orbit.hold_sharing)
+    "Before this update you had chosen to share your whole library with your friends. It is paused now – do you want to share it again?":
+        "Vor diesem Update hattest du eingestellt, deine ganze Bibliothek mit deinen Freunden zu teilen. Das ruht jetzt – willst du sie wieder teilen?",
+    "Only friends you switch on below get it. You can change it any time here.":
+        "Nur Freunde, die du unten einschaltest, bekommen sie. Du kannst das hier jederzeit ändern.",
+    "Share again": "Wieder teilen",
+    "Don't share": "Nicht teilen",
+})
+
 TEXTS.update({  # Settings → Legal: GPL notices (legal, app-rechtliches-gpl.md, 31.10.2026) – "Based on Bent°Corner …" stays English
     "License": "Lizenz",
     "License:": "Lizenz:",
@@ -3467,6 +3565,10 @@ TEXTS.update({  # Settings → Legal: GPL notices (legal, app-rechtliches-gpl.md
     "This program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by law.":
         "Soweit gesetzlich zulässig, gibt es für dieses Programm KEINERLEI GEWÄHRLEISTUNG.",
     "Source code: {url}": "Quellcode: {url}",
+    "From now on Bent°Corner is properly installed (Start menu, uninstall under Windows Apps). Your collection stays where it is.":
+        "Ab jetzt wird Bent°Corner richtig installiert (Startmenü, Deinstallieren unter Windows-Apps). Deine Sammlung bleibt, wo sie ist.",
+    "This is a portable copy: Bent°Corner doesn't replace itself here. Download the new version and unpack it over this folder – your data next to it stays.":
+        "Das ist eine portable Fassung: Bent°Corner ersetzt sich hier nicht selbst. Lade die neue Version herunter und entpacke sie über diesen Ordner – deine Daten daneben bleiben.",
     "GNU GPL v3.0 + additional terms": "GNU GPL v3.0 + Zusatzbedingungen",
     "The SCAN° recognition data (models and card index) and the card data packs are not covered by the GPL; they may "
     "only be used with Bent°Corner.":
@@ -3485,9 +3587,53 @@ TEXTS.update({  # card view, prices: legal 02.11.2026 (the same lines as the web
 
 TEXTS.update({  # 0.9.7.21 – the small round after the web's decks (03.11.2026)
     "your trade partner": "deinen Tauschpartner",
+    # "Delete Bent°Corner" (ui/qforget.py) – legal 03.11.2026, labs/installer/PLAN.md § 8, word for word
+    "Delete Bent°Corner": "Bent°Corner löschen",
+    "Your data on the server and on this PC": "Deine Daten auf dem Server und auf diesem PC",
+    "Export your collection first?": "Sammlung vorher exportieren?",
+    "Go to export": "Zum Export",
+    "Delete my shared lists and binders on the Bent°Corner server":
+        "Meine geteilten Listen und Binder auf dem Bent°Corner-Server löschen",
+    "Your ID (the address your friends find you by) and key remain until they haven't been used for 365 days. Parcels are deleted once picked up, at the latest after 14 days.":
+        "Deine ID (die Adresse, unter der dich Freunde finden) und dein Schlüssel bleiben, bis sie 365 Tage nicht genutzt wurden. Päckchen werden nach dem Abholen gelöscht, spätestens nach 14 Tagen.",
+    "Delete my data on the Bent°Corner server – your ID (the address your friends find you by) and key, shared lists and binders, parcels and blocks. Immediately.":
+        "Meine Daten auf dem Bent°Corner-Server löschen – deine ID (die Adresse, unter der dich Freunde finden) mit Schlüssel, geteilte Listen und Binder, Päckchen und Blockaden. Sofort.",
+    "Exceptions: reports are kept for 180 days, and the server's backups still contain the data, encrypted, for up to 4 weeks (see privacy policy).":
+        "Ausnahmen: Meldungen bleiben 180 Tage, die Sicherungen des Servers enthalten die Daten noch bis zu 4 Wochen verschlüsselt (siehe Datenschutz).",
+    "Your friends will no longer see your shared lists and binders.":
+        "Deine Freunde sehen deine geteilten Listen und Binder danach nicht mehr.",
+    "There is nothing of yours on the Bent°Corner server.": "Auf dem Bent°Corner-Server liegt nichts von dir.",
+    "Delete my collection and settings on this PC": "Meine Sammlung und Einstellungen auf diesem PC löschen",
+    "Your latest backup: {file}, {date} (will be kept)": "Deine letzte Sicherung: {file}, {date} (bleibt erhalten)",
+    "Your latest backup: {file}, {date} – it is inside the data folder and will be deleted too.":
+        "Deine letzte Sicherung: {file}, {date} – liegt im Datenordner und wird mit gelöscht.",
+    "Save elsewhere": "Woanders speichern",
+    "No backup yet –": "Noch keine Sicherung –",
+    "Create a backup now": "Sicherung jetzt erstellen",
+    "Deleted.": "Gelöscht.",
+    "Was already deleted.": "War bereits gelöscht.",
+    "Your data on the server is NOT deleted. Without use, the server deletes it automatically: shared lists and binders 6 months after they were last shared, your ID and key after 365 days, parcels once picked up, at the latest after 14 days. To have it deleted right away, email {mail}.":
+        "Deine Daten auf dem Server sind NICHT gelöscht. Ohne Nutzung löscht der Server sie automatisch: geteilte Listen und Binder 6 Monate nach dem letzten Teilen, deine ID und dein Schlüssel nach 365 Tagen, Päckchen nach dem Abholen, spätestens nach 14 Tagen. Sofort geht es per Mail an {mail}.",
+    "Your ID: {id} (please include it in the email)": "Deine ID: {id} (bitte in der Mail angeben)",
+    "Copy": "Kopieren",
+    "Quit now": "Jetzt beenden",
+    "1 card in the library": "1 Karte in der Bibliothek",
+    "Try again": "Nochmal versuchen",
+    "Continue without deleting server data": "Ohne Serverlöschung fortfahren",
+    "After this, Bent°Corner can no longer delete the server data – the key exists only on this PC – note down your ID (above); then it works by email.":
+        "Danach kann Bent°Corner die Serverdaten nicht mehr löschen – der Schlüssel liegt nur auf diesem PC – notiere dir deine ID (oben), dann geht es per Mail.",
+    "Deleted: {data}. Kept: the program folder {program} – delete it yourself (drag it to the Recycle Bin).":
+        "Gelöscht: {data}. Bleibt: der Programmordner {program} – den löschst du selbst (in den Papierkorb ziehen).",
     "Nothing to undo – not possible after switching games": "Nichts rückgängig zu machen – nach dem Spielwechsel nicht mehr möglich",
     # minors (legal 2026-11-03-minderjaehrige-wortlaut.md) – the web takes them over the bridge
     "I'm at least 13. If I'm under 18, my parents agree.": "Ich bin mindestens 13. Bin ich unter 18, sind meine Eltern einverstanden.",
+    # legal 04.11. (§ 305 (2) BGB, as in the web app): right above the age line at the step to Full Orbit
+    "By turning it on, you agree to the <a href='{url}'>terms of use ›</a>": "Mit dem Einschalten gelten die <a href='{url}'>Nutzungsbedingungen ›</a>",
+    # the Orbit foot per level (legal 04.11.) – the desktop's own version, the prices stand in the details
+    "Card data and images come straight from Scryfall for Magic, otherwise mostly through our server and only if needed straight from the source – whoever delivers them sees your IP address.":
+        "Kartendaten und -bilder kommen bei Magic direkt von Scryfall, sonst meist über unseren Server und nur wenn nötig direkt von der Quelle – wer sie liefert, sieht dabei deine IP-Adresse.",
+    "What you share through the mailbox is end-to-end encrypted. Card data and images come straight from Scryfall for Magic, otherwise mostly through our server and only if needed straight from the source – whoever delivers them sees your IP address.":
+        "Was du über den Briefkasten teilst, ist Ende-zu-Ende verschlüsselt. Kartendaten und -bilder kommen bei Magic direkt von Scryfall, sonst meist über unseren Server und nur wenn nötig direkt von der Quelle – wer sie liefert, sieht dabei deine IP-Adresse.",
     "We can't check your age, so we only ask this once. Your answer stays on your device.":
         "Wir können dein Alter nicht prüfen und fragen deshalb nur dieses eine Mal. Die Antwort bleibt auf deinem Gerät.",
     "Tip: Trade only with people you know and check the value first. Don't give your address to people you only know online. If you're under 18, talk to your parents first.":
@@ -3527,3 +3673,671 @@ RULES[:0] = [(r"(\d+) of (\d+) cards", r"\1 von \2 Karten"), (r"(\d+) of at leas
 
 # private games (games/extras.py – not in the public source) bring their own German texts
 TEXTS.update(__import__("games").extra("TEXTS_DE", {}))
+
+# Trade tickets through the mailbox (net/relay_ctl.py, ports 06.11.2026 – legal checks the wording)
+RULES += [(r"(.+) accepted – book it under Trade offers", r"\1 hat angenommen – buchen unter Tauschangebote"),
+          (r"(.+) withdrew the offer\.", r"\1 hat das Angebot zurückgezogen.")]
+RULES += [(r"(.+) declined\.", r"\1 hat abgelehnt."),
+          (r"Send to (.+)", r"An \1 senden"),
+          (r"Sent to (.+) through the mailbox\.", r"Über den Briefkasten an \1 gesendet."),
+          # with the name – we never know a friend's gender (lead 06.11.)
+          (r"Couldn't be delivered – (.+)'s mailbox is full\. Try again later or send the ticket as an image\.",
+           r"Konnte nicht zugestellt werden – der Briefkasten von \1 ist voll. Versuch es später oder schick das Ticket als Bild.")]
+TEXTS["Share lists, binders and trade tickets end-to-end encrypted"] = "Listen, Binder und Tausch-Tickets Ende-zu-Ende verschlüsselt teilen"
+TEXTS.update({
+    "Book": "Buchen",
+    "Sending …": "Wird gesendet …",
+    # 403 may mean the friend blocked you: no hint how to get round it, and nothing that tells (legal 06.11.)
+    "Couldn't be delivered.": "Konnte nicht zugestellt werden.",
+    'Not delivered': 'Nicht zugestellt',
+})
+# Settings → Your devices (ui/qsync.py)
+RULES += [(r"Last synced (\d+) min ago", r"Zuletzt abgeglichen vor \1 Min."),
+          (r"Valid for (\d+):(\d+)", r"gilt noch \1:\2")]
+
+# CSV mit Kartentext (collection/exporttext.py, ui/qimport.py – legal's wording 05.11.)
+TEXTS.update({
+    "With card text (type, cost, values, rules text)": "Mit Kartentext (Typ, Kosten, Werte, Regeltext)",
+    "With colour and cost": "Mit Farbe und Kosten",
+    "Card text only in the Excel spreadsheet (CSV).": "Kartentext nur in der Excel-Tabelle (CSV).",
+    "Card texts belong to the game publishers. The file is for your own use; if you share it, keep the ‘Source’ column.":
+        "Kartentexte gehören den Spieleverlagen. Die Datei ist für deinen eigenen Gebrauch; gibst du sie weiter, lass "
+        "die Spalte ‚Quelle‘ drin.",
+    "Save as table (CSV) …": "Als Tabelle (CSV) speichern …",
+})
+RULES += [(r"Save (\d+) tables \(CSV\) …", r"\1 Tabellen (CSV) speichern …")]
+
+# Tausch im Kern: der eingetragene Geldbetrag als Vorschlag (lead/legal 06.11., collection/tradelib.money_text)
+TEXTS.update({
+    "Payment happens between you – Bent°Corner handles no money.":
+        "Bezahlt wird unter euch – Bent°Corner wickelt kein Geld ab.",
+    "Remove amount": "Betrag entfernen",
+    "Keep amount": "Betrag behalten",
+    "Without money": "Ohne Geld",
+})
+RULES += [(r"You add (.+)", r"Du legst \1 dazu"),
+          (r"You want (.+?) from (.+)", r"Du möchtest \1 von \2"),
+          (r"(.+?) adds (.+)", r"\1 legt \2 dazu"),
+          (r"(.+?) wants (.+?) from you", r"\1 möchte \2 von dir")]
+# closing ticket (accepting): who pays whom (lead 06.11.) – without a name "your friend" first, like the "Friend" rule
+RULES += [(r"You pay (.+) to your friend", r"Du zahlst deinem Freund \1"),
+          (r"Your friend pays you (.+)", r"Dein Freund zahlt dir \1"),
+          (r"You pay (.+?) to (.+)", r"Du zahlst \2 \1"),
+          (r"(.+?) pays you (.+)", r"\1 zahlt dir \2")]
+
+TEXTS.update({  # „Mit Freunden geteilt“ im Orbit (lead/legal 06.11.2026, ui/qshared.py)
+    'Binder': 'Binder',
+    'Profile': 'Profil',
+    'Devices': 'Geräte',   # the profile menu (06.11.): Settings → Your devices
+    'always': 'immer',
+    'Name + card back': 'Name + Kartenrücken',
+    'all cards and counts · per game, while it is open': 'alle Karten und Anzahlen · je Spiel, wenn es offen ist',
+    'You can change it any time here.': 'Du kannst es jederzeit hier ändern.',
+    'No friends yet – add a friend by ID in the friends menu.': 'Noch keine Freunde – füge im Freunde-Menü einen Freund per ID hinzu.',
+    'Friends only exist in Full Orbit – until then everything stays on this computer.': 'Freunde gibt es erst im Ganzen Orbit – bis dahin bleibt alles auf diesem Computer.',
+    'Name and card back – part of the friendship, every friend sees them': 'Name und Kartenrücken – gehören zur Freundschaft, jeder Freund sieht sie',
+    "We ask your friend's app to delete your shared data; they get no new data.": 'Wir bitten die App deines Freundes, deine geteilten Daten zu löschen; neue Daten bekommt er nicht mehr.',
+    'FRIENDS · WHO GETS SOMETHING': 'FREUNDE · WER BEKOMMT ETWAS',
+    'WHAT YOU SHARE': 'WAS DU TEILST',
+    'Gets everything you share – or nothing but your name and card back': 'Bekommt alles, was du teilst – oder nur deinen Namen und Kartenrücken',
+    "You're not sharing anything right now – taken off the server; your friends' apps are asked to delete their copy.": 'Du teilst gerade nichts – vom Server genommen; die Apps deiner Freunde werden gebeten, ihre Kopie zu löschen.',
+    "Binder is private again – your friends' apps are asked to delete it.": 'Binder ist wieder privat – die Apps deiner Freunde werden gebeten, ihn zu löschen.',
+})
+RULES += [  # „Mit Freunden geteilt“ – Sätze mit Zahlen (die Teile davor schon übersetzt: qshared.things)
+    ('You share your whole library with (\\d+) friends \\(all cards and counts\\)\\.', 'Du teilst deine ganze Bibliothek mit \\1 Freunden (alle Karten und Anzahlen).'),
+    ('You share (.+) with (\\d+) friends\\.', 'Du teilst \\1 mit \\2 Freunden.'),
+    ('You share (.+) with 1 friend\\.', 'Du teilst \\1 mit 1 Freund.'),
+    ('In addition you share (.+) with these (\\d+) friends – change them one by one below\\.', 'Außerdem teilst du \\1 mit diesen \\2 Freunden – unten einzeln änderbar.'),
+    ('In addition you share (.+) with this friend – change them one by one below\\.', 'Außerdem teilst du \\1 mit diesem Freund – unten einzeln änderbar.'),
+    ('(\\d+) binders', '\\1 Binder'),
+    ('Almost full: you share (\\d+) of at most (\\d+) things \\(lists per game and binders\\)\\.', 'Fast voll: du teilst \\1 von höchstens \\2 Dingen (Listen je Spiel und Binder).'),
+    ('The mailbox holds at most (\\d+) shared things \\(lists per game and binders\\) – take something back first\\.', 'Der Briefkasten fasst höchstens \\1 geteilte Dinge (Listen je Spiel und Binder) – nimm erst etwas zurück.'),
+]
+TEXTS.update({
+    'You share your whole library with 1 friend (all cards and counts).': 'Du teilst deine ganze Bibliothek mit 1 Freund (alle Karten und Anzahlen).',
+    '1 binder': '1 Binder',
+    'You switch lists of other games while that game is open.': 'Listen anderer Spiele schaltest du, wenn das Spiel offen ist.',
+})
+
+# Texte im Tausch (ports, desk-texte 06.11.): CSV ohne Namensspalte, Export zuerst mit eigenem Namen
+TEXTS.update({
+    "No “Name” column found": "Keine Spalte „Name“ gefunden",
+    "Your name first – your friends see it with your file.": "Zuerst dein Name – deine Freunde sehen ihn bei deiner Datei.",
+})
+
+TEXTS.update({  # first start: collections already on this PC (performance 06.11.)
+    'Found a collection on this PC – use it?': 'Auf diesem PC liegt schon eine Sammlung – verwenden?',
+    'Found collections on this PC – which one is yours?': 'Auf diesem PC liegen schon Sammlungen – welche ist deine?',
+    'I already have a collection – choose its folder': 'Ich habe schon eine Sammlung – Ordner wählen',
+    'Or start a new, empty collection:': 'Oder eine neue, leere Sammlung anlegen:',
+    'Check again': 'Nochmal prüfen',
+    "Can't be reached right now – is the drive plugged in?": 'Gerade nicht erreichbar – ist das Laufwerk angesteckt?',
+    '{n} cards': '{n} Karten',
+    'last used {date}': 'zuletzt benutzt am {date}',
+    "This folder can't be reached right now.": 'Dieser Ordner ist gerade nicht erreichbar.',
+    'This folder is deleted when Bent°Corner is uninstalled – please choose another one.': 'Dieser Ordner wird beim Deinstallieren von Bent°Corner gelöscht – bitte wähle einen anderen.',
+    'Test server': 'Testserver',
+    'Access code for the test server (stays only in memory until Bent°Corner is closed):': 'Zugangscode für den Testserver (bleibt nur im Arbeitsspeicher, bis Bent°Corner geschlossen wird):',
+    'The test server needs its access code.': 'Der Testserver braucht seinen Zugangscode.',
+    'Enter access code': 'Zugangscode eingeben',
+    'The access code for the test server is missing.': 'Der Zugangscode für den Testserver fehlt.',
+    "Point your phone's camera at the turning sphere – or type the code below.": 'Halte die Kamera deines Handys auf die drehende Kugel – oder tippe den Code darunter ein.',
+    "The test server didn't accept the access code.": 'Der Testserver hat den Zugangscode nicht angenommen.',
+    'The online backup is empty.': 'Die Online-Sicherung ist leer.',
+    'The online backup is empty. Back it up again from this device? Your collection, decks, lists, binders, price alerts, trade offers, friends and your profile then go into the online backup, encrypted, and your other devices get this state.': 'Die Online-Sicherung ist leer. Von diesem Gerät neu sichern? Deine Sammlung, Decks, Listen, Binder, Preisalarme, Tauschangebote, Freunde und dein Profil gehen dann verschlüsselt in die Online-Sicherung, und deine anderen Geräte bekommen diesen Stand.',
+    'Back it up again': 'Neu sichern',
+    "The last 5 characters don't match the protection code.": 'Die letzten 5 Zeichen passen nicht zum Schutz-Code.',
+    "This protection code doesn't fit.": 'Dieser Schutz-Code passt nicht.',
+    'Sync once first – then show a code for a new device.': 'Erst einmal abgleichen – dann einen Code für ein neues Gerät zeigen.',
+    'Wrong access code.': 'Falscher Zugangscode.',
+    'Too many tries – please try again later.': 'Zu viele Versuche – bitte später noch einmal.',
+    'The online backup was deleted on another device. Syncing is therefore off here – your data on this device stays.': 'Die Online-Sicherung wurde auf einem anderen Gerät gelöscht. Der Abgleich ist hier deshalb aus – deine Daten auf diesem Gerät bleiben.',
+})
+
+TEXTS.update({  # „Daten online sichern, verschlüsselt“ (Oliver/lead/legal 06.11.2026) – ui/backupui.py, legal's wording
+    'Back up data online, encrypted':
+        'Daten online sichern, verschlüsselt',
+    '+ Back up and sync your collection, decks, lists, binders, alerts, trade offers and friends between your devices, end-to-end encrypted':
+        '+ Sammlung, Decks, Listen, Binder, Alarme, Tauschangebote und Freunde Ende-zu-Ende verschlüsselt sichern und zwischen deinen Geräten abgleichen',
+    'Online backup is available in Full Orbit.':
+        'Online-Sicherung gibt es im Ganzen Orbit.',
+    'On top, an encrypted backup is kept on our server; your own backup file still makes sense.':
+        'Zusätzlich liegt eine verschlüsselte Sicherung auf unserem Server; eine eigene Sicherungsdatei bleibt trotzdem sinnvoll.',
+    "Your data is also kept end-to-end encrypted on our server – we can't read it.":
+        'Deine Daten liegen zusätzlich Ende-zu-Ende verschlüsselt auf unserem Server – wir können sie nicht lesen.',
+    "New in Full Orbit: your collection, decks, lists, binders, alerts, trade offers and friends can now be backed up end-to-end encrypted on our server and synced between your devices – we can't read them. Nothing is uploaded until you decide.":
+        'Neu im Ganzen Orbit: Deine Sammlung, Decks, Listen, Binder, Alarme, Tauschangebote und Freunde können jetzt Ende-zu-Ende verschlüsselt auf unserem Server gesichert und zwischen deinen Geräten abgeglichen werden – wir können sie nicht lesen. Bis du dich entscheidest, geht nichts hoch.',
+    'Turn on backup':
+        'Sicherung einschalten',
+    'Continue without backup':
+        'Ohne Sicherung weiter',
+    'Your protection code':
+        'Dein Schutz-Code',
+    "With this code you get your backup back if all your devices are gone. We don't store it and can't send it to you again – write it down or keep it in a password manager.":
+        'Mit diesem Code holst du deine Sicherung zurück, wenn alle deine Geräte weg sind. Wir speichern ihn nicht und können ihn dir nicht neu schicken – schreib ihn auf oder bewahre ihn in einem Passwort-Manager auf.',
+    'To confirm: the last 5 characters':
+        'Zur Bestätigung: die letzten 5 Zeichen',
+    'Code noted – continue':
+        'Code notiert – weiter',
+    'Back: no backup, nothing is uploaded.':
+        'Zurück: keine Sicherung, es wird nichts hochgeladen.',
+    'From now on, the protection code of {device} applies to all devices.':
+        'Ab jetzt gilt der Schutz-Code von {device} für alle Geräte.',
+    'From now on, the protection code of your other device applies to all devices.':
+        'Ab jetzt gilt der Schutz-Code deines anderen Geräts für alle Geräte.',
+    'Protection code not changed – that is already your code.':
+        'Schutz-Code nicht geändert – das ist schon dein Code.',
+    "The backup couldn't be set up – nothing was uploaded.":
+        'Die Sicherung konnte nicht eingerichtet werden – es wurde nichts hochgeladen.',
+    'Setting up the backup …':
+        'Die Sicherung wird eingerichtet …',
+    'Delete the online backup? The backup on our server is deleted, your data on this device stays. Your other devices stop syncing afterwards.':
+        'Online-Sicherung löschen? Die Sicherung auf unserem Server wird gelöscht, deine Daten auf diesem Gerät bleiben. Deine anderen Geräte gleichen danach nicht mehr ab.',
+    'Online backup':
+        'Online-Sicherung',
+    'Online backup deleted.':
+        'Online-Sicherung gelöscht.',
+    'Create a new protection code':
+        'Neuen Schutz-Code erzeugen',
+    'The old code no longer works afterwards.':
+        'Der alte Code gilt danach nicht mehr.',
+    'Restore with protection code':
+        'Mit Schutz-Code wiederherstellen',
+    'Protection code':
+        'Schutz-Code',
+    "The code doesn't match.":
+        'Der Code passt nicht.',
+    'No connection – try again later.':
+        'Keine Verbindung – versuch es später noch einmal.',
+})
+
+TEXTS.update({  # coupling with data on both devices + set aside (lead 07.11.2026, legal's wording: docs/KOPPEL-TEXTE.md, ui/joinui.py)
+    'Both devices already have data. Want to keep only part of it? Cancel pairing, delete the entries you don\'t want on that device, then pair again.': 'Auf beiden Geräten sind schon Daten. Willst du nur einen Teil übernehmen? Brich das Koppeln ab, lösche auf dem jeweiligen Gerät die Einträge, die du nicht willst, und koppel dann neu.',
+    'Merge': 'Zusammenführen',
+    'Logs, decks, lists, binders, alerts, trade offers and friends from both devices are merged. Afterwards both have the same state.': 'Logs, Decks, Listen, Binder, Alarme, Tauschangebote und Freunde beider Geräte werden zusammengeführt. Danach haben beide denselben Stand.',
+    'Keep the phone\'s state': 'Stand vom Handy behalten',
+    'Keep the PC\'s state': 'Stand vom PC behalten',
+    'Keep the other device\'s state': 'Stand vom anderen Gerät behalten',
+    'Keep this device\'s state': 'Stand von diesem Gerät behalten',
+    'This device takes over the state of the phone. What is here now is set aside on this device – you can restore or delete it.': 'Dieses Gerät übernimmt den Stand vom Handy. Was jetzt hier ist, wird auf diesem Gerät beiseitegelegt – du kannst es zurückholen oder löschen.',
+    'This device takes over the state of the PC. What is here now is set aside on this device – you can restore or delete it.': 'Dieses Gerät übernimmt den Stand vom PC. Was jetzt hier ist, wird auf diesem Gerät beiseitegelegt – du kannst es zurückholen oder löschen.',
+    'This device takes over the state of the other device. What is here now is set aside on this device – you can restore or delete it.': 'Dieses Gerät übernimmt den Stand vom anderen Gerät. Was jetzt hier ist, wird auf diesem Gerät beiseitegelegt – du kannst es zurückholen oder löschen.',
+    'The phone takes over the state of this device. What is there now is set aside there – you can restore or delete it there.': 'Das Handy übernimmt den Stand dieses Geräts. Was dort jetzt ist, wird dort beiseitegelegt – zurückholen oder löschen kannst du es dort.',
+    'The PC takes over the state of this device. What is there now is set aside there – you can restore or delete it there.': 'Der PC übernimmt den Stand dieses Geräts. Was dort jetzt ist, wird dort beiseitegelegt – zurückholen oder löschen kannst du es dort.',
+    'The other device takes over the state of this device. What is there now is set aside there – you can restore or delete it there.': 'Das andere Gerät übernimmt den Stand dieses Geräts. Was dort jetzt ist, wird dort beiseitegelegt – zurückholen oder löschen kannst du es dort.',
+    'Anything set aside stays on that device only and doesn\'t go to our server.': 'Beiseitegelegtes bleibt nur auf dem Gerät und geht nicht an unseren Server.',
+    'On this PC: {what}': 'Auf diesem PC: {what}',
+    'On the other device: {what}': 'Auf dem anderen Gerät: {what}',
+    'Another device chose first – please choose again.': 'Ein anderes Gerät hat zuerst gewählt – bitte noch einmal wählen.',
+    'Coupling … (a few seconds)': 'Koppeln … (ein paar Sekunden)',
+    'Coupling didn\'t work – try again.': 'Koppeln hat nicht geklappt – versuch es noch einmal.',
+    'Both devices have data': 'Daten auf beiden Geräten',
+    'The phone took over with its state. What was here is set aside on this device only – you can restore or delete it.': 'Das Handy hat seinen Stand übernommen. Was hier war, ist nur auf diesem Gerät beiseitegelegt – du kannst es zurückholen oder löschen.',
+    'The PC took over with its state. What was here is set aside on this device only – you can restore or delete it.': 'Der PC hat seinen Stand übernommen. Was hier war, ist nur auf diesem Gerät beiseitegelegt – du kannst es zurückholen oder löschen.',
+    'Another device took over with its state. What was here is set aside on this device only – you can restore or delete it.': 'Ein anderes Gerät hat seinen Stand übernommen. Was hier war, ist nur auf diesem Gerät beiseitegelegt – du kannst es zurückholen oder löschen.',
+    'This device was not synced for over 90 days and has now taken over the current state. Its earlier state is set aside on this device only and is not uploaded.': 'Dieses Gerät war über 90 Tage nicht im Abgleich und hat jetzt den aktuellen Stand übernommen. Sein früherer Stand ist nur auf diesem Gerät beiseitegelegt und wird nicht hochgeladen.',
+    'This is the earlier state of this device. It may include entries you have since deleted on another device. It stays on this device only and is not synced. You can delete it if you no longer need it.': 'Hier liegt der frühere Stand dieses Geräts. Er kann auch Einträge enthalten, die du inzwischen auf einem anderen Gerät gelöscht hast. Er bleibt nur auf diesem Gerät und wird nicht abgeglichen. Du kannst ihn löschen, wenn du ihn nicht mehr brauchst.',
+    'What\'s set aside stays only on this PC and doesn\'t go to our server. To delete it: “Delete what\'s set aside” or “Delete Bent°Corner”.': 'Der beiseitegelegte Stand bleibt nur auf diesem PC und geht nicht an unseren Server. Löschen: „Beiseitegelegtes löschen“ oder „Bent°Corner löschen“.',
+    'Set aside': 'Beiseitegelegt',
+    'From {when}: {what}': 'Vom {when}: {what}',
+    'nothing that syncs': 'nichts, was abgeglichen wird',
+    'Bring back': 'Zurückholen',
+    'Click again to bring it back: sync turns off on this PC, and your collection, decks, lists, binders, trade offers, price and list alerts and your profile go back to the state set aside. Your friends and open trades stay as they are now. Bent°Corner sets the current state aside first.': 'Zum Zurückholen noch mal klicken: Der Abgleich geht auf diesem PC aus, und deine Sammlung, Decks, Listen, Binder, Tauschangebote, Preis- und Listen-Alarme und dein Profil gehen auf den beiseitegelegten Stand zurück. Deine Freunde und offene Tausche bleiben, wie sie jetzt sind. Den jetzigen Stand legt Bent°Corner vorher selbst beiseite.',
+    'Brought back.': 'Zurückgeholt.',
+    'Delete what\'s set aside': 'Beiseitegelegtes löschen',
+    'Click again to delete what\'s set aside on this PC – it can\'t be brought back afterwards.': 'Zum Löschen noch mal klicken: Der beiseitegelegte Stand auf diesem PC ist danach weg und lässt sich nicht mehr zurückholen.',
+    'What was set aside is deleted.': 'Beiseitegelegtes gelöscht.',
+    '1 deck': '1 Deck',
+    '1 friend': '1 Freund',
+})
+RULES += [('(\\d+) decks', '\\1 Decks'), ('(\\d+) lists', '\\1 Listen'), ('(\\d+) friends', '\\1 Freunde')]
+
+TEXTS.update({  # Settings → Your devices, legal's final wording 07.11.2026 (ui/qsync.py SYNC_WHAT, app.py)
+    'Sync with your other devices': 'Mit deinen anderen Geräten abgleichen',
+    "Your collection, decks, lists, binders, alerts, trade offers, friends and your profile are encrypted on this PC and synced through our server with your other devices. Only your devices can read them, we can't. If both devices already have data, you decide what counts before anything is synced. You can turn sync off at any time. All the details: Privacy policy, section 5a.":
+        'Deine Sammlung, Decks, Listen, Binder, Alarme, Tauschangebote, Freunde und dein Profil werden auf diesem PC verschlüsselt und über unseren Server mit deinen anderen Geräten abgeglichen. Lesen können nur deine Geräte, wir nicht. Haben beide Geräte schon Daten, entscheidest du vor dem Abgleich, was gilt. Den Abgleich kannst du jederzeit ausschalten. Alles Genaue: Datenschutz, Abschnitt 5a.',
+})
+
+TEXTS.update({  # the states set aside as a list (ui/joinui.py WHERE, legal 07.11.2026)
+    "States set aside stay only on this PC and don't go to our server. You can delete each one in its line, or everything with “Delete Bent°Corner”.":
+        'Beiseitegelegte Stände bleiben nur auf diesem PC und gehen nicht an unseren Server. Löschen kannst du jeden Stand in seiner Zeile oder alles mit „Bent°Corner löschen“.',
+})
+
+TEXTS.update({  # a friend has moved (ui/qprofile.py moves / moveAnswer, legal 07.11.2026)
+    "{name} has moved (new device or set up again). Only accept if you're sure it comes from {name} – ask them if in doubt.": '{name} ist umgezogen (neues Gerät oder neu eingerichtet). Nimm nur an, wenn du sicher bist, dass es von {name} kommt – frag im Zweifel nach.',
+    'Declined. Sharing with {name} stays at the old address.': 'Abgelehnt. Teilen mit {name} bleibt bei der alten Adresse.',
+    "Declined. You'll only share with {name} again once you connect anew.": 'Abgelehnt. Mit {name} teilst du erst wieder, wenn ihr euch neu verbindet.',
+})
+
+TEXTS.update({  # signed out / backup of a removed identity (ui/joinui.py status_items, legal 07.11.2026)
+    'Couple again': 'Neu koppeln',
+    'This backup comes from a removed identity. Your data has been restored; sync starts with a new identity.': 'Diese Sicherung stammt von einer entfernten Kennung. Deine Daten sind übernommen; der Abgleich startet mit einer neuen Kennung.',
+})
+TEXTS.setdefault('another device', 'einem anderen Gerät')   # A6 without a name ("von einem anderen Gerät")
+
+TEXTS.update({  # the protection code page: offer, own code, strength (ui/backupui.py, legal 07.11.2026)
+    "With this code you get your backup back if all your devices are gone – up to 183 days after the last sync. Every device also needs it to remove other devices, delete the online backup or delete everything. We don't store it and can't send it to you – write it down or keep it in a password manager. If you lose it, you can request a new one on one of your devices; it applies after 14 days.":
+        'Mit diesem Code holst du deine Sicherung zurück, wenn alle deine Geräte weg sind – bis zu 183 Tage nach dem letzten Abgleich. Außerdem braucht jedes Gerät ihn, um andere Geräte zu entfernen, die Online-Sicherung zu löschen oder alles zu löschen. Wir speichern ihn nicht und können ihn dir nicht schicken – schreib ihn auf oder bewahre ihn in einem Passwort-Manager auf. Geht er verloren, kannst du an einem deiner Geräte einen neuen beantragen; der gilt nach 14 Tagen.',
+    'Set up a protection code? Then no device can remove other devices, delete the online backup or delete everything without it. Write it down – if you lose it, a replacement takes 14 days.':
+        'Schutz-Code einrichten? Dann kann kein Gerät ohne diesen Code andere Geräte entfernen, die Online-Sicherung löschen oder alles löschen. Schreib ihn auf – geht er verloren, dauert ein Ersatz 14 Tage.',
+    'Let Bent°Corner make a code':
+        'Code erzeugen lassen',
+    'Choose your own code':
+        'Eigenen Code wählen',
+    'Without protection code':
+        'Ohne Schutz-Code',
+    "Without a protection code you can only get back to your online backup through one of your devices – if they're all gone, it's lost.":
+        'Ohne Schutz-Code kommst du nur über eines deiner Geräte wieder an deine Online-Sicherung – sind alle weg, ist sie verloren.',
+    "Your own code must be hard to guess – don't use one you already use elsewhere. A generated code is safer.":
+        'Ein eigener Code muss schwer zu erraten sein – nimm keinen, den du schon woanders benutzt. Ein erzeugter Code ist sicherer.',
+    'Enter the code again':
+        'Code noch einmal eingeben',
+    "The two entries don't match.":
+        'Die beiden Eingaben sind nicht gleich.',
+    'This code is too easy to guess. Use a longer one or have it generated.':
+        'Dieser Code ist zu leicht zu erraten. Nimm einen längeren oder lass ihn erzeugen.',
+    'Checking the code …':
+        'Code wird geprüft …',
+    'too weak':
+        'zu schwach',
+    'enough':
+        'ausreichend',
+    'strong':
+        'stark',
+})
+
+TEXTS.update({  # this PC joins the phone (ui/joinui.py join_items, legal 07.11.2026)
+    'Couple with your phone': 'Mit dem Handy koppeln',
+    'On your phone: profile symbol at the top right → Devices → “Show a code for a new device”. Hold the turning sphere up to the webcam – or type the code below it.': 'Am Handy: Profil-Symbol oben rechts → Geräte → „Code für ein neues Gerät zeigen“. Halte die drehende Kugel vor die Webcam – oder tipp den Code darunter ein.',
+    'Only enter a code your own phone is showing right now – never one someone sends you. This PC then gets access to your whole online backup and your friends, and its data is synced with the phone.': 'Gib hier nur einen Code ein, den dein eigenes Handy gerade zeigt – nie einen, den dir jemand schickt. Dieser PC bekommt dann Zugang zu deiner ganzen Online-Sicherung und deinen Freunden, und seine Daten werden mit dem Handy abgeglichen.',
+    'The camera image is only read on this PC – nothing is stored or sent.': 'Das Kamerabild wird nur auf diesem PC ausgewertet – nichts wird gespeichert oder gesendet.',
+    'Read the sphere': 'Kugel lesen',
+    'Code': 'Code',
+    'Hold the whole sphere in the picture – it takes about one turn.': 'Halte die ganze Kugel ins Bild – das dauert etwa eine Umdrehung.',
+    'No camera found – type the code instead.': 'Keine Kamera gefunden – tipp den Code stattdessen ein.',
+    'The camera is off – read the sphere again or type the code.': 'Die Kamera ist aus – lies die Kugel noch einmal oder tipp den Code ein.',
+    'The code has 10 letters and digits.': 'Der Code hat 10 Buchstaben und Ziffern.',
+    "The code doesn't fit or has expired – show a new one on your phone.": 'Der Code passt nicht oder ist abgelaufen – zeig am Handy einen neuen.',
+    'No connection – try again in a moment.': 'Keine Verbindung – versuch es gleich noch mal.',
+})
+
+TEXTS.update({  # the device switch OFF (ui/qsync.py, lead/legal 07.11.2026 – the web's wording with „PC“)
+    'This device leaves the sync. Your data on this device is deleted – a backup stays here for 30 days; your other devices and the online backup keep everything.':
+        'Dieses Gerät verlässt den Abgleich. Deine Daten auf diesem Gerät werden gelöscht – eine Sicherung bleibt 30 Tage hier; deine anderen Geräte und die Online-Sicherung behalten alles.',
+    "You're not coupled with any other device. Keep the online backup (e.g. for a new device with your protection code) or delete it?":
+        'Du bist mit keinem anderen Gerät gekoppelt. Willst du die Online-Sicherung behalten (z. B. für ein neues Gerät mit deinem Schutz-Code) oder löschen?',
+    'Without sync it stays for 183 days, then we delete it.':
+        'Ohne Abgleich bleibt sie 183 Tage, dann löschen wir sie.',
+    "You're not coupled with any other device and have no protection code – the online backup will be deleted.":
+        'Du bist mit keinem anderen Gerät gekoppelt und hast keinen Schutz-Code – die Online-Sicherung wird dabei gelöscht.',
+    'Keep and turn off':
+        'Behalten und ausschalten',
+    'Turn off and delete':
+        'Ausschalten und löschen',
+    'Online backup deleted. Sync is off on this PC – your data here stays.':
+        'Online-Sicherung gelöscht. Der Abgleich ist auf diesem PC aus – deine Daten hier bleiben.',
+    'No connection – nothing was deleted, sync is still on. Try again in a moment.':
+        'Keine Verbindung – nichts wurde gelöscht, der Abgleich ist noch an. Versuch es gleich noch mal.',
+    'Deleting …':
+        'Wird gelöscht …',
+})
+
+TEXTS.update({  # A1 pairing warning (legal 07.11., with the online backup)
+    'Only couple with your own devices. The new device sees your whole online backup and your friends, can share in your name and – without a protection code – remove your other devices, delete the online backup or delete everything.':
+        'Nur mit deinen eigenen Geräten koppeln. Das neue Gerät sieht deine ganze Online-Sicherung und deine Freunde, kann in deinem Namen teilen und – ohne Schutz-Code – deine anderen Geräte entfernen, die Online-Sicherung löschen oder alles löschen.',
+})
+
+TEXTS.update({  # A4: the protection code asked for an action (legal 07.11.)
+    'You need your protection code for this.':
+        'Dafür brauchst du deinen Schutz-Code.',
+    "That protection code isn't right.":
+        'Der Schutz-Code stimmt nicht.',
+    'Too many wrong codes – try again in {n} min.':
+        'Zu viele falsche Codes – versuch es in {n} Min. noch einmal.',
+})
+
+TEXTS.update({  # A4 wait line under a minute (legal 07.11.)
+    'Too many wrong codes – try again in {n} sec.':
+        'Zu viele falsche Codes – versuch es in {n} Sek. noch einmal.',
+})
+
+TEXTS.update({  # Gerät entfernen (legal A8 07.11.)
+    'Remove device':
+        'Gerät entfernen',
+    'Really sign out all other devices?':
+        'Wirklich alle anderen Geräte abmelden?',
+    'All other devices are signed out. Couple your own devices again.':
+        'Alle anderen Geräte sind abgemeldet. Koppel deine eigenen Geräte neu.',
+    'Signing out the other devices …':
+        'Die anderen Geräte werden abgemeldet …',
+})
+
+TEXTS.update({  # A3 nach dem Abholen (legal 07.11.)
+    'Picked up, but not by you? Remove the device right away below (“Remove device”) and contact {mail}.':
+        'Abgeholt, aber nicht von dir? Entferne das Gerät sofort hier unten („Gerät entfernen“) und melde dich bei {mail}.',
+})
+
+TEXTS.update({  # A5 Code verloren am PC (legal 07.11.)
+    'A protection code is set.':
+        'Ein Schutz-Code ist gesetzt.',
+    'Lost your code?':
+        'Code verloren?',
+    'Request a new protection code':
+        'Neuen Schutz-Code beantragen',
+    '– takes 14 days.':
+        '– dauert 14 Tage.',
+    'New protection code':
+        'Neuer Schutz-Code',
+    "This is your new protection code – write it down or keep it in a password manager; we can't send it to you. It won't work for the next 14 days: during that time all your devices show the request, and it can be declined with the old code.":
+        'Das ist dein neuer Schutz-Code – schreib ihn auf oder bewahre ihn in einem Passwort-Manager auf; wir können ihn dir nicht schicken. 14 Tage lang gilt er noch nicht: In der Zeit zeigen alle deine Geräte den Antrag, und mit dem alten Code kann man ihn ablehnen.',
+    'Request':
+        'Beantragen',
+    'Sending the request …':
+        'Antrag wird gesendet …',
+    'Request made. If nobody declines with the old code, your new protection code applies on {date}.':
+        'Antrag gestellt. Lehnt niemand mit dem alten Code ab, gilt am {date} dein neuer Schutz-Code.',
+    "One of your devices wants a new protection code – because the old one is lost? If that isn't you, decline with your protection code and then remove the unknown device with ✕ in the list of your devices. Otherwise the new code applies from {date}.":
+        'Eines deiner Geräte möchte einen neuen Schutz-Code – weil der alte verloren ist? Kommt das nicht von dir, lehne mit deinem Schutz-Code ab und entferne danach das fremde Gerät mit ✕ in der Liste deiner Geräte. Sonst gilt der neue Code ab {date}.',
+    'Decline (with protection code)':
+        'Ablehnen (mit Schutz-Code)',
+})
+
+TEXTS.update({  # A5 PC: request failed
+    "That didn't work – try again later.":
+        'Das hat nicht geklappt – versuch es später noch mal.',
+})
+
+TEXTS.update({  # A7 Löschen-Seite (Entwurf an legal 07.11.)
+    'Delete only this device':
+        'Nur dieses Gerät löschen',
+    'Delete everything, online too':
+        'Alles löschen, auch online',
+    'Deletes your collection and settings on this PC. Your other devices, your online backup and your friends stay.':
+        'Löscht deine Sammlung und Einstellungen auf diesem PC. Deine anderen Geräte, deine Online-Sicherung und deine Freunde bleiben.',
+    "First deletes your data on our server – online backup, mailbox, shared lists and binders and your ID – the address your friends find you by – and then the data on this PC. Your other devices stop syncing; what's on them stays there. You'll need to add friends again afterwards.":
+        'Löscht zuerst deine Daten auf unserem Server – Online-Sicherung, Briefkasten, geteilte Listen und Binder und deine ID – die Adresse, unter der dich Freunde finden – und danach die auf diesem PC. Deine anderen Geräte gleichen danach nicht mehr ab; was auf ihnen liegt, bleibt dort. Freunde musst du danach neu hinzufügen.',
+    'Device lost or no longer yours? Use “Remove device” on one of your other devices.':
+        'Gerät verloren oder nicht mehr deins? Dann nimm „Gerät entfernen“ auf einem deiner anderen Geräte.',
+    "No connection: your collection and settings on this PC are deleted; Bent°Corner only keeps the key for deleting on the server until that has worked. We'll delete your data on our server as soon as Bent°Corner is online again – until then Bent°Corner doesn't set anything new up here. If you uninstall Bent°Corner before that, your data on the server is deleted automatically after the periods in the privacy policy.":
+        'Keine Verbindung: Deine Sammlung und Einstellungen auf diesem PC sind gelöscht; nur den Schlüssel zum Löschen auf dem Server behält Bent°Corner, bis das geklappt hat. Deine Daten auf unserem Server löschen wir, sobald Bent°Corner wieder eine Verbindung hat – bis dahin richtet Bent°Corner hier nichts Neues ein. Deinstallierst du Bent°Corner vorher, löschen sich deine Daten auf dem Server nach den Fristen in der Datenschutzerklärung von selbst.',
+    "Your data on our server isn't deleted yet – that happens as soon as there's a connection.":
+        'Deine Daten auf unserem Server sind noch nicht gelöscht – das passiert, sobald eine Verbindung besteht.',
+})
+
+TEXTS.update({  # A7 legal 07.11. Zusätze
+    "If this is your last device, your online backup stays on our server for up to 183 days and is then deleted – without a protection code you can't get to it in that time. If you don't want that, choose “Delete everything, online too”.":
+        'Ist das dein letztes Gerät, bleibt deine Online-Sicherung noch bis zu 183 Tage auf unserem Server und wird dann gelöscht – ohne Schutz-Code kommst du in der Zeit nicht mehr an sie. Willst du das nicht, nimm „Alles löschen, auch online“.',
+    '“Delete everything, online too” needs a connection.':
+        'Für „Alles löschen, auch online“ braucht Bent°Corner eine Verbindung.',
+})
+
+TEXTS.update({  # Tausche im beiseitegelegten Stand (legal 07.11.)
+    'You can only view and delete open trades from this saved state. What still applies is shown under Trades.':
+        'Offene Tausche aus diesem Stand kannst du nur ansehen und löschen. Was davon noch gilt, siehst du unter Tausch.',
+    'Trade with {partner}, {date}: {what}':
+        'Tausch mit {partner}, {date}: {what}',
+    'you give {cards}':
+        'du gibst {cards}',
+    'you get {cards}':
+        'du bekommst {cards}',
+    '{partner} pays {amount}':
+        '{partner} zahlt {amount}',
+    'you pay {amount}':
+        'du zahlst {amount}',
+    'Click again to delete this trade from the state set aside – the current one under Trades stays.':
+        'Nochmal klicken, um diesen Tausch aus dem beiseitegelegten Stand zu löschen – der aktuelle unter Tausch bleibt.',
+    'Trade deleted from the state set aside.':
+        'Tausch aus dem beiseitegelegten Stand gelöscht.',
+})
+
+TEXTS.update({  # Lampen-Tooltip mit Online-Sicherung (legal 07.11.)
+    'If the computer breaks, you get your data back from the online backup – through another coupled device or with your protection code; a backup file is a second way back. The lamp goes off then.':
+        'Fällt der Computer aus, holst du deine Daten aus der Online-Sicherung zurück – über ein anderes gekoppeltes Gerät oder mit deinem Schutz-Code; eine Sicherungsdatei ist ein zweiter Weg zurück. Die Lampe geht dann aus.',
+})
+
+TEXTS.update({  # „Was ist neu?“ – 0.9.7 mit Abgleich, Schutz-Code, Tickets (lead/legal 07.11.)
+    'Sync with your devices – and new rules for friends, sharing and prices':
+        'Abgleich mit deinen Geräten – und neue Regeln für Freunde, Teilen und Preise',
+    'New in Full Orbit: your collection, decks, lists, binders and more can be backed up online, end-to-end encrypted, and synced between PC and phone – the app asks you first, and you can turn it off at any time.':
+        'Neu im Ganzen Orbit: Deine Sammlung, Decks, Listen, Binder und mehr lassen sich Ende-zu-Ende verschlüsselt online sichern und zwischen PC und Handy abgleichen – die App fragt dich vorher, und du kannst es jederzeit ausschalten.',
+    'Optional: with a protection code you get your online backup back even if all your devices are gone – and without the code, no device can then remove others or delete everything.':
+        'Freiwillig: Mit einem Schutz-Code holst du deine Online-Sicherung zurück, auch wenn alle Geräte weg sind – und ohne den Code kann dann kein Gerät andere entfernen oder alles löschen.',
+    'Trade tickets now arrive straight at your friends – no more sending files back and forth.':
+        'Tausch-Tickets kommen jetzt direkt bei deinen Freunden an – ohne Datei hin und her.',
+    'Friends and trading are now only in Full Orbit; what you share with whom, you choose per friend under “Shared with friends”. Saved friends are kept. If you shared your whole library before, the app asks you once whether to keep doing so.':
+        'Freunde und Tausch gibt es nur noch im Ganzen Orbit; was du mit wem teilst, wählst du je Freund unter „Mit Freunden geteilt“. Gespeicherte Freunde bleiben erhalten. Hast du früher deine ganze Bibliothek geteilt, fragt dich die App einmal, ob es dabei bleibt.',
+})
+
+TEXTS.update({  # Koppeln nur im Ganzen Orbit (legal 07.11.)
+    'Coupling is only available in Full Orbit – sync and the online backup are part of it.':
+        'Koppeln gibt es nur im Ganzen Orbit – dazu gehören der Abgleich und die Online-Sicherung.',
+    "Sync is paused until you're back in Full Orbit. Your online backup stays; if none of your devices accesses it for 183 days, it is deleted.":
+        'Der Abgleich pausiert, bis du wieder im Ganzen Orbit bist. Deine Online-Sicherung bleibt; greift 183 Tage lang keines deiner Geräte darauf zu, wird sie gelöscht.',
+})
+
+TEXTS.update({  # 5-Monats-Warnung der Online-Sicherung (legal 07.11.)
+    "This device hasn't used your online backup since {seen}. If none of your other devices uses it either, it will be deleted on {until}.":
+        'Dieses Gerät hat deine Online-Sicherung seit dem {seen} nicht mehr genutzt. Nutzt auch keines deiner anderen Geräte sie, wird sie am {until} gelöscht.',
+    "This device hasn't used your online backup since {seen}. If none of your other devices used it either, it was deleted on {until} – your data on this device stays.":
+        'Dieses Gerät hat deine Online-Sicherung seit dem {seen} nicht mehr genutzt. Hat auch keines deiner anderen Geräte sie genutzt, wurde sie am {until} gelöscht – deine Daten auf diesem Gerät bleiben.',
+})
+
+TEXTS.update({  # Einfach für Endnutzer (PLAN-EINFACH C/D, 07.11.)
+    # legal 07.11. (Nachtrag W2/W3) – abgenommen
+    'Online backup and sync':
+        'Online-Sicherung und Abgleich',
+    "The protection code protects your online backup and your devices (removing, deleting). It doesn't apply to backup files – treat every backup file like a key.":
+        'Der Schutz-Code schützt deine Online-Sicherung und deine Geräte (Entfernen, Löschen). Für Sicherungsdateien gilt er nicht – behandle jede Sicherungsdatei wie einen Schlüssel.',
+    # legal 07.11. (desk-backup2) – abgenommen
+    'Problems with the code?':
+        'Probleme mit dem Code?',
+    'Change Orbit settings':
+        'Orbit-Einstellungen ändern',
+    'Restore on a new device':
+        'Auf einem neuen Gerät wiederherstellen',
+    'Offline backups':
+        'Offline-Sicherungen',
+    'Crash backup':
+        'Absturz-Sicherung',
+    'Bent°Corner also keeps a copy in its data folder at every start (at most every 6 hours, the last 7). It helps after a crash – not if the computer breaks.':
+        'Bent°Corner legt außerdem bei jedem Start eine Kopie in seinen Datenordner (höchstens alle 6 Stunden, die letzten 7). Sie hilft nach einem Absturz – nicht, wenn der Computer kaputtgeht.',
+})
+
+TEXTS.update({  # legal 07.11. „Warum ist das wichtig?“ neu (Zahlen = autobackup.KEEP)
+    "Your collection is stored on this computer. If it breaks, gets lost or is set up anew, it is gone without a backup – we don't have a copy we could read. The crash backup only helps after a crash. That's why: a place outside – a USB stick, an external drive or a cloud folder. Bent°Corner backs up there by itself, as often as you set it above, keeps your last 5 backups (at most one per hour) and catches up as soon as the stick is back. In Full Orbit the online backup also helps – but you can only get to it through another of your devices or with your protection code. Treat every backup file like a key.":
+        'Deine Sammlung liegt auf diesem Computer. Geht er kaputt, verloren oder wird er neu aufgesetzt, ist sie ohne Sicherung weg – eine Kopie, die wir lesen könnten, haben wir nicht. Die Absturz-Sicherung hilft nur nach einem Absturz. Darum ein Ort außerhalb: ein USB-Stick, eine externe Festplatte oder ein Cloud-Ordner. Bent°Corner sichert dorthin von selbst, so oft du es oben einstellst, behält deine letzten 5 Sicherungen (höchstens eine pro Stunde) und holt verpasste Sicherungen nach, sobald der Stick wieder da ist. Im Ganzen Orbit hilft zusätzlich die Online-Sicherung – an sie kommst du aber nur über ein anderes deiner Geräte oder mit deinem Schutz-Code. Behandle jede Sicherungsdatei wie einen Schlüssel.',
+})
+
+TEXTS.update({  # legal 07.11. „Was auf dem Server liegt“ je Schalterstand (der Geräte-Satz nur mit B5)
+    "If “Online backup and sync” is off, only what you share is stored there – never your collection, logs, decks, private lists or settings.":
+        'Ist „Online-Sicherung und Abgleich“ aus, liegt dort nur, was du teilst – deine Sammlung, Logs, Decks, private Listen und Einstellungen nie.',
+    "If “Online backup and sync” is on, your online backup is stored there too: your collection with logs, decks, lists, binders, price alerts, trade offers, friends and your profile – end-to-end encrypted, we can't read it.{devices} Settings stay on the device. If you turn the switch off, we delete the online backup; the same happens if none of your devices accesses it for 183 days.":
+        'Ist „Online-Sicherung und Abgleich“ an, liegt dort zusätzlich deine Online-Sicherung: deine Sammlung samt Logs, Decks, Listen, Binder, Preisalarme, Tauschangebote, Freunde und dein Profil – Ende-zu-Ende verschlüsselt, lesen können wir sie nicht.{devices} Einstellungen bleiben auf dem Gerät. Schaltest du den Schalter aus, löschen wir die Online-Sicherung; ebenso, wenn 183 Tage lang keines deiner Geräte darauf zugreift.',
+    'Plus, per device, a random device ID and its public keys, no names.':
+        'Dazu je Gerät eine zufällige Geräte-ID und seine öffentlichen Schlüssel, keine Namen.',
+})
+
+TEXTS.update({  # Einfach für Endnutzer – Deine Geräte (PLAN-EINFACH B, 07.11.) – legal 07.11. abgenommen
+    '{name} – this device': '{name} – dieses Gerät',
+    '{name} – added on {date}': '{name} – hinzugefügt am {date}',
+    'Device {n}': 'Gerät {n}',
+    'PC {n}': 'PC {n}',
+    'Phone {n}': 'Handy {n}',
+    'No other devices': 'Keine anderen Geräte',
+    'Sign out this device': 'Dieses Gerät abmelden',
+    'Sign out this device? It no longer syncs, and your data on this device is deleted – a backup stays here for 30 days. Your other devices and the online backup keep everything.':
+        'Dieses Gerät abmelden? Es gleicht dann nicht mehr ab, und deine Daten auf diesem Gerät werden gelöscht – eine Sicherung bleibt 30 Tage hier. Deine anderen Geräte und die Online-Sicherung behalten alles.',
+    'Signing out …': 'Wird abgemeldet …',
+    'Add a device': 'Gerät hinzufügen',
+    'Show a code on one device and enter it on the other – on the PC or in the Bent°Corner web app. Any device can do both.':
+        'Zeig auf einem Gerät einen Code und gib ihn auf dem anderen ein – am PC oder in der Bent°Corner-Web-App. Jedes Gerät kann beides.',
+    'Show a code': 'Code zeigen',
+    'Enter a code': 'Code eingeben',
+    'Your devices sync through the online backup – turn on “Online backup and sync” under Backup.':
+        'Deine Geräte gleichen über die Online-Sicherung ab – schalte unter Sicherung „Online-Sicherung und Abgleich“ ein.',
+    'Go to Backup': 'Zur Sicherung',
+    'Web app': 'Web-App',
+    'Do it this way?': 'So machen?',
+})
+
+TEXTS.update({  # Beide Geräte haben Daten – Tabelle (lead 07.11.) – legal 07.11. abgenommen
+    '{name} (this one)': '{name} (dieses)',
+    'Keep the state of {name}': 'Stand von {name} behalten',
+    'Phone': 'Handy',
+    'Other device': 'Anderes Gerät',
+})
+
+TEXTS.update({  # legal 07.11.: Umfang am Schalter „Online-Sicherung und Abgleich“ (statt SYNC_WHAT)
+    "When the switch is on, your collection, decks, lists, binders, friends and your profile are stored on our server, end-to-end encrypted – we can't read them. Details under “What is on the server”.":
+        'Ist der Schalter an, liegen deine Sammlung, Decks, Listen, Binder, Freunde und dein Profil Ende-zu-Ende verschlüsselt auf unserem Server – wir können sie nicht lesen. Genaues unter „Was auf dem Server liegt“.',
+})
+
+TEXTS.update({  # Name beim Hinzufügen auf dem neuen Gerät (Oliver 07.11.) – legal 07.11. abgenommen
+    'Name of this device': 'Name dieses Geräts',
+})
+
+TEXTS.update({  # B5 (Oliver 07.11.) – legal 07.11. abgenommen (plan-einfach.md)
+    "This device was removed. Your data on this device has therefore been deleted; a backup of it stays here for 30 days (Settings → Backup). Wasn't that you? Then a device that isn't yours has taken over your ID: restore the backup and save your collection as a file, then start over (“Delete Bent°Corner”) and tell your friends to decline the “moved” message from you.":
+        'Dieses Gerät wurde entfernt. Deine Daten auf diesem Gerät sind deshalb gelöscht; eine Sicherung davon bleibt 30 Tage hier (Einstellungen → Sicherung). Warst du das nicht? Dann hat ein fremdes Gerät deine ID übernommen: Hol die Sicherung zurück und speichere deine Sammlung als Datei, fang dann neu an („Bent°Corner löschen“) und sag deinen Freunden, dass sie „umgezogen“ von dir ablehnen sollen.',
+    "Remove {name}? It no longer syncs afterwards; your other devices automatically get a new key. Your friends get a message to accept, your online backup stays. Once it's online again, Bent°Corner deletes your data there; a backup of it stays on the device for another 30 days. If it never goes online again, everything stays there – we can't delete it.":
+        '{name} entfernen? Es gleicht danach nicht mehr ab; deine übrigen Geräte bekommen automatisch einen neuen Schlüssel. Deine Freunde bekommen eine Nachricht zum Annehmen, deine Online-Sicherung bleibt. Geht es wieder online, löscht Bent°Corner dort deine Daten; eine Sicherung davon bleibt noch 30 Tage auf dem Gerät. Geht es nie mehr online, bleibt alles dort – das können wir nicht löschen.',
+    'Removed with it: {names}': 'Mit entfernt: {names}',
+    'No': 'Nein',
+    'Removing {name} …': '{name} wird entfernt …',
+    '{name} is removed. Your other devices get the new key automatically.': '{name} ist entfernt. Deine übrigen Geräte bekommen den neuen Schlüssel automatisch.',
+    'The list of devices has just changed – look again and try once more.':
+        'Die Geräteliste hat sich gerade geändert – schau noch einmal und versuch es erneut.',
+    'Remove {name}': '{name} entfernen',
+    "This device isn't in the list any more.": 'Dieses Gerät steht nicht mehr in der Liste.',
+    "A device wants to join your devices (from a backup file). If you allow it, it gets access to your online backup and your friends – as if it were you. Without an answer it joins on {date}. If you don't recognise it, decline.":
+        'Ein Gerät möchte zu deinen Geräten (aus einer Sicherungsdatei). Lässt du es zu, bekommt es Zugang zu deiner Online-Sicherung und deinen Freunden – so, als wärst du es. Ohne Antwort kommt es am {date} dazu. Kennst du es nicht, lehne ab.',
+    'New device': 'Neues Gerät',
+    'Decline': 'Ablehnen',
+    'Allow now': 'Jetzt zulassen',
+    'This device wants to join your devices. It joins on {date} if none of your devices declines – or allow it right away on one of your other devices.':
+        'Dieses Gerät möchte zu deinen Geräten. Es kommt am {date} dazu, wenn keines deiner Geräte ablehnt – oder lass es auf einem deiner anderen Geräte gleich zu.',
+    "One of your devices declined. This device doesn't sync; your data here stays.": 'Eines deiner Geräte hat abgelehnt. Dieses Gerät gleicht nicht ab; deine Daten hier bleiben.',
+    'Picked up, but not by you? Remove that device right away with ✕ in the list above and contact {mail}.':
+        'Abgeholt, aber nicht von dir? Entferne das Gerät sofort mit ✕ in der Liste oben und melde dich bei {mail}.',
+})
+
+TEXTS.update({  # PLAN-EINFACH Prüfliste (lead 07.11.)
+    'Usually arrives within a minute if the other side is using Bent°Corner right now.':   # legal 07.11.
+        'Kommt meist innerhalb einer Minute an, wenn die andere Seite Bent°Corner gerade benutzt.',
+    'Change protection code': 'Schutz-Code ändern',   # legal 07.11.
+    'First your current protection code:': 'Zuerst dein bisheriger Schutz-Code:',   # legal 07.11.
+    'From now on only the new protection code works – also for restoring your online backup. You can throw away the old one.':
+        'Ab jetzt gilt nur der neue Schutz-Code – auch zum Zurückholen deiner Online-Sicherung. Den alten kannst du wegwerfen.',
+})
+
+TEXTS.update({'This device': 'Dieses Gerät'})   # the table head while the number isn't known
+
+TEXTS.update({'Add again': 'Wieder hinzufügen'})   # legal 08.11. (A6, statt „Neu koppeln“)
+
+TEXTS.update({  # „Was ist neu?“ – Highlights von 0.9.7, PLAN-EINFACH (legal 08.11.)
+    "New in Full Orbit: your collection, decks, lists, binders and more can be backed up online, end-to-end encrypted, and kept in sync between your devices – one switch, “Online backup and sync”, which you can turn off at any time.":
+        'Neu im Ganzen Orbit: Sammlung, Decks, Listen, Binder und mehr lassen sich Ende-zu-Ende verschlüsselt online sichern und zwischen deinen Geräten abgleichen – ein Schalter, „Online-Sicherung und Abgleich“, jederzeit wieder aus.',
+    'Your devices and backups are simpler: each device with its name, add one with a code, remove one with ✕; online and offline backups in two boxes.':   # legal 08.11. (lead: 5 points)
+        'Deine Geräte und die Sicherung sind einfacher: jedes Gerät mit Namen, hinzufügen per Code, entfernen per ✕; Online- und Offline-Sicherungen in zwei Boxen.',
+})
+
+TEXTS.update({  # Sicherung einspielen – Fehlerzeilen (Prüfkette 08.11., F4)
+    "Your current state couldn't be saved first – nothing was restored.":
+        'Dein jetziger Stand ließ sich nicht vorher sichern – es wurde nichts eingespielt.',
+    "The backup couldn't be restored – your previous state is back.":
+        'Die Sicherung ließ sich nicht einspielen – dein vorheriger Stand ist wieder da.',
+})
+
+TEXTS.update({'The file is too large.': 'Die Datei ist zu groß.'})   # Prüfkette 08.11. (H2-4)
+
+TEXTS.update({  # A3 abgelehnter Beitritts-Antrag mit Sperrfrist (legal 08.11., PC = Web)
+    "One of your devices declined. This device doesn't sync; your data here stays. You can ask again from {date}.":
+        'Eines deiner Geräte hat abgelehnt. Dieses Gerät gleicht nicht ab; deine Daten hier bleiben. Einen neuen Antrag kannst du ab {date} stellen.',
+})
+
+TEXTS.update({  # Fremdes Gerät mit deiner ID (legal 08.11., über performance; lead-Go)
+    "Another device is already signed in with your ID that you don't see here. If it's yours (e.g. an old phone or another browser), allow this device there.":
+        'Für deine ID ist schon ein anderes Gerät angemeldet, das du hier nicht siehst. Ist es deins (z. B. ein altes Handy oder ein anderer Browser), lass dieses Gerät dort zu.',
+    "If you don't recognise it, someone may have a copy of your backup file. Then create a new ID: your data here stays, but your friends have to add you again. Tell them to remove your old ID – the other device can keep using it.":
+        'Kennst du es nicht, hat vielleicht jemand eine Kopie deiner Sicherungsdatei. Dann leg eine neue ID an: Deine Daten hier bleiben, deine Freunde müssen dich aber neu hinzufügen. Sag ihnen, dass sie deine alte ID entfernen sollen – das andere Gerät kann sie weiter nutzen.',
+    "Your ID is already used on other devices. If they're yours, sign this device in with your protection code.":   # legal 09.11.
+        'Deine ID wird schon auf anderen Geräten genutzt. Sind es deine, melde dieses Gerät mit deinem Schutz-Code an.',
+    "With your protection code you sign this device in; your other devices stay. Then check the list of your devices: if you don't recognise one, remove it with ✕ – your ID, your friends and your online backup stay with you.":   # legal 09.11.
+        'Mit deinem Schutz-Code meldest du dieses Gerät an; deine anderen Geräte bleiben. Schau danach in die Liste deiner Geräte: Kennst du eins nicht, entferne es mit ✕ – deine ID, deine Freunde und deine Online-Sicherung bleiben bei dir.',
+    'Or create a new ID; then your friends have to add you again.': 'Oder leg eine neue ID an; dann müssen dich deine Freunde neu hinzufügen.',
+    'Create new ID': 'Neue ID anlegen',
+    'Sign in with protection code': 'Mit Schutz-Code anmelden',   # legal 09.11.
+    'Really create a new ID?': 'Wirklich eine neue ID anlegen?',   # legal 08.11.
+    'Signing this device in …': 'Dieses Gerät wird angemeldet …',   # legal 09.11.
+    "This device is signed in. Check the list of your devices – if you don't recognise one, remove it with ✕.":   # legal 09.11.
+        'Dieses Gerät ist angemeldet. Schau in die Liste deiner Geräte – kennst du eins nicht, entferne es mit ✕.',
+})
+
+TEXTS.update({  # Profil: Blockierte (lead 08.11. – „Das kannst du im Profil rückgängig machen“ stimmt damit)
+    'Blocked': 'Blockiert',
+    "Unblock? You won't be friends again, but this person can send you a friend request again.":   # legal 08.11.
+        'Blockierung aufheben? Ihr seid danach nicht wieder befreundet, aber die Person kann dir wieder eine Freundschaftsanfrage schicken.',
+    'Unblocking …': 'Wird aufgehoben …',   # legal 08.11.
+    'No connection – nothing was changed. Try again in a moment.': 'Keine Verbindung – nichts wurde geändert. Versuch es gleich noch einmal.',   # legal 08.11.
+    "That didn't work – nothing was changed. Try again later.": 'Das hat nicht geklappt – nichts wurde geändert. Versuch es später noch mal.',   # legal 08.11.
+    'Unblocking needs the mailbox – it is part of Full Orbit. Nothing was changed.':   # legal 08.11.
+        'Zum Aufheben braucht Bent°Corner den Briefkasten – er gehört zum Ganzen Orbit. Es wurde nichts geändert.',
+})
+
+TEXTS.update({  # Schutz-Code Pflicht ab dem zweiten Gerät (Oliver 08.11., legal 08.11. „Neufassung“)
+    'Without a protection code you can only get back to your online backup through this device or your backup file – with the file only after 14 days.':
+        'Ohne Schutz-Code kommst du nur über dieses Gerät oder deine Sicherungsdatei wieder an deine Online-Sicherung – mit der Datei erst nach 14 Tagen.',
+    "You need a protection code for another device. You'll enter it on the new device in a moment; it then applies to all your devices, and only with it can you remove devices or delete everything. Write it down – if you lose it, a replacement takes 14 days.":
+        'Für ein weiteres Gerät brauchst du einen Schutz-Code. Du gibst ihn gleich auf dem neuen Gerät ein; er gilt dann für alle deine Geräte, und nur mit ihm kannst du Geräte entfernen oder alles löschen. Schreib ihn auf – geht er verloren, dauert ein Ersatz 14 Tage.',
+    'Set up protection code': 'Schutz-Code einrichten',
+    'Enter the protection code of your other devices. If this device had its own before, it no longer applies afterwards.':
+        'Gib den Schutz-Code deiner anderen Geräte ein. Hatte dieses Gerät vorher einen eigenen, gilt der danach nicht mehr.',
+    "If a request for a new code is running, that's still the old one until the set date.":
+        'Läuft gerade ein Antrag auf einen neuen Code, ist das bis zum Stichtag noch der alte.',
+    'If you cancel here, you need a new code from your other device.':
+        'Brichst du hier ab, brauchst du einen neuen Code von deinem anderen Gerät.',
+    'Add device': 'Gerät hinzufügen',
+    'A first protection code can only be set while just this one device is linked. Sign out your other devices there (“Sign out this device”), set up the code here and add them again afterwards – they then get your data back from the online backup.':
+        'Einen ersten Schutz-Code kannst du nur einrichten, solange nur dieses eine Gerät verbunden ist. Melde deine anderen Geräte dort ab („Dieses Gerät abmelden“), richte hier den Code ein und füge sie danach wieder hinzu – sie holen sich deine Daten dann aus der Online-Sicherung zurück.',
+    'New: the protection code. From your second device on, you need it to add or remove devices – and with it you get your online backup back even if all your devices are gone.':
+        'Neu: der Schutz-Code. Ab dem zweiten Gerät brauchst du ihn, um Geräte hinzuzufügen oder zu entfernen – und mit ihm holst du deine Online-Sicherung zurück, auch wenn alle Geräte weg sind.',
+})
+
+TEXTS.update({  # the device test round 11.11. (lead/ports): the code only, no sphere (SPHERE off)
+    'Type this code on your other device under “Enter a code”.':
+        'Tipp diesen Code auf deinem anderen Gerät unter „Code eingeben“ ein.',
+    'On your other device: Your devices → “Show a code”. Type that code here.':
+        'Auf deinem anderen Gerät: Deine Geräte → „Code zeigen“. Tipp den Code hier ein.',
+})
+
+
+TEXTS.update({  # D – a device that leaves the sync empties itself after a 30-day copy (Oliver/lead 12.11., library)
+    "Restore data from before removing (until {date})": "Daten vor dem Entfernen zurückholen (bis {date})",
+    "Bring back the data this device had before it left the sync? Your current state is saved first. Bent°Corner restarts afterwards.":
+        "Die Daten zurückholen, die dieses Gerät vor dem Verlassen des Abgleichs hatte? Dein aktueller Stand wird vorher gesichert. Bent°Corner startet danach neu.",
+    "The data couldn't be restored – your current state is back.":
+        "Die Daten konnten nicht zurückgeholt werden – dein aktueller Stand ist wieder da.",
+    "The safety copy of your data couldn't be created – so nothing was deleted. Check the free storage space and try again.":
+        "Die Sicherheitskopie deiner Daten konnte nicht angelegt werden – deshalb wurde nichts gelöscht. Prüf den freien Speicherplatz und versuch es noch einmal.",
+    "You can bring the data back under Settings → Backup for 30 days.":
+        "Du kannst die Daten 30 Tage lang unter Einstellungen → Sicherung zurückholen.",
+})
+
+TEXTS.update({  # bug 1 (Oliver's device test 12.11.): the code is set, only its envelope is missing
+    "Your protection code is set but isn't on our server yet – until then it won't help if all your devices are gone. Try again.":
+        "Dein Schutz-Code ist gesetzt, liegt aber noch nicht auf unserem Server – bis dahin hilft er nicht, wenn alle deine Geräte weg sind. Versuch es noch einmal.",
+})
+
+TEXTS.update({  # bug 1 (lead 12.11.): the envelope id of this code is taken – never said why (legal)
+    "You can't use this code – please choose another one.": "Diesen Code kannst du nicht verwenden – wähl bitte einen anderen.",
+    "Choose a different code": "Anderen Code wählen",
+})
+
+TEXTS.update({  # legal 12.11. (via lead), word for word: on setting up the protection code
+    "Anyone who knows your protection code can restore your online backup. Don't share it, and don't use one you already use elsewhere.":
+        "Wer deinen Schutz-Code kennt, kann deine Online-Sicherung zurückholen. Gib ihn niemandem und nimm keinen, den du schon woanders nutzt.",
+})
+
+TEXTS.update({  # removing right after adding (desk-geraete3 box run 12.11.)
+    "Checking the device list …": "Geräteliste wird geprüft …",
+})

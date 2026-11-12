@@ -11,11 +11,13 @@ from cards import carddb
 from cards import library
 from ui import quickimages
 from collection import trade
+from system import orbit
 from system import userprofile
 from system.i18n import tr
 from ui.librarycore import THUMBS, _esc
 from ui.qlibrary import LibraryBackend, back_image
-from collection.tradelib import LANG_SHORT, eur
+from collection import tradelib
+from collection.tradelib import LANG_SHORT, PAY_NOTE, eur, money_text, same_cards, value
 
 
 def _wrap(obj, name, after):
@@ -117,7 +119,7 @@ class BrowserBackend(QtCore.QObject):
             if r.get("pinned_name"):
                 tags.append(tr("exactly this version") if r.get("pinned_match") else tr("other version"))
             out.append({"i": i, "name": r["name"], "setLine": extra, "count": int(r.get("count") or 1),
-                        "price": eur(None if r.get("price") is None else r["price"] * int(r.get("count") or 1)),
+                        "price": value(None if r.get("price") is None else r["price"] * int(r.get("count") or 1)),
                         "img": db_image_of(r.get("db"), r.get("game")), "checked": bool(r.get("checked")),
                         "tags": " · ".join(tags), "chips": [f"{int(r.get('count') or 1)}×"]
                         + _fin_chip(r)})
@@ -211,6 +213,8 @@ class TradeBackend(QtCore.QObject):
         self.lists_b = ListsBackend(self)   # "your lists" (docs/TRADE-SPLIT.md) – in QML as tradeLists
         self.alarms_b = AlarmsBackend(self)   # "Price alerts" folder and alert editors – in QML as tradeAlarms
         self.friends_b = FriendsBackend(self)   # friends sidebar, a friend's view (all games), sync – tradeFriends
+        from ui.qshared import SharedBackend
+        self.shared_b = SharedBackend(self)   # folder "Shared with friends" (lead/legal 06.11.) – tradeShared
         # "Swap" tab
         self.get_b = BrowserBackend(page.get_browser, self)
         self.give_b = BrowserBackend(page.give_browser, self)
@@ -325,7 +329,10 @@ class TradeBackend(QtCore.QObject):
                ("alarms", "Preisalarme", "bell", "Alerts for single cards and whole lists – reported after every "
                                                 "price update (in the tray once a day)."),
                ("binders", "Binder", "binder", "Albums for all games: arrange cards freely, leave gaps for what's "
-                                               "still missing – friends see what you're missing."))
+                                               "still missing – friends see what you're missing."),
+               ("shared", "Shared with friends", "share", "What your friends get from you. New things always start off "
+                                                         "– new friends too."))
+    GAPS = ("offers", "binders", "shared")   # a divider above these in the sidebar (lead 06.11.)
 
     def _lib(self):
         return (getattr(self.ctrl, "shell", None) and self.ctrl.shell.backends.get("library")) or None
@@ -339,6 +346,8 @@ class TradeBackend(QtCore.QObject):
     def setFolder(self, key):
         self.ctrl.settings["trade_folder"] = key
         self.listsChanged.emit()
+        if key == "shared":
+            self.shared_b.refresh()
         shell = getattr(self.ctrl, "shell", None)
         if shell is not None:   # game button: ∞ in the price alerts folder (all games)
             shell.navChanged.emit()
@@ -355,6 +364,10 @@ class TradeBackend(QtCore.QObject):
                 if key == "binders":
                     pb = self.ctrl.shell.backends.get("profile") if getattr(self.ctrl, "shell", None) else None
                     n = sum(1 for t in (pb.binderTiles if pb is not None else []) if not t.get("new"))
+                elif key == "shared":   # how many friends get something: "2/3"
+                    from net import relay
+                    st = self.ctrl.settings
+                    n = f"{len(relay.share_codes(st))}/{len(relay.ok_friends(st))}" if relay.ok_friends(st) else 0
                 elif key == "alarms":
                     st = self.ctrl.settings
                     ca, la = alarms.all_alarms(st), alarms.list_alarms(st, every=True)
@@ -362,7 +375,9 @@ class TradeBackend(QtCore.QObject):
                     n = f"{hits}/{len(ca) + len(la)}"
                 else:
                     n = len(trade.lists(key))
-            out.append({"key": key, "title": tr(title), "icon": icon, "sub": tr(sub), "count": n})
+            if key == "wish" and not orbit.friends_shown():   # Core/Near: no friends to send it to (lead 06.11.)
+                sub = "Was du suchst."
+            out.append({"key": key, "title": tr(title), "icon": icon, "sub": tr(sub), "count": n, "gap": key in self.GAPS})
         return out
 
     @QtCore.Property(str, notify=listsChanged)
@@ -375,7 +390,7 @@ class TradeBackend(QtCore.QObject):
         """Tiles of the selected folder: [{lid, name, info, value, art, example, main, alarm, friends}]."""
         from collection import alarms
         kind = self.folder
-        if kind in ("alarms", "offers", "binders"):
+        if kind in ("alarms", "offers", "binders", "shared"):
             return []
         items = self.ctrl.collection.items
         hold = self.page.holders() if kind == "wish" else {}
@@ -389,7 +404,7 @@ class TradeBackend(QtCore.QObject):
             friends = sum(1 for e in entries if hold.get(e["name"])) if hold else 0
             out.append({"lid": lid, "name": tr(x["name"]) if main else x["name"], "count": n,
                         "shared": trade.is_shared(x), "shareable": kind in trade.SHAREABLE, "auto": bool(x.get("rule")),
-                        "info": tr(f"{n} cards") + (f" · {eur(value)}" if value else "")
+                        "info": tr(f"{n} cards") + (f" · {tradelib.value(value)}" if value and tradelib.value(value) else "")
                         + (" · " + tr("automatic") if x.get("rule") else ""),
                         "art": art, "artist": artist, "example": bool(x.get("example")), "main": main,
                         "alarm": alarms.find_list(self.ctrl.settings, lid) is not None,
@@ -472,7 +487,7 @@ class TradeBackend(QtCore.QObject):
                          "img": db_image_of(r, game) if r and has_image(r, game) else "",
                          "line": (f"{str(r.get('set_name') or r.get('set_code') or '').strip()} · #{r.get('number')}" if r else
                                   tr("No printing with an image found")),
-                         "price": eur(price) if price is not None else "–",
+                         "price": value(price) if price is not None else "–",
                          "other": game != games.current().key}
         self.detailChanged.emit()
 
@@ -604,7 +619,7 @@ class TradeBackend(QtCore.QObject):
         cur = (str(w.get("set") or "").lower(), str(w.get("number") or ""))
         return [{"id": r["id"], "set": (r.get("set_code") or "").upper(), "number": r.get("number") or "",
                  "sname": r.get("set_name") or "",
-                 "img": db_image(r), "price": eur(r.get("eur") if r.get("eur") is not None else r.get("eur_foil")),
+                 "img": db_image(r), "price": value(r.get("eur") if r.get("eur") is not None else r.get("eur_foil")),
                  "mark": "main" if (r.get("set_code"), str(r.get("number"))) == cur else "", "date": ""}
                 for r in rows[:400]]
 
@@ -739,17 +754,24 @@ class TradeBackend(QtCore.QObject):
         me = __import__("system.userprofile", fromlist=["userprofile"]).ensure(self.ctrl.settings).get("id")
         items = offers.sorted_offers()
         if not items:
-            return ui.col([ui.note(tr("No trade offers yet. In a trade with a friend: check cards → “Share as ticket”. A ticket from someone else: Import friend … (choose the image) or New log → Trade ticket."))])
+            from system import orbit
+            return ui.col([ui.note(tr("No trade offers yet. In a trade with a friend: check cards → “Share as ticket”. A ticket from someone else: Import friend … (choose the image) or New log → Trade ticket.")
+                                   if orbit.FILE_FRIENDS else
+                                   tr("No trade offers yet. In a trade with a friend: check cards → “Share as ticket”. A ticket from someone else: New log → Trade ticket (image or camera)."))])
         rows = []
+        priced = self.page.priced()   # Core: no values (legal 03.11.) – an entered amount shows as a proposal
         for o in items:
             t = offers.latest(o)
             sd = ticket.side(t, me) if t else None
             give, get = (sd[0], sd[1]) if sd else ([], [])
             n_give, n_get = sum(int(c[4] or 1) for c in give), sum(int(c[4] or 1) for c in get)
             money = ticket.money_from_me(t, me) if t else 0
-            cash = (" · " + tr(f"you pay {eur(money)}") if money > 0 else " · " + tr(f"you get {eur(-money)}")) \
-                if abs(money) >= 0.01 else ""
-            head = (f"<b>{_esc(o['partner'][1] or '?')}</b> · {tr(offers.STATUS_TEXT.get(o['status'], o['status']))}"
+            if not priced:   # Core: the amount as whoever proposed it, before accepting (lead/legal 06.11.)
+                cash = (" · " + money_text(t, me)) if t and abs(money) >= 0.01 else ""
+            else:
+                cash = (" · " + tr(f"you pay {eur(money)}") if money > 0 else " · " + tr(f"you get {eur(-money)}")) \
+                    if abs(money) >= 0.01 else ""
+            head = (f"<b>{_esc(o['partner'][1] or '?')}</b> · {tr(offers.status_text(o))}"
                     f" · v{int((t or {}).get('n') or 1)}")
             sub = (tr(f"you give {n_give}, you get {n_get}") + cash + " · " + tr("Trade ID") + " "
                    + o["id"].upper() + " · " + __import__("time").strftime("%d.%m.%Y %H:%M",
@@ -760,13 +782,21 @@ class TradeBackend(QtCore.QObject):
                 btns += [ui.button(tr("Accept"), lambda oid=oid: self._offer_do("accept", oid), active=True),
                          ui.button(tr("Counteroffer …"), lambda oid=oid: self._counter_dialog(oid)),
                          ui.button(tr("Decline"), lambda oid=oid: self._offer_do("decline", oid))]
+            elif o["status"] == "closing":   # the friend accepted through the mailbox: book it here (lead 06.11.)
+                btns += [ui.button(tr("Book"), lambda oid=oid: self._offer_do("book", oid), active=True),
+                         ui.button(tr("Show ticket"), lambda oid=oid: self._offer_do("show", oid))]
             elif o["status"] == "sent":
                 btns += [ui.button(tr("Show ticket"), lambda oid=oid: self._offer_do("show", oid)),
                          ui.button(tr("Change …"), lambda oid=oid: self._counter_dialog(oid)),
                          ui.button(tr("Withdraw"), lambda oid=oid: self._offer_do("withdraw", oid))]
             else:
                 btns += [ui.button(tr("Show ticket"), lambda oid=oid: self._offer_do("show", oid))]
-            rows.append(ui.group("", [ui.label(head), ui.note(sub), ui.row(btns + [ui.stretch()])]))
+            mail = o.get("mail") or {}
+            undelivered = None
+            if offers.undelivered(o):   # a quiet line, never a window (lead 06.11.)
+                undelivered = ui.note(tr(f"Couldn't be delivered – {o['partner'][1] or '?'}'s mailbox is full. Try again later or send the ticket as an image.")
+                                      if mail.get("status") == 507 else tr("Couldn't be delivered."))
+            rows.append(ui.group("", [ui.label(head), ui.note(sub), undelivered, ui.row(btns + [ui.stretch()])]))
         return ui.col(rows, spacing=10)
 
     def _offer_do(self, what, oid):
@@ -778,6 +808,10 @@ class TradeBackend(QtCore.QObject):
             page.decline_offer(oid)
         elif what == "withdraw":
             page.withdraw_offer(oid)
+        elif what == "book":
+            o = offers.get(oid)
+            if o is not None:
+                page.book_ticket(offers.latest(o))
         elif what == "show":
             o = offers.get(oid)
             if o is not None:
@@ -798,28 +832,65 @@ class TradeBackend(QtCore.QObject):
         sd = ticket.side(t, me)
         if sd is None:
             return
-        give = [list(c) for c in sd[0]]
-        get = [list(c) for c in sd[1]]
-        st = {"money": ticket.money_from_me(t, me)}
+        # the same card twice (two copies picked one by one): one row with count 2 – the new ticket carries it so
+        same = lambda cards: same_cards([list(c) for c in cards],   # noqa: E731
+                                        lambda c: (str(c[0]).lower(), str(c[1]), c[2] or "en", bool(c[3]),
+                                                   ticket.card_game(c, t)),
+                                        lambda c: int(c[4] or 1), lambda c, n: c[:4] + [n] + c[5:])
+        give, get = same(sd[0]), same(sd[1])
+        st = {"money": ticket.money_from_me(t, me), "drop": False}
+        # Core: no money field (nothing new can be entered) – the amount shows as the friend's proposal and is kept
+        # (money=None), or taken out with "Remove amount" (lead/legal 06.11.)
+        priced = self.page.priced()
+        # a ticket read from its pixel code carries no card names: from the card database (each card's own game)
+        from cards import carddb
+        want, names = {}, {}
+        for c in give + get:
+            if not (len(c) > 5 and c[5]):
+                want.setdefault(ticket.card_game(c, t), []).append((c[0], c[1]))
+        for g, keys in want.items():
+            for key, r in carddb.by_prints(keys, game=g).items():
+                names[(g, key)] = r.get("name") or ""
+
+        def name_of(c):
+            if len(c) > 5 and c[5]:
+                return c[5]
+            return names.get((ticket.card_game(c, t), (str(c[0]).lower(), str(c[1])))) or "?"
 
         def build(ui, d):
-            def side_rows(cards):
-                return [(f"{c[5] if len(c) > 5 else ''} · {str(c[0]).upper()} #{c[1]}" + (" · Foil" if c[3] else ""),
-                         ui.spin(int(c[4] or 0), 0, 99, lambda v, c=c: c.__setitem__(4, int(v)))) for c in cards]
+            def core_money():
+                if abs(st["money"]) < 0.01:
+                    return []
+                if st["drop"]:
+                    return [ui.row([ui.label(tr("Without money")), ui.stretch(),
+                                    ui.button(tr("Keep amount"), lambda: (st.update(drop=False), d.form.soon()))])]
+                return [ui.row([ui.label(money_text(t, me)), ui.stretch(),
+                                ui.button(tr("Remove amount"), lambda: (st.update(drop=True), d.form.soon()))]),
+                        ui.note(tr(PAY_NOTE))]
+
+            def side_rows(cards):   # a row each, not a form: the form's 170 px label cut the names off
+                return ui.col([ui.row([ui.label(f"{name_of(c)} · {str(c[0]).upper()} #{c[1]}" + (" · Foil" if c[3] else "")),
+                                       ui.stretch(),
+                                       ui.spin(int(c[4] or 0), 0, 99, lambda v, c=c: c.__setitem__(4, int(v)))])
+                               for c in cards], spacing=8)
             return ui.col([
                 ui.label(tr(f"Trade with {o['partner'][1] or '?'} · Trade ID {oid.upper()}"), big=True),
-                ui.label(tr("You give"), bold=True), ui.form(side_rows(give)) if give else ui.note(tr("nothing")),
-                ui.label(tr("You get"), bold=True), ui.form(side_rows(get)) if get else ui.note(tr("nothing")),
-                ui.form([(tr("Money (+ you pay, − you get)"),
+                ui.label(tr("You give"), bold=True), side_rows(give) if give else ui.note(tr("nothing")),
+                ui.label(tr("You get"), bold=True), side_rows(get) if get else ui.note(tr("nothing")),
+            ] + ([
+                # the long label was cut off ("Geld (+ du zahlst, − du b…"): short label, the rule as a note below
+                ui.form([(tr("Money in the trade"),
                           ui.spin(float(st["money"]), -100000, 100000, lambda v: st.update(money=float(v)),
                                   decimals=2, suffix=" €"))]),
+                ui.note(tr("Money in the trade: + you pay extra, − you get money")),
+            ] if priced else core_money()) + [
                 ui.row([ui.button(tr("Add cards (Orbit) …"),
                                   lambda: (d.close(None), self.page.edit_offer_in_trade(oid))),
                         ui.stretch(), ui.button(tr("Cancel"), lambda: d.close(None)),
                         ui.button(tr("Share as ticket"), lambda: d.close("share"), active=True)]),
             ], spacing=10)
         if qdialogs.show(tr("Change trade offer"), build, wide=True) == "share":
-            new = self.page.counter_offer(oid, give, get, st["money"])
+            new = self.page.counter_offer(oid, give, get, st["money"] if priced else (0.0 if st["drop"] else None))
             if new is not None:
                 self.page.show_ticket(new)
         self.offers_refresh()

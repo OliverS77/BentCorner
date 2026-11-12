@@ -14,7 +14,7 @@ deck) – then only with force.
 import time
 
 from cards import conditions
-from collection import sessions
+from collection import sessions, synclogs
 from collection.collection import CARD_KEYS, price
 from system.i18n import tr
 
@@ -22,7 +22,7 @@ KIND = "manual"
 
 
 def day_id(when=None):
-    return "manual_" + time.strftime("%Y-%m-%d", time.localtime(when or time.time()))
+    return synclogs.new_id("manual_" + time.strftime("%Y-%m-%d", time.localtime(when or time.time())))
 
 
 def is_manual(d):
@@ -77,8 +77,7 @@ def record(item, delta, when=None, why=""):
     if why:
         line["why"] = why
     cards = d["packs"][0]["cards"]
-    while any(c.get("added") == line["added"] for c in cards):   # two changes in the same instant
-        line["added"] += 1e-6
+    line["added"] = synclogs.free_added(cards, line["added"])   # two changes in the same instant: +1 µs
     cards.append(line)
     d["ended"] = max(d.get("ended") or now, now)
     _save(d)
@@ -130,7 +129,7 @@ def undo(coll, sid, added, force=False):
     return "ok", ""
 
 
-def record_edit(item, changes, when=None):
+def record_edit(item, changes, when=None, why=""):
     """A copy without a log of its own changed (condition, language, foil …): a line with delta 0 and what changed
     ({field: [before, after]}) – the copies stay, the change is written down. -> the line."""
     if not changes:
@@ -140,11 +139,12 @@ def record_edit(item, changes, when=None):
     line = {k: item.get(k) for k in CARD_KEYS}
     line.update(lang=item.get("lang") or "en", foil=bool(item.get("foil")), uid=item.get("uid"), delta=0,
                 price=price(item), added=now, edit={k: list(v) for k, v in changes.items()})
+    if why:
+        line["why"] = why
     copy_variant(item, line)
     line.update(conditions.fields(item) or {"cond": item.get("cond") or conditions.DEFAULT})
     cards = d["packs"][0]["cards"]
-    while any(c.get("added") == line["added"] for c in cards):
-        line["added"] += 1e-6
+    line["added"] = synclogs.free_added(cards, line["added"])
     cards.append(line)
     d["ended"] = max(d.get("ended") or now, now)
     _save(d)
@@ -203,8 +203,7 @@ def close_gap(coll, logs, bookings, why, when=None):
     for ln in gap_log["packs"][0]["cards"]:
         ln.pop("migrated", None)
         ln["why"] = why
-        while any(c.get("added") == ln["added"] for c in cards):
-            ln["added"] += 1e-6
+        ln["added"] = synclogs.free_added(cards, ln["added"])
         cards.append(ln)
     d["ended"] = max(d.get("ended") or now, now)
     _save(d)

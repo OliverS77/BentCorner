@@ -230,7 +230,8 @@ class Session:
         self.lock = threading.Lock()
         data = data or {}
         now = time.time()
-        self.id = data.get("id") or time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now))
+        from collection import synclogs   # ids per device while the sync is on (SYNC-LOGS §2)
+        self.id = data.get("id") or synclogs.new_id(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now)))
         self.started = data.get("started", now)
         self.ended = data.get("ended")
         self.to_collection = data.get("collection")  # chosen when ending: add the cards to the collection?

@@ -21,6 +21,7 @@ from PySide6.QtCore import QRectF, Qt
 
 from cards import carddb
 from cards import currency
+from system import orbit   # Orbit's Core: no card prices shown (orbit.prices_shown)
 import games
 from cards import library
 from ui import look
@@ -37,7 +38,10 @@ CARD_MARGIN = 28          # margin around the detail-view card image (room for s
 
 
 def eur(v):
-    """Price (in euros) in the chosen display currency (Settings → Collection)."""
+    """Price (in euros) in the chosen display currency (Settings → Collection) – "" in Orbit's Core."""
+    from system import orbit
+    if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
+        return ""
     return currency.fmt(v)
 
 
@@ -1312,6 +1316,9 @@ class DetailState(QtCore.QObject, Shown):
                 rows.append((lab, f"<b>{v.replace('.', ',')} {unit}</b>"))
             elif "etched" not in key:  # missing (e.g. new card, not on MTGO): show anyway
                 rows.append((label, "<span style='color:#5c6380'>–</span>"))
+        from system import orbit
+        if not orbit.prices_shown():   # Orbit's Core: no price rows – the QML section shows the PriceVeil instead
+            rows = []
         stamp = self.full.get("fetched") if complete and self.full else None
         trend = []  # collapsed: Cardmarket trend price (Scryfall "eur" = Cardmarket trend)
         if pr.get("eur"):
@@ -1320,8 +1327,10 @@ class DetailState(QtCore.QObject, Shown):
             trend.append((f"{fw} " if trend else f"{tr("Cardmarket trend")} {fw} ") + eur(float(pr["eur_foil"])))
         if not trend and pr.get("usd"):
             trend.append("TCGplayer " + pr["usd"].replace(".", ",") + " $")
+        if not orbit.prices_shown():
+            trend = []
         self.folds["prices"].set_sub(f"{tr("as of")} {time.strftime('%d.%m.%Y', time.localtime(stamp))}"
-                                     if stamp else "", " · ".join(trend))
+                                     if stamp and orbit.prices_shown() else "", " · ".join(trend))
         sec["prices"] = _table(rows, 58) if rows else ""   # names with a link on one line
         # card
         rows = []
@@ -1462,7 +1471,7 @@ class DetailState(QtCore.QObject, Shown):
         empty = ("<span style='color:#6c7390'>" + (tr("keine") if complete else
                  tr("none – more info comes from Scryfall (not available offline)")) + "</span>")
         for key, lab in self.labels.items():  # all areas stay visible, empty = "none"
-            lab.setText(sec.get(key) or empty)
+            lab.setText(sec.get(key) or ("" if key == "prices" and not orbit.prices_shown() else empty))
             self.folds[key].show()
             if key not in ("prices", "rulings"):
                 self.folds[key].set_sub(self.folds[key].head.sub, "" if sec.get(key) else tr("keine"))
@@ -2401,6 +2410,9 @@ class LibraryCore(QtCore.QObject):
         rows = group_rows(rows, self.disp)
         sort = self.sort.currentData()
         tl = lambda r: ((r["db"] or {}).get("type_line") or "")  # noqa: E731
+        from system import orbit
+        if sort == "price" and not orbit.prices_shown():   # Orbit's Core: a saved price sort rests (setting kept)
+            sort = "relevance"
         if sort == "price":
             rows.sort(key=lambda r: -(r["price"] or 0))
         elif sort == "set":  # as in the card database: newest sets first, within them by number
@@ -2469,8 +2481,11 @@ class LibraryCore(QtCore.QObject):
             from ui import grouping
             f["where_sql"] = grouping.sql_where(chain, self.group_path)
         limit = limit or self.page_size()
-        res = carddb.search(text, limit=limit, offset=offset, sort=self.sort.currentData(),
-                            reverse=self.sort_reverse(), **f)
+        from system import orbit
+        sort = self.sort.currentData()
+        if sort == "price" and not orbit.prices_shown():   # Orbit's Core: the price sort rests (setting kept)
+            sort = "relevance"
+        res = carddb.search(text, limit=limit, offset=offset, sort=sort, reverse=self.sort_reverse(), **f)
         self.offset = offset + len(res)
         self.more = len(res) == limit
         rows = [self.row_from_db(r) for r in res]
@@ -2558,19 +2573,23 @@ class LibraryCore(QtCore.QObject):
         if self.mode == "mine" and self.source is not None:
             n = sum(r["count"] for r in rows)
             value = sum(r.get("value", (r["price"] or 0) * r["count"]) for r in rows)
-            self.status.setText(tr(f"<b>{n}</b> cards shown · value <b>{eur(value)}</b>"))
+            self.status.setText(tr(f"<b>{n}</b> cards shown · value <b>{eur(value)}</b>") if eur(value)
+                                else tr(f"<b>{n}</b> cards shown"))   # Orbit's Core: no value
             return
         if self.mode == "mine":
             s = self.ctrl.collection.summary()
             n = sum(r["count"] for r in rows)
             value = sum(r.get("value", (r["price"] or 0) * r["count"]) for r in rows)
             langs = " · ".join(f"{lang_short(k)} {v}" for k, v in sorted(s["langs"].items(), key=lambda t: -t[1]))
-            txt = tr(f"<b>{n}</b> cards shown · value <b>{eur(value)}</b>")
             from cards import valuehist
             total = eur(s["value"])
-            if valuehist.available() and s["cards"]:   # click the value: the history expands at the bottom
-                total = f"<a href='value'>{total}</a>"
-            txt += tr(f"  —  whole collection: {s['cards']} cards ({s['unique']} different) · ") + total
+            if total:
+                txt = tr(f"<b>{n}</b> cards shown · value <b>{eur(value)}</b>")
+                if valuehist.available() and s["cards"]:   # click the value: the history expands at the bottom
+                    total = f"<a href='value'>{total}</a>"
+                txt += tr(f"  —  whole collection: {s['cards']} cards ({s['unique']} different) · ") + total
+            else:   # Orbit's Core: counts only – the PriceVeil's short line stands next to the status
+                txt = tr(f"<b>{n}</b> cards shown") + tr(f"  —  whole collection: {s['cards']} cards ({s['unique']} different)")
             if langs:
                 txt += f" · {langs}"
             if not s["cards"]:

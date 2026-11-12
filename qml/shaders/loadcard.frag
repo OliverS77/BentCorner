@@ -23,7 +23,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 loadCard;   // the first card (brand/loadcard.json): corner, fold, tilt, w = 1 – w = 0: random
 };
 
-// Oliver's values (werte-oliver-2026-10-31.json)
+// tuned values (load-card animation, 31.10.2026)
 const float ENTER = 0.3, UNFOLD_AT = 0.25, UNFOLD = 0.55, SHIM_AT = 0.9, SHIM = 0.75, NEXT = 1.6, GAP = 0.3;
 const float START_SCALE = 1.28, LEAVE_SHRINK = 0.22, OVERSHOOT = 2.2, TILT_MAX = 20.0, FOLD_MAX = 35.0;
 const float SHADE = 0.18, FLAP_SHADE = 1.0, GLINT = 1.15, GLINT_W = 1.4;

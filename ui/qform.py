@@ -143,18 +143,23 @@ class UI:
 
     # ---------- Inputs ----------
     def button(self, text, fn, *, tip="", danger=False, active=False, enabled=True, checkable=False, checked=False,
-               glyph="", primary=False):
-        """active = selected/on (sunken, e.g. segments); primary = main action (raised, light border)."""
+               glyph="", primary=False, alert="", dim=False, hover=False):
+        """active = selected/on (sunken, e.g. segments); primary = main action (raised, light border); alert: the text
+        in a warning colour (e.g. "#ff5252" – "Delete Bent°Corner"); dim: a choice not taken – darker, almost normal
+        on hover (selection = brightness); hover: only visible while the mouse is over its row (or it has the keyboard
+        focus) – e.g. the ✕ on a device (Oliver 07.11.)."""
         return {"t": "button", "id": self._id(lambda _v: fn()), "text": text, "enabled": enabled, "tip": tip,
                 "checkable": checkable, "checked": checked, "danger": danger, "glyph": glyph, "active": active,
-                "primary": primary}
+                "primary": primary, "alert": alert, "dim": bool(dim), "hover": bool(hover)}
 
     def seg(self, options, current, fn, *, tip=""):
         """Short choice (≤ 4 values) as a row of buttons, the chosen one bright (instead of a dropdown).
         options: [(value, text)] or [text]; fn(value)."""
         opts = [o if isinstance(o, (list, tuple)) else (o, o) for o in options]
-        return self.row([self.button(str(label), lambda v=value: fn(v), active=value == current, tip=tip)
-                         for value, label in opts] + [self.stretch()], spacing=6)
+        # the lamp in front like the top bar's tabs (lead/Oliver 07.11., PLAN-EINFACH C): the chosen one with a dot
+        # wraps when the box is too narrow (lead 07.11.: the game row ran past the edge)
+        return dict(self.row([dict(self.button(str(label), lambda v=value: fn(v), active=value == current, tip=tip),
+                                   led=True) for value, label in opts], spacing=6), wrap=True)
 
     def tag(self, text, fn=None, *, tip="", on=True, plain=False):
         """Outlined, transparent box with text (like the condition tags in the scan); with fn: click toggles.
@@ -180,14 +185,27 @@ class UI:
                 "step": step, "suffix": suffix, "prefix": prefix, "decimals": decimals, "enabled": enabled,
                 "tip": tip}
 
-    def edit(self, text, fn, *, key=None, live=None, placeholder="", tip="", enabled=True):
-        """fn(text) on Enter/focus lost; live(text) on every keystroke (optional)."""
+    def edit(self, text, fn, *, key=None, live=None, placeholder="", tip="", enabled=True, secret=False, nopaste=False,
+             enter=None, reveal=False, focus=False):
+        """fn(text) on Enter/focus lost; live(text) on every keystroke (optional). secret: dots instead of the text.
+        nopaste: Ctrl+V / Shift+Insert do nothing (the rescue code's confirmation – typing it proves it was written down).
+        enter: enter(text) on Enter only (not on focus loss) – e.g. Enter sends a protection code like its key (lead
+        11.11.). reveal: a secret field gets „Show“/„Hide“ at its end. focus: the field takes the keyboard focus when it
+        appears (bug 2, Oliver 12.11.: after „Choose your own code“ the key kept it – typing went nowhere)."""
         wid = self._id(None, key)
         k = key or wid
-        self._f._cb[wid] = lambda v, k=k: self._f._text(k, v, fn, live)
+        self._f._cb[wid] = lambda v, k=k: self._f._text(k, v, fn, live, enter)
         shown = self._f._drafts.get(k, text)
-        return {"t": "edit", "id": wid, "text": "" if shown is None else str(shown), "placeholder": placeholder,
-                "enabled": enabled, "tip": tip}
+        node = {"t": "edit", "id": wid, "text": "" if shown is None else str(shown), "placeholder": placeholder,
+                "enabled": enabled, "tip": tip, "secret": bool(secret), "nopaste": bool(nopaste)}
+        if enter is not None:
+            node["enter"] = True
+        if focus:
+            node["focus"] = True
+        if reveal:
+            from system.i18n import tr
+            node.update(reveal=True, show_text=tr("Show"), hide_text=tr("Hide"))
+        return node
 
     def textarea(self, text, fn, *, key=None, live=None, placeholder="", h=120, read_only=False, enabled=True):
         wid = self._id(None, key)
@@ -256,6 +274,16 @@ class UI:
         """link: click opens the address in the browser (e.g. the Buy-me-a-coffee sticker)."""
         return {"t": "image", "url": url, "w": w, "h": h, "tip": tip, "link": link}
 
+    def frames(self, prefix, count, w, h, fps=30):
+        """A turning picture: image://cards/<prefix><0…count-1>, all loaded once, shown in a loop at fps (the pairing
+        sphere; the frame follows the clock, so a rebuilt page keeps the turn going)."""
+        return {"t": "frames", "prefix": prefix, "count": int(count), "w": w, "h": h, "fps": fps}
+
+    def live(self, key, w, h, ms=125):
+        """A picture that reloads itself every ms while shown (image://cards/<key>?<n>, no cache) – the webcam preview
+        of the sphere reading (performance: ~8 frames/s, only in memory). The form is not rebuilt for it."""
+        return {"t": "live", "key": key, "w": w, "h": h, "ms": int(ms)}
+
     def camera(self, which="preview", h=0):
         """which: "preview" (camera + scan frame) or "overlay" (stream overlay, scaled down, clickable)."""
         return {"t": "camera", "lv": which, "h": h}
@@ -272,7 +300,7 @@ class UI:
         return {"t": "pixel", "id": self._id(lambda v: fn(str(v[1]))), "back": userprofile.normalize(back),
                 "presets": [{"key": k, "name": tr(n), "data": d} for k, n, d in userprofile.PRESETS]}
 
-    def orbit(self, level, fn, *, compact=False, leave="", decide=None):
+    def orbit(self, level, fn, *, compact=False, leave="", decide=None, sync=None):
         """Bent°Corner Orbit slider (OrbitSlider.qml): three stops Core · Near Orbit · Full Orbit with the picture and
         three columns (name, short sentence, what you get / what goes out); fn(level index 0–2). leave: what leaving
         Full Orbit does – pass it while Full Orbit is on (a reserved place, fades in below Full). decide(leave: bool):
@@ -284,13 +312,17 @@ class UI:
             if v[0] in ("stay", "leave"):
                 if decide is not None:
                     decide(v[0] == "leave")
+            elif v[0] == "sync":   # the setup's online backup switch (sync={"text","on","enabled","notes","fn"})
+                if sync is not None:
+                    sync["fn"](bool(v[1]))
             else:
                 fn(int(v[0]))
         return {"t": "orbit", "id": self._id(act), "level": int(level), "compact": compact, "leave": leave,
+                "sync": {k: v for k, v in (sync or {}).items() if k != "fn"},
                 "confirm": decide is not None, "leaveAsk": tr("Leave Full Orbit?"), "stay": tr("Stay"), "leaveBtn": tr("Leave"),
                 "names": [tr(orbit.NAMES[k]) for k in orbit.LEVELS], "lines": [tr(orbit.SHORT[k]) for k in orbit.LEVELS],
                 "points": [[tr(p) for p in orbit.POINTS[k]] for k in orbit.LEVELS],
-                "outs": [tr(orbit.OUT[k]) for k in orbit.LEVELS], "foot": tr(orbit.FOOT),
+                "outs": [tr(orbit.OUT[k]) for k in orbit.LEVELS], "foots": [tr(orbit.FOOTS[k]) for k in orbit.LEVELS],
                 "more": tr("More about it"), "less": tr("Less"),
                 # Full Orbit: the terms (exchange) and the age – visible in its column before you choose it
                 "terms": tr("<a href='{url}'>Terms of use</a> · age 13+").replace("{url}", contacts.SITE + "/nutzung.html"),
@@ -442,6 +474,10 @@ class Form(_Tree):
         """Refresh soon (several calls in a row = once)."""
         self._soon.start()
 
+    def forget(self, key):
+        """Drop what was typed into the field with this key (a protection code: nothing of it stays after sending)."""
+        self._drafts.pop(key, None)
+
     def _read(self):
         self._cb, self._keys = {}, {}
         if self.build is None:
@@ -455,13 +491,20 @@ class Form(_Tree):
         self._last_good = tree
         return tree
 
-    def _text(self, k, v, fn, live):
+    def _text(self, k, v, fn, live, enter=None):
         if isinstance(v, (list, tuple)) and v and v[0] == "live":
             text = str(v[1])
             self._drafts[k] = text
             if live is not None:
                 live(text)
                 self.soon()
+            return
+        if isinstance(v, (list, tuple)) and v and v[0] == "enter":   # Enter in a field with enter=…: its action
+            text = str(v[1])
+            if live is not None:
+                live(text)
+            if enter is not None:
+                enter(text)
             return
         self._drafts.pop(k, None)
         if fn is not None:

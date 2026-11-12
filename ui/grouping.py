@@ -22,10 +22,13 @@ PRICE_BANDS = ((1, "under 1 €"), (5, "1–5 €"), (20, "5–20 €"), (100, "
 def keys(all_cards=False):
     """[(key, label)] of the open game – mana value only where cards have one (Magic). all_cards: "All cards" (no
     finish – the card database has one row per print, not foil and normal copies)."""
+    from system import orbit
     g = games.current()
     out = []
     for k, name in KEYS:
         if k == "mv" and g.key != "mtg":
+            continue
+        if k == "price" and not orbit.prices_shown():   # Orbit's Core: no prices to group by
             continue
         if all_cards and sql_expr(k) is None:
             continue

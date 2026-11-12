@@ -174,7 +174,8 @@ def render(d, settings):
     if packs and priced:
         kpis.append((tr("Ø per pack"), eur(st.get("avg_pack", 0)), "#eef1ff"))
     if paid:
-        kpis.append((tr("Einsatz"), eur(paid), "#aab1c8"))
+        kpis.append((tr("Einsatz"), eur(paid), "#aab1c8"))   # what the user spent: his own number
+    if paid and priced:   # the balance comes from market values – not in Orbit's Core
         kpis.append((tr("Balance"), ("+" if profit >= 0 else "−") + eur(abs(profit)), GREEN if profit >= 0 else RED))
     y = 196
     for label, value, col in kpis:   # (at most six rows: they end above the counters)

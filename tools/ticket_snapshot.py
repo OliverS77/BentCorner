@@ -108,6 +108,34 @@ def load_manifest():
         return {"current": "", "formats": {}, "versions": []}
 
 
+PKGS = ("scanner", "cards", "collection", "net", "ui", "system")
+
+
+def _aliases(src):
+    """flat() writes "import brand" for "from ui import brand": while a format's code runs, such names point to the
+    package module (sys.modules) – else the import fails in the middle of drawing (an open QPainter on a dying image
+    then aborts Qt itself, 0.9.7.33/34; another "brand" on the path won before). -> {name: module before} to restore."""
+    import importlib
+    import importlib.util
+    import re
+    names = set()
+    for code in src.values():
+        names |= set(re.findall(r"^\s*import (\w+)", code, flags=re.M))
+        names |= set(re.findall(r"^\s*from (\w+) import ", code, flags=re.M))
+    done = []
+    saved = {}
+    for n in sorted(names - {"ticket", "rscode"}):   # those two come from the format itself (_module)
+        # the package module wins – also over a top-level module of the same name elsewhere on the path
+        for pkg in PKGS:
+            if importlib.util.find_spec(f"{pkg}.{n}") is None:
+                continue
+            saved[n] = sys.modules.get(n)
+            sys.modules[n] = importlib.import_module(f"{pkg}.{n}")
+            done.append(n)
+            break
+    return saved
+
+
 def _module(name, code):
     m = types.ModuleType(name)
     m.__file__ = f"<{name} snapshot>"
@@ -125,6 +153,7 @@ def render(src, out_dir, version, backs=NEW_BACKS):
     """Muster-Ticket mit dem Code von damals zeichnen. -> Archiv-Eintrag (wie collectibles.archive)"""
     from collection import tradelib  # aktuelle Umgebung (Schriften, Farben, Kartenrückseiten)
     saved = {k: sys.modules.get(k) for k in ("ticket", "rscode")}
+    aliased = _aliases(src)
     try:
         _module("rscode", src["rscode.py"])
         tk = _module("ticket", src["ticket.py"])
@@ -174,6 +203,11 @@ def render(src, out_dir, version, backs=NEW_BACKS):
                 sys.modules[k] = m
             else:
                 sys.modules.pop(k, None)
+        for k, m in aliased.items():   # back as it was (a module of that name from before stays)
+            if m is not None:
+                sys.modules[k] = m
+            else:
+                sys.modules.pop(k, None)
 
 
 def _same_as_last(src, version, man):
@@ -203,7 +237,11 @@ def _same_as_last(src, version, man):
     return (sample or {}).get("code") == (old_about.get("sample") or {}).get("code")
 
 
-def snapshot(src, version, note, man):
+def snapshot(src, version, note, man, strict=True):
+    """strict (the current version): the sample must draw – else nothing is written and the tool ends with an error.
+    Not strict (--history, old code): "sample not drawable" in the note."""
+    import shutil
+    import tempfile
     rid = render_id(src)
     if man["versions"] and man["versions"][-1]["render"] == rid:
         man["current"] = rid
@@ -211,6 +249,18 @@ def snapshot(src, version, note, man):
     if man["versions"] and _same_as_last(src, version, man):
         man["current"] = man["versions"][-1]["render"]
         return False                                   # nur der Quelltext anders, das Ticket selbst nicht
+    # the sample first, in a temp folder: only when it draws, anything is written (no orphan folders)
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="bc-ticket-"))
+    try:
+        sample = render(src, tmp, version)
+        png = "sample.png"
+    except Exception as e:  # noqa: BLE001 – alter Code passt nicht mehr zur heutigen Umgebung
+        if strict:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise SystemExit(f"ticket_snapshot: Muster für {version} nicht zeichenbar ({type(e).__name__}: {e}) – "
+                             "nichts geschrieben")
+        sample, png = None, None
+        note = (note + " · " if note else "") + f"Muster nicht zeichenbar ({type(e).__name__}: {e})"
     fdir = OUT / "formats" / rid
     if rid not in man["formats"]:
         fdir.mkdir(parents=True, exist_ok=True)
@@ -226,13 +276,10 @@ def snapshot(src, version, note, man):
         (fdir / "about.json").write_text(json.dumps(about, ensure_ascii=False, indent=1), "utf-8")
         man["formats"][rid] = about
     vdir = OUT / "versions" / version
-    try:
-        sample = render(src, vdir, version)
-        png = "sample.png"
-    except Exception as e:  # noqa: BLE001 – alter Code passt nicht mehr zur heutigen Umgebung
-        vdir.mkdir(parents=True, exist_ok=True)
-        sample, png = None, None
-        note = (note + " · " if note else "") + f"Muster nicht zeichenbar ({type(e).__name__}: {e})"
+    vdir.mkdir(parents=True, exist_ok=True)
+    if png:
+        shutil.copy2(tmp / png, vdir / png)
+    shutil.rmtree(tmp, ignore_errors=True)
     about = {"version": version, "render": rid, "png": png, "sample": sample, "note": note,
              "format_dir": f"formats/{rid}"}
     (vdir / "about.json").write_text(json.dumps(about, ensure_ascii=False, indent=1), "utf-8")
@@ -266,7 +313,11 @@ def main():
     ap.add_argument("--history", action="store_true")
     ap.add_argument("--resample", action="store_true")
     a = ap.parse_args()
-    # kein offscreen: dort fehlen die Ersatzschriften (⇄ wird zum Kästchen); ein Fenster öffnet sich trotzdem nicht
+    # kein offscreen: dort fehlen die Ersatzschriften (⇄ wird zum Kästchen); ein Fenster öffnet sich trotzdem nicht.
+    # Von außen gesetzt (Prüfläufe), sähe das Muster anders aus als das letzte – eine falsche neue Version (03.11.)
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        print("ticket_snapshot: QT_QPA_PLATFORM=offscreen ignoriert (Muster braucht die echten Schriften)")
+        del os.environ["QT_QPA_PLATFORM"]
     from PySide6 import QtGui
     app = QtGui.QGuiApplication.instance() or QtGui.QGuiApplication(sys.argv)
     from ui import look
@@ -285,7 +336,7 @@ def main():
                 continue
             ver = title.split(":", 1)[0][1:]
             src = sources_at(rev)
-            if src and snapshot(src, ver, title.split(":", 1)[1].strip(), man):
+            if src and snapshot(src, ver, title.split(":", 1)[1].strip(), man, strict=False):
                 print("neu:", ver, render_id(src))
     import version
     src = sources_now()

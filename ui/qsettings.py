@@ -128,6 +128,8 @@ class SettingsBackend(QtCore.QObject):
         self._flash = ""   # term to light up after jumping from a hit
         self._flash_i = 0  # … which of the section's hits (the one clicked)
         self._flash_page = ""   # … in which section (a search hit stays marked until seen – not in other sections)
+        self.visit = 0          # counts the visits of a section (another section, back to Settings): page notes
+        #                         that last "until you leave the page" remember the visit they belong to
         self.form = qform.Form(self._build, self)
         # program state changes (progress, camera, pack …): refresh in bulk, only when visible
         self._later = QtCore.QTimer(self, singleShot=True, interval=120, timeout=self.form.refresh)
@@ -140,6 +142,12 @@ class SettingsBackend(QtCore.QObject):
         if self._query:
             return self._search(ui)
         node = qsetpages.build(self.ctrl.settings_page, ui, self)
+        if self._active and self.ctrl.settings_page in ("backup", "devices"):   # the request's frame seen: no pulse
+            from ui import backupui
+            backupui.request_seen(self.ctrl)
+        if self._active and self.ctrl.settings_page == "devices":   # a device's join request seen (B5)
+            from ui import qsync
+            qsync.join_request_seen(self.ctrl)
         _flatten(node)
         if self._flash == ARRIVE:
             _mark_first(node)
@@ -187,6 +195,7 @@ class SettingsBackend(QtCore.QObject):
             self._later.start()
 
     def _page_changed(self, _key):
+        self.visit += 1
         self.form.set_build(self._build)  # other section: discard drafts, rebuild
         self.changed.emit()
 
@@ -202,6 +211,8 @@ class SettingsBackend(QtCore.QObject):
 
     @QtCore.Slot(bool)
     def setActive(self, on):
+        if on and not self._active:
+            self.visit += 1
         self._active = bool(on)
         self._tick.start() if on else self._tick.stop()
         if on:
@@ -216,9 +227,17 @@ class SettingsBackend(QtCore.QObject):
         warn = autobackup.lamp(self.ctrl.settings)   # backup missing: indicator light on the "Backup" tab
         u = getattr(self.ctrl, "updater", None)
         ready = bool(u is not None and u.state in ("ready", "available"))   # update available: indicator light on the "Updates" tab
+        from ui import backupui
+        pulse = backupui.request_unseen(self.ctrl)   # another device wants a new protection code: „Backup“ pulses until
+        # seen (PLAN-EINFACH D, lead 07.11.) – its frame stands on „Backup“ and „Your devices“
+        from ui import expiryui, qsync
+        asked = bool(expiryui.info(self.ctrl))   # the online backup's expiry (legal 07.11.)
+        joinreq = qsync.join_request_unseen(self.ctrl)   # B5: a device wants to join – „Your devices“ pulses
         return [{"key": k, "icon": icon, "title": tr(t), "sub": tr(sub), "section": tr(SETTINGS_SECTIONS.get(k, "")),
                  "hits": self._count.get(k, 0) if self._query else -1,
-                 "badge": (warn and k == "backup") or (ready and k == "updates")}
+                 "badge": ((warn or pulse) and k == "backup") or (ready and k == "updates")
+                          or ((asked or joinreq) and k == "devices"),
+                 "pulse": (pulse and k == "backup") or (joinreq and k == "devices")}
                 for k, icon, t, sub in SETTINGS_PAGES]
 
     @QtCore.Property(str, notify=changed)

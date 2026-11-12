@@ -15,7 +15,7 @@ Item {
     property var points: [[], [], []]       // 2–3 very short lines per level: what you get / what goes out
     property var outs: ["", "", ""]         // the exact small print – behind "More ›"
     property string terms: ""               // Full Orbit: terms of use + age (link) – always in its column
-    property string foot: ""                // the shared line under the columns
+    property var foots: ["", "", ""]        // the shared line under the columns, per level (the shown one)
     property string moreText: "More"
     property string lessText: "Less"
     property string privacy: ""             // link to the privacy policy at the end of the details
@@ -25,6 +25,13 @@ Item {
     property string stayText: ""
     property string leaveText: ""
     property bool compact: false            // settings: smaller picture
+    // the setup's „Daten online sichern, verschlüsselt“ (lead 06.11.): right under the columns, before the shared line;
+    // syncText "" = no switch. syncNotes: legal's lines under it (Full Orbit: what it does; Core/Near: where it is)
+    property string syncText: ""
+    property bool syncOn: false
+    property bool syncEnabled: true
+    property var syncNotes: []
+    signal syncToggled(bool on)
     signal picked(int level)
     signal decided(bool leave)
 
@@ -141,7 +148,7 @@ Item {
                             text: o.terms; textFormat: Text.StyledText
                             color: cl.on ? T.text2 : cl.ink; linkColor: color   // links in the text colour, only underlined
                             font.family: T.font; font.pixelSize: 13
-                            onLinkActivated: function (l) { Qt.openUrlExternally(l) }
+                            onLinkActivated: function (l) { if (/^(https:|mailto:)/i.test(l)) Qt.openUrlExternally(l) }
                             HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                         }
                     }
@@ -175,13 +182,39 @@ Item {
                 }
             }
         }
-        Text {   // one shared line, small – with "More ›" (the details slide open right here)
-            width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-            textFormat: Text.StyledText
-            text: o.foot + (o.outs.length ? "  <a href='more'>" + (o.more ? o.lessText + " ‹" : o.moreText + " ›") + "</a>" : "")
-            color: T.dim; linkColor: T.text2; font.family: T.font; font.pixelSize: 12
-            onLinkActivated: o.more = !o.more
-            HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        Column {   // the online backup switch (setup only) – directly under the Full Orbit column
+            visible: o.syncText !== ""
+            width: parent.width
+            spacing: 6
+            CheckBox { text: o.syncText; checked: o.syncOn; enabled: o.syncEnabled; onToggled: function (on) { o.syncToggled(on) } }
+            Repeater {
+                model: o.syncNotes
+                Text { required property string modelData
+                       width: parent.width; wrapMode: Text.Wrap; text: modelData
+                       color: T.text2; font.family: T.font; font.pixelSize: 13 }
+            }
+        }
+        Item {   // one shared line, small – with "More ›" (the details slide open right here); per level, as high as
+                 // the longest one, so nothing below moves when the stop changes (lead 04.11.)
+            width: parent.width
+            height: Math.max(0, ...footRep.heights)
+            Repeater {
+                id: footRep
+                model: o.foots.length
+                property var heights: []
+                Text {
+                    required property int index
+                    width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+                    textFormat: Text.StyledText
+                    visible: index === Math.max(0, Math.min(o.foots.length - 1, o.shownStop))
+                    text: o.foots[index] + (o.outs.length ? "  <a href='more'>" + (o.more ? o.lessText + " ‹" : o.moreText + " ›") + "</a>" : "")
+                    color: T.dim; linkColor: T.text2; font.family: T.font; font.pixelSize: 12
+                    onLinkActivated: o.more = !o.more
+                    onImplicitHeightChanged: { const h = footRep.heights.slice(); h[index] = implicitHeight; footRep.heights = h }
+                    Component.onCompleted: { const h = footRep.heights.slice(); h[index] = implicitHeight; footRep.heights = h }
+                    HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                }
+            }
         }
         Item {   // the details: exactly what leaves the device per level
             width: parent.width
@@ -206,7 +239,7 @@ Item {
                     width: details.width; wrapMode: Text.Wrap
                     text: o.privacy; textFormat: Text.StyledText
                     color: T.muted; linkColor: T.text2; font.family: T.font; font.pixelSize: 12
-                    onLinkActivated: function (l) { Qt.openUrlExternally(l) }
+                    onLinkActivated: function (l) { if (/^(https:|mailto:)/i.test(l)) Qt.openUrlExternally(l) }
                     HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                 }
             }

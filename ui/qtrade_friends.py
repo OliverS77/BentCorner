@@ -4,7 +4,24 @@ import html
 
 from PySide6 import QtCore
 
-from ui.qtrade import back_image, carddb, db_image_of, eur, has_image, tr, trade   # shared helpers of the trade page
+from ui.qtrade import back_image, carddb, db_image_of, eur, has_image, tr, trade, value   # shared helpers of the trade page
+
+
+def bare_friends(settings, have):
+    """Friends on the mailbox who share nothing with you yet (no list file in any game): in the friends menu and the
+    rail too, like the web (lead 07.11.) – „No friends yet“ only when there really are none. have = profile IDs that
+    already have a file. fid = their profile ID, so Report / Block / Hide back work as for the others."""
+    from net import relay
+    out = []
+    for code, f in relay.friends(settings).items():
+        pid = f.get("pid") or ""
+        if f.get("status") != "ok" or not pid or pid in have:
+            continue
+        name = f.get("name") or relay.pretty(code)
+        out.append({"fid": pid, "id": pid, "name": name, "img": back_image(relay.shown_back(f)), "info": "",
+                    "example": False, "active": False, "folder": "", "n": 0, "imported": 0, "other": False,
+                    "fileOnly": False, "bare": True, "tip": name})
+    return out
 
 
 class FriendsBackend(QtCore.QObject):
@@ -15,6 +32,7 @@ class FriendsBackend(QtCore.QObject):
     syncChanged = QtCore.Signal()   # forwarded from TradeBackend.syncChanged (notify of the moved properties)
     listsChanged = QtCore.Signal()   # forwarded from TradeBackend.listsChanged (notify of the moved properties)
     entriesChanged = QtCore.Signal()   # forwarded from TradeBackend.entriesChanged (notify of the moved properties)
+    importErrorChanged = QtCore.Signal()
 
     SORTS = (("name", "Name"), ("recent", "Recently imported"), ("cards", "Largest collection"))
 
@@ -68,19 +86,27 @@ class FriendsBackend(QtCore.QObject):
                     continue
                 e = by_id.setdefault(d["id"], {"d": d, "games": [], "home": key})
                 e["games"].append(key)
+        from system import orbit
         out = []
         for fid, e in by_id.items():
             d = e["d"]
             here = e["home"] == cur
+            file_only = not d.get("example") and self._relay_code(fid) is None
             n = sum(int(c[4] or 1) for c in d.get("cards") or [] if isinstance(c, list) and len(c) > 4)
             nw = len(d.get("wants") or [])
             name = d.get("name") or tr("Friend")
             gl = " · ".join(games.SHORT.get(k, k.upper()) for k in sorted(e["games"], key=lambda k: k != cur))
+            if file_only and not orbit.FILE_FRIENDS:   # the grey hint in the list; the full sentence on their profile
+                gl += " · " + tr("by file only")
             out.append({"fid": fid if here else f"@{e['home']}:{fid}", "id": fid, "name": name, "img": back_image(d.get("back")),
                         "info": gl, "example": bool(d.get("example")), "active": fid in act,
                         "folder": d.get("folder") or "", "n": n, "imported": d.get("imported") or 0, "other": not here,
+                        # only connected by file (no mailbox entry): a grey line, no file buttons (Oliver 06.11., B)
+                        "fileOnly": file_only,
                         "tip": f"{name} · {gl} · " + (tr(f"{n} cards · wants {nw}") if here else
                                                      tr(f"plays {games.name_of(e['home'])}"))})
+        if orbit.friends_shown():
+            out += bare_friends(self.ctrl.settings, set(by_id))
         return out
 
     @QtCore.Property("QVariantList", notify=railChanged)
@@ -162,6 +188,8 @@ class FriendsBackend(QtCore.QObject):
             return [{"text": tr("Rename …"), "key": "rename"},
                     {"text": tr("Delete folder (friends move to “General”)"), "key": "delete"}]
         d = trade.friend(ident) or {}
+        if not d and self._relay_code(ident):   # on the mailbox, nothing shared yet: only the mailbox entries
+            return self._relay_menu(ident) + [{"sep": True}, {"text": tr("Remove …"), "key": "remove"}]
         cur = d.get("folder") or ""
         # instead of renaming: a note only you can see ("Note" tab on the friend)
         out = [{"text": tr("Note …"), "key": "note"}]
@@ -169,16 +197,22 @@ class FriendsBackend(QtCore.QObject):
             out += [{"sep": True}, {"text": tr("Move to folder"), "enabled": False}]
             out += [{"text": f or tr("no folder"), "key": "move:" + f, "indent": True, "on": f == cur,
                      "enabled": f != cur} for f in self.host._folders()]
-        code = self._relay_code(ident)
-        if code:
-            from net import relay
-            rf = relay.friends(self.ctrl.settings).get(code) or {}
-            out += [{"sep": True},
-                    {"text": tr("Show back") if rf.get("hide_back") else tr("Hide card back"), "key": "hideback"},
-                    {"text": tr("Report …"), "key": "report"}]
-            if rf.get("status") != "blocked":
-                out.append({"text": tr("Block …"), "key": "block"})
+        out += self._relay_menu(ident)
         out += [{"sep": True}, {"text": tr("Remove …"), "key": "remove"}]
+        return out
+
+    def _relay_menu(self, ident):
+        """Hide/show back, Report, Block – for a friend on the mailbox."""
+        code = self._relay_code(ident)
+        if not code:
+            return []
+        from net import relay
+        rf = relay.friends(self.ctrl.settings).get(code) or {}
+        out = [{"sep": True},
+               {"text": tr("Show back") if rf.get("hide_back") else tr("Hide card back"), "key": "hideback"},
+               {"text": tr("Report …"), "key": "report"}]
+        if rf.get("status") != "blocked":
+            out.append({"text": tr("Block …"), "key": "block"})
         return out
 
     def _relay_code(self, fid):
@@ -219,6 +253,12 @@ class FriendsBackend(QtCore.QObject):
                 self.host.railChanged.emit()
                 return
             d = trade.friend(ident)
+            if not d and key == "remove" and self._relay_code(ident):   # on the mailbox only: the mailbox removes
+                self.ctrl.relay_remove(self._relay_code(ident))
+                d = {"_bare": True}
+                key = ""
+            if not d and key in ("report", "block", "hideback") and self._relay_code(ident):
+                d = {"_bare": True}
             if not d:
                 return
             if key == "note":
@@ -247,6 +287,8 @@ class FriendsBackend(QtCore.QObject):
 
     @QtCore.Slot(str)
     def openFriend(self, fid):
+        if not fid.startswith("@") and trade.friend(fid) is None and self._relay_code(fid):
+            return   # on the mailbox, nothing shared yet: there is no page of theirs to show
         if fid.startswith("@"):   # friend from another game: into that game (Oliver, review .101 – a2)
             key, _, real = fid[1:].partition(":")
             d = self.page.foreign_file(key, real)
@@ -269,11 +311,24 @@ class FriendsBackend(QtCore.QObject):
 
     @QtCore.Slot()
     def exportFriend(self):
+        from system import orbit
+        if not orbit.FILE_FRIENDS:
+            return
         self.ctrl.go_export("friend_export")
 
     @QtCore.Slot()
     def importFriend(self):
+        from system import orbit
+        if not orbit.FILE_FRIENDS:   # friends by file are off (06.11.) – the buttons are hidden too
+            return
         self.page.import_dialog()
+        self.importErrorChanged.emit()
+
+    @QtCore.Property(str, notify=importErrorChanged)
+    def importError(self):
+        """A file that couldn't be read: one line under the import button instead of a box with OK (no pop-ups) – gone
+        with the next import."""
+        return getattr(self.page, "import_error", "")
 
     @QtCore.Property(bool, notify=listsChanged)
     def hasFriends(self):
@@ -399,7 +454,9 @@ class FriendsBackend(QtCore.QObject):
         code = self._relay_code(d.get("id") or "")
         out = {"name": d.get("name") or "?", "back": back_image(d.get("back")), "binders": [], "shared": bool(code)}
         if not code:
-            out["line"] = tr("Doesn't share a profile via the server – only the trade file.")
+            from system import orbit
+            out["line"] = (tr("Doesn't share a profile via the server – only the trade file.") if orbit.FILE_FRIENDS
+                           else tr(orbit.FILE_FRIEND_LINE))
             return out
         s = self.ctrl.settings
         rf = relay.friends(s).get(code) or {}
@@ -523,7 +580,7 @@ class FriendsBackend(QtCore.QObject):
                     "info": f"{str(c[0]).upper()} #{c[1]}" + (" · Foil" if c[3] else "") + f" · {int(c[4] or 1)}×",
                     "setLine": f"{str(c[0]).upper()} #{c[1]}",
                     "facts": "<br>".join(html.escape(str(x[:1].upper() + x[1:])) for x in facts if x),
-                    "price": eur(price) if price is not None else "", "setName": set_name}
+                    "price": value(price) if price is not None else "", "setName": set_name}
         wants = [{"game": game, "chip": chip, "name": str(w[0]), "info": f"{int(w[1] or 1)}×", "img": "", "price": "",
                   "set": "", "number": "", "lang": "", "foil": False, "count": int(w[1] or 1), "setName": ""}
                  for w in d.get("wants") or [] if w]

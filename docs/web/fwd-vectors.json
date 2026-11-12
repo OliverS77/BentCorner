@@ -1,0 +1,12 @@
+{
+ "_comment": "B5 letter (DEVICE-KEYS \u00a72, review 08.11. S6): sig = Ed25519 of line with the OLD identity key (the seed's signing key); the receiving device checks v, old == its address, dev == its device id, the signature with its own (old) seed, code_of_seed(seed) == code. Made-up seeds.",
+ "v": 3,
+ "old_seed": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+ "old": "56475AA75463474C",
+ "new_seed": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+ "new": "24F6ED6ACBFE1009",
+ "dev": "d00112233445566778",
+ "t": 1800000000,
+ "line": "fwd3|56475AA75463474C|24F6ED6ACBFE1009|d00112233445566778|1800000000|b919fd68efaadd92c9f96482c1477a28083e94a93fa7e10be6237ca824c22a06",
+ "sig": "zVueyfOE3mXCXnsQh2W7LUoL1gHB2WaWzqPW/e+i7eIbAqGCr7ZRU/FtQj5NjhYITSrqWliylALS2Wl9ALoJBg=="
+}

@@ -1,6 +1,7 @@
 """The full license texts of everything inside the exe, into licenses/ (build.ps1 bundles the folder; Settings → Legal →
-Third-party notices shows it without internet). THIRD_PARTY_NOTICES.md points here – LGPL for Qt/PySide6, FFmpeg and
-GEOS (legal 03.11.2026, P4), the Python, OpenCV and ONNX Runtime notices, and the license files of every bundled package.
+Third-party notices shows it without internet). THIRD_PARTY_NOTICES.md points here – LGPL for Qt/PySide6 and GEOS
+(legal 03.11.2026, P4; FFmpeg no longer shipped since the slim build), the Python, OpenCV and ONNX Runtime notices,
+and the license files of every bundled package.
 
     .venv\\Scripts\\python tools\\collect_licenses.py [target folder]     # default: licenses/ next to build.ps1
 
@@ -41,7 +42,7 @@ SKIP = {"LicenseRef-Qt-Commercial.txt"}
 INDEX = """Full license texts of the components in Bent°Corner (overview: THIRD_PARTY_NOTICES.md)
 
 GPL-3.0.txt, LGPL-3.0.txt   Qt and PySide6/Shiboken6 (LGPL-3.0, which builds on the GPL-3.0)
-LGPL-2.1.txt                FFmpeg (cv2/opencv_videoio_ffmpeg*.dll) and GEOS (Shapely.libs/geos*.dll)
+LGPL-2.1.txt                GEOS (Shapely.libs/geos*.dll)
 Apache-2.0.txt              RapidOCR, the PaddleOCR models, FlatBuffers, DINOv2 and the other Apache-2.0 parts
 Mesa-LICENSE.txt, LLVM-3.6.2-LICENSE.txt  opengl32sw.dll (Qt's software OpenGL: Mesa llvmpipe with LLVM 3.6.2)
 Python-LICENSE.txt          Python and the parts it bundles (expat, zlib, OpenSSL, SQLite, libffi …)

@@ -7,6 +7,11 @@ Rectangle {
     property string placeholder
     property bool clearable: true
     property var keyHook: null
+    property bool secret: false   // dots instead of the text (an access code)
+    property bool revealable: false   // a secret field with a „Show“/„Hide“ word at its end (U2, lead 11.11.)
+    property string showText: "Show"
+    property string hideText: "Hide"
+    property bool shown: false
     signal edited(string text)
     signal accepted()
     signal upPressed()
@@ -34,6 +39,7 @@ Rectangle {
         selectedTextColor: T.text
         font.family: T.font; font.pixelSize: 14
         clip: true
+        echoMode: f.secret && !f.shown ? TextInput.Password : TextInput.Normal
         activeFocusOnTab: f.enabled
         // entered via Tab (not clicked): everything selected, typing replaces
         onActiveFocusChanged: if (activeFocus && !clickIn.active) selectAll()
@@ -58,7 +64,7 @@ Rectangle {
         id: clear
         visible: f.clearable && input.text !== ""
         width: visible ? 26 : 0
-        anchors.right: parent.right; anchors.rightMargin: 6
+        anchors.right: eye.left; anchors.rightMargin: 6
         anchors.verticalCenter: parent.verticalCenter
         text: "✕"
         horizontalAlignment: Text.AlignHCenter
@@ -66,6 +72,18 @@ Rectangle {
         font.pixelSize: 13
         HoverHandler { id: clearHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: { input.text = ""; f.edited(""); input.forceActiveFocus() } }
+    }
+    Text {   // „Show“ / „Hide“ – the typed code as text or dots; the focus stays in the field
+        id: eye
+        visible: f.secret && f.revealable
+        width: visible ? implicitWidth : 0
+        anchors.right: parent.right; anchors.rightMargin: visible ? 12 : 0
+        anchors.verticalCenter: parent.verticalCenter
+        text: f.shown ? f.hideText : f.showText
+        color: eyeHover.hovered ? T.text : T.dim
+        font.family: T.font; font.pixelSize: 13
+        HoverHandler { id: eyeHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: { f.shown = !f.shown; input.forceActiveFocus() } }
     }
     TapHandler { onTapped: input.forceActiveFocus() }
 }

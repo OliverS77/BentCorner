@@ -5,6 +5,7 @@ detail rows. This object passes its state to QML (grid, chips, status) and the c
 """
 import html
 import re
+import weakref
 
 from PySide6 import QtCore
 from PySide6.QtCore import Qt
@@ -259,6 +260,15 @@ def read_chips(bar, collapsing=()):
     return out, fns
 
 
+ALL = weakref.WeakSet()   # every LibraryBackend (Library, trade views, binder): the Orbit level changes their sort list
+
+
+def orbit_changed():
+    """Core <-> Near: the price sort comes/goes – every library view asks for its sort list and label again."""
+    for b in list(ALL):
+        b.changed.emit()
+
+
 class LibraryBackend(QtCore.QObject):
     changed = QtCore.Signal()        # state (mode, sorting, columns, status …)
     chipsChanged = QtCore.Signal()
@@ -272,6 +282,7 @@ class LibraryBackend(QtCore.QObject):
         """lib: a LibraryCore (default: the Library); width_key: setting for the width of the
         detail view; main = the Library itself (set completion, hint for an empty collection)."""
         super().__init__(ctrl)
+        ALL.add(self)
         self.ctrl, self.width_key, self.main = ctrl, width_key, main
         if lib is None:
             ctrl.stream.ensure_page("library")
@@ -420,7 +431,8 @@ class LibraryBackend(QtCore.QObject):
     @QtCore.Property(bool, notify=changed)
     def valueAvailable(self):
         from cards import valuehist
-        return bool(self.main and valuehist.available())
+        from system import orbit
+        return bool(self.main and valuehist.available() and orbit.prices_shown())
 
     @QtCore.Property(bool, notify=valueChanged)
     def valueOpen(self):
@@ -1040,13 +1052,17 @@ class LibraryBackend(QtCore.QObject):
         self.lib.bar.commit_syntax()
         self.changed.emit()
 
-    @QtCore.Property("QVariantList", constant=True)
+    @QtCore.Property("QVariantList", notify=changed)   # the price sort comes and goes with the Orbit level
     def sorts(self):
-        return [{"key": k, "text": tr("Sortierung: " + t), "desc": tr(SORT_DESC[k])} for k, t in SORTS]
+        from system import orbit   # Orbit's Core: no price sort (a chosen one rests, see sort)
+        return [{"key": k, "text": tr("Sortierung: " + t), "desc": tr(SORT_DESC[k])} for k, t in SORTS
+                if k != "price" or orbit.prices_shown()]
 
     @QtCore.Property(str, notify=changed)
     def sort(self):
-        return self.lib.sort.currentData() or "relevance"
+        from system import orbit
+        s = self.lib.sort.currentData() or "relevance"
+        return "relevance" if s == "price" and not orbit.prices_shown() else s   # the setting itself stays
 
     @QtCore.Slot(str)
     def setSort(self, key):

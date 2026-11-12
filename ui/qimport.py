@@ -6,15 +6,19 @@ import time
 
 from PySide6 import QtCore, QtGui
 
+import games
 from collection import decks
 from ui import qdialogs
 from ui import qform
 from ui import quickimages
 from collection import trade
+from system import orbit
 from system.i18n import tr
 
 _img_n = itertools.count(1)
 
+
+TICKET_SOON = "Usually arrives within a minute if the other side is using Bent°Corner right now."   # legal 07.11.
 
 class ImportBackend(QtCore.QObject):
     changed = QtCore.Signal()
@@ -52,8 +56,8 @@ class ImportBackend(QtCore.QObject):
         w = min(width, img.width())
         return ui.image("image://cards/" + key, w, round(img.height() * w / max(1, img.width())))
 
-    def _img_actions(self, ui, state, key, img_fn, name_fn):
-        """Copy / save for an image; message goes to state[key]."""
+    def _img_actions(self, ui, state, key, img_fn, name_fn, primary=True):
+        """Copy / save for an image; message goes to state[key]. primary=False: another action is the main one."""
         p = self.page
 
         def copy():
@@ -63,7 +67,7 @@ class ImportBackend(QtCore.QObject):
             msg = p.save_image(img_fn(), name_fn())
             if msg:
                 state[key] = msg
-        return ui.row([ui.button(tr("Copy"), copy, primary=True), ui.button(tr("Save …"), save),
+        return ui.row([ui.button(tr("Copy"), copy, primary=primary), ui.button(tr("Save …"), save),
                        ui.note(state.get(key) or tr("Copy and paste it e.g. into WhatsApp or Discord with Ctrl+V."))])
 
     @staticmethod
@@ -202,8 +206,36 @@ class ImportBackend(QtCore.QObject):
             ui.row([ui.button(tr("Copy to clipboard"), p.dexp_clip, primary=True, enabled=n > 0),
                     ui.button(tr("Save as text file …") if n <= 1 else tr(f"Save {n} text files …"),
                               p.dexp_file, enabled=n > 0),
+                    ui.button(tr("Save as table (CSV) …") if n <= 1 else tr(f"Save {n} tables (CSV) …"),
+                              p.dexp_csv, enabled=n > 0),
                     ui.note(p.dexp_info)]),
+            *self._card_text(ui, True),
         ])
+
+    def _card_text(self, ui, csv_on):
+        """„Mit Kartentext“ (Oliver 05.11., legal's conditions – collection/exporttext.py): a switch right under the
+        export, the hint line only while it is on; a game without it (exporttext.allowed): none at all. csv_on: our own CSV is the chosen format."""
+        from collection import exporttext
+        ctrl = self.ctrl
+        game = games.current().key
+        if not exporttext.allowed(game):
+            note = games.extra("NO_TEXT_EXPORT_NOTE")   # the private additions' game; the public program has none
+            return [ui.note(tr(note))] if note else []
+        on = bool(ctrl.settings.get("export_text"))
+
+        def flip(v):
+            ctrl.settings["export_text"] = v
+            ctrl.settings_changed()
+            self.form.soon()
+        label = (tr("With card text (type, cost, values, rules text)") if game in exporttext.SOURCE
+                 else tr("With colour and cost"))
+        out = [ui.check(label, on and csv_on, flip, enabled=csv_on)]
+        if not csv_on:
+            out.append(ui.note(tr("Card text only in the Excel spreadsheet (CSV).")))
+        elif on and game in exporttext.SOURCE:
+            out.append(ui.note(tr("Card texts belong to the game publishers. The file is for your own use; if you "
+                                  "share it, keep the ‘Source’ column.")))
+        return out
 
     def _p_coll_export(self, ui):
         from collection.collection import EXPORT_FORMATS
@@ -217,6 +249,7 @@ class ImportBackend(QtCore.QObject):
             ui.row([ui.seg([(k, tr(lb)) for k, lb in EXPORT_FORMATS], ctrl.settings["export_format"],
                            lambda k: (fmt(k), self.form.soon())),
                     ui.button(tr("Export collection …"), lambda: ctrl.export_collection(p.cexp_info), primary=True)]),
+            *self._card_text(ui, ctrl.settings["export_format"] == "excel"),
             ui.note(p.cexp_info.text()) if p.cexp_info.text() else None,
         ])
 
@@ -248,7 +281,8 @@ class ImportBackend(QtCore.QObject):
             ui.group(tr("Enter a friend's ID"), flat=True, items=[
                 ui.row([ui.edit(st["text"], lambda t: (st.update(text=t), send()), key="fcode",
                                 live=lambda t: st.update(text=t), placeholder="XXXX-XXXX-XXXX-XXXX"),
-                        ui.button(tr("Send request"), send, primary=True)])]),
+                        ui.button(tr("Send request"), send, primary=True)]),
+                ui.note(tr("Whoever gets your request sees your name and your card back."))]),   # legal 06.11.
             ui.note(tr("Friends with an ID sync automatically – shared lists and binders arrive on their own. You only need a file for friends without an ID (“A friend's collection” or “For friends”).")),
         ])
 
@@ -274,11 +308,13 @@ class ImportBackend(QtCore.QObject):
                              placeholder=tr("Search lists …"), h=320)]
         st["decks"] = False   # "Missing cards of my decks" is gone – put missing cards on a list in the deck builder
         cols = ui.grid([ui.check(tr(label), key in st["cols"], lambda on, k=key: toggle("cols", k, on))
-                        for key, label in trade.COLUMNS], 4)
+                        for key, label in trade.columns_for(games.current().key)], 4)
         return self._card(ui, [
             ui.label(tr("Share collection"), bold=True, big=True),
-            ui.note(tr("The file is small enough for WhatsApp & co. Your friend imports it under “Trade” – send a new one later and their copy simply gets updated.")),
-            ui.form([(tr("Format"), ui.combo([(k, tr(lb)) for k, lb in trade.TEXT_FORMATS], st["fmt"],
+            ui.note(tr("The file is small enough for WhatsApp & co. Your friend imports it under “Trade” – send a new one later and their copy simply gets updated.")
+                    if orbit.FILE_FRIENDS else tr("Your trade lists – and if you like your library – as CSV or a text list for other apps.")),
+            ui.form([(tr("Format"), ui.combo([(k, tr(lb)) for k, lb in trade.TEXT_FORMATS
+                                              if k != "bentcorner" or orbit.FILE_FRIENDS], st["fmt"],
                                             lambda v: st.update(fmt=v)))]),
             ui.group(tr("Trade lists (what you offer – shown to your friend under “Has”)"), have, flat=True),
             ui.group(tr("Send wishes along (so they see what you're looking for)"), wish, flat=True) if own else None,
@@ -301,14 +337,35 @@ class ImportBackend(QtCore.QObject):
                               lambda: ((p._sshare_d or {}).get("info", {}).get("title") or "opening")),
         ])
 
+    def _offer_mail(self, ui):
+        """A mailbox friend: "Send to <name>" is the main action, the image stays below as the other way (lead 06.11.)"""
+        from collection import tradelib
+        p = self.page
+        who = p.offer_partner() if p.offer_img is not None else None
+        if who is None:
+            return None
+        state = p.offer_mail
+        line = {"sending": tr("Sending …"),
+                "sent": tr(f"Sent to {who[1]} through the mailbox."),
+                "full": tr(f"Couldn't be delivered – {who[1]}'s mailbox is full. Try again later or send the ticket as an image."),
+                "failed": tr("Couldn't be delivered.")}.get(state, "")
+        return ui.col([ui.row([ui.button(tr(f"Send to {who[1]}"), p.send_offer_mail, primary=True,
+                                         enabled=state not in ("sending", "sent")),
+                               ui.note(line) if line else None, ui.stretch()]),
+                       ui.note(tr(TICKET_SOON)),   # legal 07.11. (PLAN-EINFACH A: the mailbox clock)
+                       ui.note(tr(tradelib.PAY_NOTE))], spacing=6)
+
     def _p_offer(self, ui):
         p = self.page
+        mail = self._offer_mail(ui)
         return self._card(ui, [
             ui.note(tr("In Orbit, tick cards with a friend and click “Offer as image …” – the image then shows up here.")) if p.offer_img is None else None,
+            mail,
             self._image(ui, p.offer_img),
             ui.note(tr("The ticket contains your names, profile IDs and the cards. Share it only with your trade partner, "
                        "not publicly.")) if p.offer_img is not None else None,   # legal 03.11.
-            self._img_actions(ui, p.__dict__, "offer_info", lambda: p.offer_img, lambda: tr("Trade offer")),
+            self._img_actions(ui, p.__dict__, "offer_info", lambda: p.offer_img, lambda: tr("Trade offer"),
+                              primary=mail is None),
         ])
 
     def _auto_backup(self, ui):
@@ -448,7 +505,7 @@ class ImportBackend(QtCore.QObject):
         warn = False   # the backup indicator light only shows in the settings now
         return [{"title": tr(g), "tabs": [{"key": k, "icon": i, "title": tr(t), "sub": tr(s), "badge": warn and k == "backup"}
                                           for k, i, t, s in tabs]}
-                for g, tabs in importview.GROUPS]
+                for g, tabs in importview.groups()]
 
     @QtCore.Property("QVariantMap", constant=True)
     def backupLink(self):

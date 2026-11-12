@@ -179,21 +179,23 @@ class RescueCode(unittest.TestCase):
         v = RESCUE
         self.assertEqual(pairing.norm_rescue(v["code_shown"]), v["code"])
         self.assertEqual(pairing.norm_rescue(v["code_typed"]), v["code"])
-        rid, rk = pairing.rescue_keys(v["code"])
-        self.assertEqual((rid, rk.hex()), (v["rid"], v["rk_hex"]))
-        self.assertEqual(pairing.rescue_seal(v["code"], v["seed_b64"], bytes.fromhex(v["nonce_hex"])), v["data_b64"])
-        self.assertEqual(pairing.rescue_open(v["code"], v["data_b64"]), v["seed_b64"])
         self.assertEqual(pairing.code_of_seed(v["seed_b64"]), v["address"])
+        self.assertNotIn("data_b64", v, "the keys and the envelope: code-vectors-v2.json (S5 = b)")
 
     def test_vectors_file_is_current(self):
         from tools import make_rescue_vectors
         self.assertEqual(make_rescue_vectors.build(), RESCUE)
 
     def test_typos_rejected(self):
-        for bad in (RESCUE["typo_rejected"], RESCUE["swap_rejected"], RESCUE["code"][:-1], RESCUE["code"] + "2",
-                    RESCUE["code"][:-1] + "0"):
+        """In the generated format a typo is an error; other text is a code the user chose (Oliver 07.11. – its
+        strength is checked where it is set, collection/codestrength)."""
+        for bad in (RESCUE["typo_rejected"], RESCUE["swap_rejected"]):
             with self.assertRaises(pairing.PairError):
                 pairing.norm_rescue(bad)
+        for own in (RESCUE["code"][:-1], RESCUE["code"] + "2", RESCUE["code"][:-1] + "0"):
+            self.assertEqual(pairing.norm_rescue(own), " ".join(own.split()))
+        with self.assertRaises(pairing.PairError):
+            pairing.norm_rescue("   ")
 
     def test_every_single_typo_and_swap_caught(self):
         code = pairing.norm_rescue(RESCUE["code"])
@@ -212,9 +214,10 @@ class RescueCode(unittest.TestCase):
         import base64
         seed = base64.b64encode(bytes(SigningKey.generate())).decode()
         code, other = pairing.new_rescue_code(), pairing.new_rescue_code()
-        data = pairing.rescue_seal(code, seed)
+        salt = pairing.new_salt()
+        data = pairing.rescue_seal(code, seed, salt)
         self.assertLessEqual(len(data), pairing.MAX_RESCUE)
-        self.assertEqual(pairing.rescue_open(code, data), seed)
-        self.assertNotEqual(pairing.rescue_keys(code)[0], pairing.rescue_keys(other)[0])
+        self.assertEqual(pairing.rescue_open(code, data), (seed, salt))
+        self.assertNotEqual(pairing.rescue_rid(code), pairing.rescue_rid(other))
         with self.assertRaises(pairing.PairError):
             pairing.rescue_open(other, data)

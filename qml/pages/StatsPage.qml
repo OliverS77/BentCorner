@@ -57,8 +57,14 @@ Item {
             sourceComponent: Mirror { width: fm.width; mirror: page.sp.filter }
         }
     }
+    PriceVeil {   // Orbit's Core: the statistics are values and balances – the page is the note (no charts below)
+        visible: !shell.pricesOn
+        x: 20; y: filt.y + filt.height + 12
+        width: page.width - 40; height: Math.min(260, page.height - y - 10)
+    }
     Flickable {
         id: fl
+        visible: shell.pricesOn
         ScrollHint {}
         x: 20; y: filt.y + filt.height + 12
         width: page.width - 40; height: page.height - y - 10

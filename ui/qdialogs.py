@@ -178,8 +178,8 @@ error = warn
 
 
 # ---------- Inputs ----------
-def get_text(title, label, text="", *, placeholder="", ok=None):
-    """-> entered text or None (cancelled)."""
+def get_text(title, label, text="", *, placeholder="", ok=None, secret=False):
+    """-> entered text or None (cancelled). secret: the field shows dots (an access code)."""
     state = {"text": text}
 
     def build(ui, d):
@@ -188,7 +188,7 @@ def get_text(title, label, text="", *, placeholder="", ok=None):
                 state["text"] = t
             d.close(state["text"])
         field = ui.edit(state["text"], accept, key="text", live=lambda t: state.update(text=t),
-                        placeholder=placeholder)
+                        placeholder=placeholder, secret=secret)
         field["focus"] = True
         return ui.col([ui.label(label), field, ui.space(4),
                        ui.row([ui.stretch(), ui.button(tr("Cancel"), lambda: d.close(None)),

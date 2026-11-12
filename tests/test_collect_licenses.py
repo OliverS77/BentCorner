@@ -1,4 +1,4 @@
-"""licenses/ for the exe (tools/collect_licenses.py, legal 03.11.2026 P4): the LGPL texts for Qt, FFmpeg and GEOS, and
+"""licenses/ for the exe (tools/collect_licenses.py, legal 03.11.2026 P4): the LGPL texts for Qt and GEOS, and
 every file THIRD_PARTY_NOTICES.md points to under licenses/ must really be there – the notices name nothing that isn't.
 
     python -m unittest tests/test_collect_licenses.py

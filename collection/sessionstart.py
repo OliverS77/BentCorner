@@ -44,7 +44,9 @@ def open_wizard(ctrl):
     def build(ui, d):
         g_row = ui.row([ui.button(c["name"], lambda k=c["key"]: pick("game", k, d), active=st["game"] == c["key"])
                         for c in games.choices() if c["ready"]] + [ui.stretch()])
-        k_row = ui.row([ui.button(tr(t), lambda k=k: pick("kind", k, d), active=st["kind"] == k) for k, t in KINDS]
+        from system import orbit   # trade tickets only in Full Orbit (Oliver 06.11.)
+        kinds = [(k, t) for k, t in KINDS if k != "ticket" or orbit.friends_shown()]
+        k_row = ui.row([ui.button(tr(t), lambda k=k: pick("kind", k, d), active=st["kind"] == k) for k, t in kinds]
                        + [ui.stretch()])
         items = [ui.label(tr("Game"), bold=True), g_row, ui.label(tr("What are you doing?"), bold=True), k_row,
                  ui.note(tr(HELP[st["kind"]]))]

@@ -57,6 +57,7 @@ Item {
                            color: parent.sel ? T.top : (nh.hovered ? T.text : T.text2)
                            font.family: T.font; font.pixelSize: 15 }
                     Lamp { visible: modelData.badge === true && modelData.hits < 0; anchors.right: parent.right
+                           urgent: modelData.pulse === true
                            anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter }
                     Text { visible: modelData.hits > 0; anchors.right: parent.right; anchors.rightMargin: 14   // search hits
                            anchors.verticalCenter: parent.verticalCenter; text: modelData.hits; color: T.text2

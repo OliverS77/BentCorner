@@ -15,7 +15,8 @@ from PySide6 import QtCore
 
 from scanner.common import BASE
 from system.i18n import tr
-from ui.scanlook import eur
+from system import orbit
+from ui.scanlook import eur, money
 
 COLS, ROWS = 16, 13
 KEYS = ("status", "session", "hit", "top", "stats")   # "session" = the scan tile (log + cards, one tile since .102)
@@ -181,9 +182,10 @@ def card_row(e):
         bits.append(fancy)
     if lang != "EN":
         bits.append(lang)
-    price = e.get("price")
-    return {"name": e.get("name") or "", "sub": " · ".join(b for b in bits if b), "price": eur(price) if price is not None else "–",
-            "priceShort": f"{price:.2f}".replace(".", ",") if price is not None else "–",
+    price = e.get("price") if orbit.prices_shown() else None   # Orbit's Core: no card prices
+    dash = "–" if orbit.prices_shown() else ""
+    return {"name": e.get("name") or "", "sub": " · ".join(b for b in bits if b), "price": eur(price) if price is not None else dash,
+            "priceShort": f"{price:.2f}".replace(".", ",") if price is not None else dash,
             "img": _img(e), "pack": int(e.get("pack") or 1), "idx": int(e.get("idx") or 0),
             "set": (e.get("set") or "").upper(), "setName": e.get("set_name") or "", "number": str(e.get("number") or ""),
             "cond": cond, "foil": bool(e.get("foil")), "lang": lang,
@@ -367,7 +369,7 @@ class TilesBackend(QtCore.QObject):
             self._removed = None
             self._rev = None
         key = (snap.get("rev"), sess.active, id(sess), load and (load["step"], load["done"]), bool(self._ended),
-               bool(self._removed))
+               bool(self._removed), orbit.prices_shown())   # Core <-> Near: prices go/come (rebuilt)
         if key == self._rev:
             return
         self._rev = key
@@ -403,7 +405,7 @@ class TilesBackend(QtCore.QObject):
                 "notes": info.get("notes") or "", "autoName": self._auto_name(), "scanTitle": scan_title(),
                 "name": info.get("title") or "", "meta": " · ".join(m for m in meta if m),
                 "cards": int(st.get("cards") or 0), "value": eur(st.get("total") or 0.0),
-                "paid": eur(paid) if paid else "", "balance": eur(profit) if profit is not None else "",
+                "paid": money(paid) if paid else "", "balance": eur(profit) if profit is not None else "",
                 "balanceNeg": profit is not None and profit < 0,
                 "packNumber": int(snap.get("pack_number") or 1), "packsPlanned": int(info.get("packs_planned") or 0),
                 "packTotal": eur(snap.get("pack_total") or 0.0), "packCards": len(snap.get("pack") or []),

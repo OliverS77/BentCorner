@@ -71,7 +71,12 @@ def switch_game(key):
 def image_rel(set_code, number, face):
     """Path of a card image relative to the program folder."""
     num = re.sub(r"[^\w-]", "_", number)
-    return f"{IMAGES_REL}/{set_code.lower()}/{num}_{face}.jpg"
+    # set codes come from the card data (foreign, cards/datakeys.py): a single dot stays (Pokémon "sv3.5"), never a
+    # way out of the folder
+    sc = re.sub(r"[^\w.-]", "_", set_code.lower())
+    if sc.strip(".") == "" or ".." in sc:
+        sc = sc.replace(".", "_")
+    return f"{IMAGES_REL}/{sc}/{num}_{face}.jpg"
 
 
 def lang_img(img, lang):

@@ -18,7 +18,7 @@ from scanner.core import has_packs, pack_total
 from system.i18n import tr
 from ui import qstate, scanlook
 from ui.librarycore import run_async
-from ui.scanlook import TIER_COLOR, eur, rarity_text, tier
+from ui.scanlook import TIER_COLOR, eur, money, rarity_text, signed, tier
 
 
 class CardPanel(QtCore.QObject):
@@ -717,8 +717,8 @@ class StatsPanel(qstate.Panel):
         cards = [e for pk in packs for e in pk["cards"]]
         profit = st["profit"]
         self.s_tiles.set(items=[
-            (tr("Value"), eur(st["total"]), scanlook.INK), (tr("Spent"), eur(st["paid"]) if st["paid"] else tr("–"), scanlook.MUTED),
-            (tr("Balance"), tr("–") if profit is None else ("+" if profit >= 0 else "−") + eur(abs(profit)),
+            (tr("Value"), eur(st["total"]), scanlook.INK), (tr("Spent"), money(st["paid"]) if st["paid"] else tr("–"), scanlook.MUTED),
+            (tr("Balance"), tr("–") if profit is None else signed(profit),
              scanlook.MUTED if profit is None else self._profit_color(profit))]
             + ([(tr("Ø per pack"), eur(st["avg_pack"]), scanlook.CYAN), (tr("Packs"), str(st["packs"]), scanlook.INK)]
                if self.s_has_packs else [])
@@ -729,7 +729,7 @@ class StatsPanel(qstate.Panel):
             lines.append((st["avg_pack"], scanlook.CYAN, f"Ø {eur(st['avg_pack'])}"))
         n_paid = int(info.get("packs_planned") or 0) or len(packs)
         if st["paid"] and n_paid:
-            lines.append((st["paid"] / n_paid, QtGui.QColor("#ff6b6b"), tr(f"Cost/pack {eur(st['paid'] / n_paid)}")))
+            lines.append((st["paid"] / n_paid, QtGui.QColor("#ff6b6b"), tr(f"Cost/pack {money(st['paid'] / n_paid)}")))
         best = max(range(len(totals)), key=lambda i: totals[i]) if totals else None
         self.s_packs.set(values=totals, labels=[f"#{i + 1}" for i in range(len(totals))], highlight=best, lines=lines)
         cum, run = [], 0.0
@@ -765,8 +765,8 @@ class StatsPanel(qstate.Panel):
         g_per_pack = [(tr("Ø per pack"), eur(pk_tot / n_packs) if n_packs else tr("–"), scanlook.CYAN)] if self.g_has_packs else []
         self.g_tiles.set(items=[(tr("Logs"), str(len(all_s)), scanlook.INK)] + g_packs + [
             ("Gesamtwert", eur(tot), scanlook.INK),
-            (tr("Spent"), eur(paid) if paid else tr("–"), scanlook.MUTED),
-            (tr("Balance"), tr("–") if g_profit is None else ("+" if g_profit >= 0 else "−") + eur(abs(g_profit)),
+            (tr("Spent"), money(paid) if paid else tr("–"), scanlook.MUTED),
+            (tr("Balance"), tr("–") if g_profit is None else signed(g_profit),
              scanlook.MUTED if g_profit is None else self._profit_color(g_profit))] + g_per_pack)
         labels = [time.strftime("%d.%m.", time.localtime(s["started"])) for s in all_s]
         self.g_sessions.set(a=[s["stats"]["total"] for s in all_s], b=[s["stats"]["paid"] for s in all_s],

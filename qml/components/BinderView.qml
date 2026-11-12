@@ -321,7 +321,12 @@ Item {
             Btn { width: 44; height: 40; text: "›"; enabled: v.bd.canNext; onClicked: v.bd.next()
                   tip: shell.text("Next pages (→) – at the end an empty spread is added") }
             Rectangle { width: 1; height: 30; color: T.line; anchors.verticalCenter: parent.verticalCenter }
+            PriceVeil {   // Orbit's Core: the short line where value / owned stood (the missing count stays below it)
+                full: false; width: 190; height: 30; anchors.verticalCenter: parent.verticalCenter
+                visible: !shell.pricesOn
+            }
             Column {
+                visible: shell.pricesOn
                 anchors.verticalCenter: parent.verticalCenter
                 Text { text: shell.text("Value") + "  " + (foot.st.value || "–"); color: T.text
                        font.family: T.font; font.pixelSize: 13; font.bold: true }

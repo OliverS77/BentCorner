@@ -13,6 +13,7 @@ Only my-data and settings.json are truly personal – the rest can be downloaded
 """
 import json
 import os
+import pathlib
 import shutil
 import time
 
@@ -184,7 +185,11 @@ def snapshots():
 
 
 def maybe_snapshot(min_hours=6):
-    """At startup: only if the last silent backup is older than min_hours."""
+    """At startup: only if the last silent backup is older than min_hours. The 30-day remove copies are pruned too."""
+    try:
+        prune_removed()
+    except OSError:
+        pass
     last = snapshots()
     if last and time.time() - last[0].stat().st_mtime < min_hours * 3600:
         return None
@@ -246,23 +251,65 @@ def create_backup(target_dir):
     return dest
 
 
+# a ZIP backup is personal data only (no card images) – far below these (review 08.11. F3: no zip bomb fills the disk)
+ZIP_MAX_BYTES = 2 * 1024 ** 3
+ZIP_MAX_FILES = 200_000
+_unpacked = {}   # the ZIP last unpacked (path, size, mtime) – restoring right after the question doesn't unpack it again
+
+
+def _zip_key(zip_path):
+    st = pathlib.Path(zip_path).stat()
+    return str(pathlib.Path(zip_path).resolve()), st.st_size, st.st_mtime
+
+
 def unpack_zip(zip_path):
-    """Unpack a ZIP backup to data/restore-zip (only files inside it, no paths leading outside). -> folder"""
+    """Unpack a ZIP backup to data/restore-zip (only files inside it, no paths leading outside; at most
+    ZIP_MAX_FILES files and ZIP_MAX_BYTES in all – else ValueError, nothing left behind). -> folder"""
     import zipfile
     out = DATA / "restore-zip"
+    key = _zip_key(zip_path)
+    if _unpacked.get("key") == key and out.is_dir():
+        return out
+    _unpacked.clear()
     shutil.rmtree(out, ignore_errors=True)
-    out.mkdir(parents=True)
-    root = out.resolve()
     with zipfile.ZipFile(zip_path) as z:
-        for info in z.infolist():
-            target = (out / info.filename).resolve()
-            # really inside (not just the same text prefix: "../restore-zip-x/…" would pass a startswith check)
-            if not target.is_relative_to(root) or target == root or info.is_dir():
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(info) as src, open(target, "wb") as dst:
-                shutil.copyfileobj(src, dst)
+        infos = z.infolist()
+        if len(infos) > ZIP_MAX_FILES or sum(i.file_size for i in infos) > ZIP_MAX_BYTES:
+            raise ValueError("backup ZIP too large")
+        out.mkdir(parents=True)
+        root = out.resolve()
+        try:
+            _unzip(z, infos, out, root)
+        except BaseException:
+            shutil.rmtree(out, ignore_errors=True)
+            raise
+    _unpacked["key"] = key
     return out
+
+
+def drop_unpacked():
+    """The question was answered with no (or it wasn't a backup): the unpacked ZIP goes."""
+    _unpacked.clear()
+    shutil.rmtree(DATA / "restore-zip", ignore_errors=True)
+
+
+def _unzip(z, infos, out, root):
+    written = 0
+    for info in infos:
+        target = (out / info.filename).resolve()
+        # really inside (not just the same text prefix: "../restore-zip-x/…" would pass a startswith check)
+        if not target.is_relative_to(root) or target == root or info.is_dir():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with z.open(info) as src, open(target, "wb") as dst:
+            while True:   # counted while writing too – the sizes in the directory could lie
+                chunk = src.read(1 << 20)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > ZIP_MAX_BYTES:
+                    raise ValueError("backup ZIP too large")
+                dst.write(chunk)
 
 
 def backup_info(folder):
@@ -280,8 +327,8 @@ def backup_info(folder):
     coll = mine / "collection.json" if (mine / "collection.json").exists() else mine / "sammlung.json"
     n = 0
     try:
-        n = sum(int(it.get("count", 1)) for it in json.loads(coll.read_text("utf-8")).get("items", []))
-    except (OSError, ValueError, AttributeError):
+        n = sum(int(it.get("count", 1) or 1) for it in json.loads(coll.read_text("utf-8")).get("items", []))
+    except (OSError, ValueError, AttributeError, TypeError):   # review 08.11. F7: "count": null
         pass
     sess = len(list((mine / "sessions").glob("*.json"))) if (mine / "sessions").exists() else 0
     others = [g for g in sorted((folder / "games").iterdir()) if (g / "my-data").is_dir()] \
@@ -290,13 +337,85 @@ def backup_info(folder):
             "settings": (folder / "settings.json") if (folder / "settings.json").exists() else None}
 
 
+def restorable_settings(text, current=None):
+    """The settings of a backup, as far as they may come along (review 08.11. F1): only a JSON object; what belongs
+    to THIS device stays this device's – where automatic backups go, the last backup's path and the server address
+    (a backup from someone else must not send backups or traffic elsewhere). The identity comes along – that's the
+    move to a new PC. -> dict, or None (nothing usable: the current settings stay)"""
+    try:
+        new = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(new, dict):
+        return None
+    cur = current if isinstance(current, dict) else {}
+    for key in DEVICE_SETTINGS:
+        if key in cur:
+            new[key] = cur[key]
+        else:
+            new.pop(key, None)
+    for k, v in cur.items():   # a remove copy has no codes/keys (D): this device keeps its own
+        if _secret(k) and k not in new:
+            new[k] = v
+    relay = new.get("relay")
+    if isinstance(relay, dict):
+        url = (cur.get("relay") or {}).get("url") if isinstance(cur.get("relay"), dict) else None
+        if url:
+            relay["url"] = url
+        else:
+            relay.pop("url", None)
+    elif "relay" in new:
+        new.pop("relay")
+    return new
+
+
+# this device's own settings – never taken from a backup (review 08.11. F1)
+DEVICE_SETTINGS = ("autobackup", "last_backup", "last_backup_path", "device_name")
+
+
+def _other_identity(current, new):
+    """The backup brings another identity (F1, performance 08.11.): this device's keys and sync state belong to the old
+    one – they go (devkey.json, sync/ next to settings.json), and so do the device-list marks in the settings; the device
+    then signs in like a new device of that identity."""
+    from net import devkeys
+    if devkeys.identity_of(current) == devkeys.identity_of(new):
+        return
+    devkeys.device_bits_off(new)
+    devkeys.drop_device_state(SETTINGS.parent)
+
+
+class RestoreError(Exception):
+    """The current state couldn't be saved first – nothing was changed (review 08.11. F4)."""
+
+
 def restore_backup(folder):
-    """Restore a backup: first silently back up the current state, then replace my-data (+ settings).
-    Old backups with German names are migrated along the way. -> True"""
+    """Restore a backup: first silently back up the current state, then replace my-data, the other games, the
+    tickets (collectibles) and the settings. Old backups with German names are migrated along the way.
+    Without that safety copy nothing happens (RestoreError); an error halfway puts the safety copy back and is
+    raised again (review 08.11. F4). -> True, or False when folder isn't a backup."""
     info = backup_info(folder)
     if info is None:
         return False
-    snapshot("before-restore")
+    safe = snapshot("before-restore")
+    if safe is None and personal_roots():
+        drop_unpacked()
+        raise RestoreError("the current state couldn't be saved first")
+    try:
+        _apply(info, own=False)
+        restore_extra(info["folder"])
+    except Exception:
+        if safe is not None:
+            back = backup_info(safe)
+            if back is not None:
+                _apply(back, own=True)
+        drop_unpacked()
+        raise
+    drop_unpacked()
+    return True
+
+
+def _apply(info, own):
+    """Put a backup's contents in place. own: our own safety copy (settings as they were, nothing filtered)."""
     for g in info.get("games") or []:   # other games (backups from v0.8.5 on)
         dest = DATA / "games" / g.name / "my-data"
         tmpg = DATA / "restore-tmp-game"
@@ -321,11 +440,157 @@ def restore_backup(folder):
     shutil.rmtree(tmp, ignore_errors=True)
     if keep_trash.exists():
         shutil.move(str(keep_trash), str(trash))
+    coll = info["folder"] / "collectibles"   # the tickets were backed up but never restored (review 08.11. F8)
+    if coll.is_dir():
+        tmpc = DATA / "restore-tmp-collectibles"
+        shutil.rmtree(tmpc, ignore_errors=True)
+        shutil.copytree(coll, tmpc)
+        shutil.rmtree(DATA / "collectibles", ignore_errors=True)
+        os.replace(tmpc, DATA / "collectibles")
     if info["settings"] is not None:
         text = info["settings"].read_text("utf-8").replace(*PATH_FIX)
-        SETTINGS.write_text(text, "utf-8")
-    shutil.rmtree(DATA / "restore-zip", ignore_errors=True)
-    return True
+        if own:
+            SETTINGS.write_text(text, "utf-8")
+            return
+        try:
+            current = json.loads(SETTINGS.read_text("utf-8")) if SETTINGS.exists() else {}
+        except (OSError, ValueError):
+            current = {}
+        new = restorable_settings(text, current)
+        if new is not None:
+            _other_identity(current, new)
+            SETTINGS.write_text(json.dumps(new, indent=1, ensure_ascii=False), "utf-8")
+
+
+
+# ---------- D (Oliver/lead 12.11.): a device taken out of the sync empties itself – after a 30-day copy ----------
+REMOVED = BACKUPS / "before-remove"
+REMOVED_DAYS = 30
+# what is personal beyond personal_roots(): set aside (syncaside), the Studio's own photos, misrecognized crops
+EXTRA_DIRS = ("beiseite", "studio", "scan-data")
+# never in the copy (codes/keys/identity – lead 12.11.); on restoring it they stay this device's
+SECRET_KEYS = ("relay", "phone_token")
+SECRET_PREFIX = ("sync_", "guard", "pair")
+# what the emptied device forgets of its settings (its look, language, games and card data stay)
+PERSONAL_KEYS = ("profile", "device_name")
+
+
+def _secret(k):
+    return k in SECRET_KEYS or k.startswith(SECRET_PREFIX)
+
+
+def _trash_dirs():
+    """[(trash folder, name in the copy)] of all games."""
+    out = [(DATA / "my-data" / "trash", "my-data")] if (DATA / "my-data" / "trash").is_dir() else []
+    games_dir = DATA / "games"
+    if games_dir.is_dir():
+        out += [(g / "my-data" / "trash", f"games-{g.name}") for g in sorted(games_dir.iterdir())
+                if (g / "my-data" / "trash").is_dir()]
+    return out
+
+
+def remove_copy(now=None):
+    """The copy BEFORE emptying (lead 12.11.): everything that goes – collection, logs, decks, lists, binders, friends,
+    set aside, the trash, the Studio's photos, earlier automatic copies and the settings WITHOUT codes/keys – to
+    data/backups/before-remove/<time>; restorable like a backup (Settings → Backup) for REMOVED_DAYS days, then
+    gone (prune_removed). -> the folder, or None: nothing was emptied, nothing may be (the caller shows an error)."""
+    now = time.time() if now is None else now
+    dest = REMOVED / time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(now))
+    try:
+        dest.mkdir(parents=True, exist_ok=False)
+        _copy_personal(dest)
+        (dest / "my-data").mkdir(exist_ok=True)   # a backup needs it (backup_info) – also with other games only
+        for src, name in _trash_dirs():
+            shutil.copytree(src, dest / "extra" / "trash" / name, dirs_exist_ok=True)
+        for name in EXTRA_DIRS:
+            if (DATA / name).is_dir():
+                shutil.copytree(DATA / name, dest / "extra" / name, dirs_exist_ok=True)
+        sf = dest / "settings.json"
+        if sf.exists():
+            cur = json.loads(sf.read_text("utf-8"))
+            if isinstance(cur, dict):
+                sf.write_text(json.dumps({k: v for k, v in cur.items() if not _secret(k)}, indent=1,
+                                         ensure_ascii=False), "utf-8")
+        (dest / "removed.json").write_text(json.dumps({"made": now, "until": now + REMOVED_DAYS * 86400}), "utf-8")
+        # earlier states (the automatic copies & co.) are moved INTO the copy: they leave with it after 30 days
+        if BACKUPS.is_dir():
+            for p in list(BACKUPS.iterdir()):
+                if p != REMOVED and p.is_dir():
+                    (dest / "earlier").mkdir(exist_ok=True)
+                    shutil.move(str(p), str(dest / "earlier" / p.name))
+    except (OSError, ValueError):
+        shutil.rmtree(dest, ignore_errors=True)
+        return None
+    return dest
+
+
+def removed_copies(now=None):
+    """-> [{"folder", "made", "until"}] newest first – only those still within their 30 days."""
+    now = time.time() if now is None else now
+    out = []
+    if REMOVED.is_dir():
+        for p in REMOVED.iterdir():
+            try:
+                m = json.loads((p / "removed.json").read_text("utf-8"))
+            except (OSError, ValueError):
+                continue
+            if float(m.get("until") or 0) > now:
+                out.append({"folder": p, "made": float(m.get("made") or 0), "until": float(m["until"])})
+    return sorted(out, key=lambda r: -r["made"])
+
+
+def prune_removed(now=None):
+    """At every start: copies older than their 30 days go for good (legal: it deletes itself)."""
+    now = time.time() if now is None else now
+    if not REMOVED.is_dir():
+        return 0
+    n = 0
+    for p in list(REMOVED.iterdir()):
+        try:
+            until = float(json.loads((p / "removed.json").read_text("utf-8")).get("until") or 0)
+        except (OSError, ValueError):
+            until = p.stat().st_mtime + REMOVED_DAYS * 86400   # unreadable: by its age
+        if until <= now:
+            shutil.rmtree(p, ignore_errors=True)
+            n += 1
+    return n
+
+
+def wipe_personal(settings):
+    """Empties this device's personal data on disk (only after remove_copy() succeeded – the caller checks): my-data of
+    every game, the tickets, set aside, the Studio's photos, the crops. settings (a dict, changed in place): the
+    personal bits go; identity and sync are the caller's (a new identity, sync off). The program restarts afterwards
+    without saving (restart_after_restore) – the state in memory must not write anything back."""
+    for p, _name in personal_roots():
+        if p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
+    games_dir = DATA / "games"
+    if games_dir.is_dir():
+        for g in games_dir.iterdir():
+            if (g / "my-data").is_dir():
+                shutil.rmtree(g / "my-data", ignore_errors=True)
+    for name in EXTRA_DIRS:
+        shutil.rmtree(DATA / name, ignore_errors=True)
+    (DATA / "my-data").mkdir(parents=True, exist_ok=True)
+    for k in PERSONAL_KEYS:
+        settings.pop(k, None)
+    return settings
+
+
+def restore_extra(folder):
+    """A remove copy's extras back in place (set aside, Studio photos, crops, the trash) – merged, nothing replaced."""
+    ex = pathlib.Path(folder) / "extra"
+    if not ex.is_dir():
+        return
+    for name in EXTRA_DIRS:
+        if (ex / name).is_dir():
+            shutil.copytree(ex / name, DATA / name, dirs_exist_ok=True)
+    tr_dir = ex / "trash"
+    if tr_dir.is_dir():
+        for t in tr_dir.iterdir():
+            target = DATA / "my-data" / "trash" if t.name == "my-data" else \
+                DATA / "games" / t.name[len("games-"):] / "my-data" / "trash"
+            shutil.copytree(t, target, dirs_exist_ok=True)
 
 
 def personal_size():

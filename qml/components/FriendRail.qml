@@ -119,58 +119,45 @@ Item {
             }
             Head { visible: rail.open; x: 10; topPadding: 6; bottomPadding: 2
                    text: (tp.gameName || "").toUpperCase() }   // the open game – the folders below belong to it
-            // the four folders of your lists – dragging a list here moves it
+            // the folders: Wishlists · Trade lists · Own lists | Trade offers · Price alerts | Binders | Shared with friends
+            // (lead 06.11.) – dragging a list onto one of the list folders moves it
             Repeater {
-                model: tp.folders.filter(function (f) { return f.key !== "binders" })
-                delegate: Entry {
-                    id: fr
+                model: tp.folders
+                delegate: Column {
+                    id: fcol
                     required property var modelData
-                    readonly property bool canDrop: modelData.key !== "alarms"
-                    width: mcol.width; height: 38
-                    sel: tp.view !== "friend" && tp.folder === modelData.key
-                    drop: da.containsDrag && da.ok
-                    onTapped: { frIcon.kick(); tp.showFolder(modelData.key) }
-                    NavIcon { id: frIcon; x: rail.open ? 12 : (fr.width - width) / 2; anchors.verticalCenter: parent.verticalCenter; s: 0.7
-                              key: fr.modelData.icon; color: fr.sel ? T.text : T.muted; play: fr.hovered }
-                    Text { visible: rail.open; x: 42; anchors.verticalCenter: parent.verticalCenter
-                           width: parent.width - 84; elide: Text.ElideRight
-                           text: fr.modelData.title; color: fr.sel ? T.top : T.text2
-                           font.family: T.font; font.pixelSize: 14; font.bold: fr.sel }
-                    Text { visible: rail.open; anchors.right: parent.right; anchors.rightMargin: 12
-                           anchors.verticalCenter: parent.verticalCenter
-                           text: fr.modelData.count; color: T.dim; font.family: T.font; font.pixelSize: 12 }
-                    DropArea {
-                        id: da
-                        anchors.fill: parent
-                        keys: ["tlist"]
-                        readonly property bool ok: fr.canDrop && drag.source !== null && drag.source.kind !== fr.modelData.key
-                        onDropped: function (ev) {
-                            if (!ok) return
-                            var s = drag.source, k = fr.modelData.key
-                            Qt.callLater(function () { tl.listAction(s.kind, s.lid, "move:" + k) })
+                    width: mcol.width
+                    Item { visible: fcol.modelData.gap === true; width: parent.width; height: visible ? 9 : 0
+                           Rectangle { x: 10; width: parent.width - 20; height: 1; y: 4; color: T.line } }
+                    Entry {
+                        id: fr
+                        readonly property var modelData: fcol.modelData
+                        readonly property bool canDrop: ["wish", "have", "custom", "offers"].indexOf(modelData.key) >= 0
+                        width: mcol.width; height: 38
+                        sel: tp.view !== "friend" && tp.folder === modelData.key
+                        drop: da.containsDrag && da.ok
+                        onTapped: { frIcon.kick(); tp.showFolder(modelData.key) }
+                        NavIcon { id: frIcon; x: rail.open ? 12 : (fr.width - width) / 2; anchors.verticalCenter: parent.verticalCenter; s: 0.7
+                                  key: fr.modelData.icon; color: fr.sel ? T.text : T.muted; play: fr.hovered }
+                        Text { visible: rail.open; x: 42; anchors.verticalCenter: parent.verticalCenter
+                               width: parent.width - 84; elide: Text.ElideRight
+                               text: fr.modelData.title; color: fr.sel ? T.top : T.text2
+                               font.family: T.font; font.pixelSize: 14; font.bold: fr.sel }
+                        Text { visible: rail.open; anchors.right: parent.right; anchors.rightMargin: 12
+                               anchors.verticalCenter: parent.verticalCenter
+                               text: fr.modelData.count; color: T.dim; font.family: T.font; font.pixelSize: 12 }
+                        DropArea {
+                            id: da
+                            anchors.fill: parent
+                            keys: ["tlist"]
+                            readonly property bool ok: fr.canDrop && drag.source !== null && drag.source.kind !== fr.modelData.key
+                            onDropped: function (ev) {
+                                if (!ok) return
+                                var s = drag.source, k = fr.modelData.key
+                                Qt.callLater(function () { tl.listAction(s.kind, s.lid, "move:" + k) })
+                            }
                         }
                     }
-                }
-            }
-            // divider, then the binders as their own item
-            Rectangle { width: mcol.width - 20; x: 10; height: 1; color: T.line }
-            Repeater {
-                model: tp.folders.filter(function (f) { return f.key === "binders" })
-                delegate: Entry {
-                    id: bfr
-                    required property var modelData
-                    width: mcol.width; height: 38
-                    sel: tp.view !== "friend" && tp.folder === "binders"
-                    onTapped: { bfrIcon.kick(); tp.showFolder("binders") }
-                    NavIcon { id: bfrIcon; x: rail.open ? 12 : (bfr.width - width) / 2; anchors.verticalCenter: parent.verticalCenter; s: 0.7
-                              key: "binder"; color: bfr.sel ? T.text : T.muted; play: bfr.hovered }
-                    Text { visible: rail.open; x: 42; anchors.verticalCenter: parent.verticalCenter
-                           width: parent.width - 84; elide: Text.ElideRight
-                           text: bfr.modelData.title; color: bfr.sel ? T.top : T.text2
-                           font.family: T.font; font.pixelSize: 14; font.bold: bfr.sel }
-                    Text { visible: rail.open; anchors.right: parent.right; anchors.rightMargin: 12
-                           anchors.verticalCenter: parent.verticalCenter
-                           text: bfr.modelData.count; color: T.dim; font.family: T.font; font.pixelSize: 12 }
                 }
             }
         }
@@ -184,8 +171,9 @@ Item {
     function waitText(s) { return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2) }
     Box {
         id: syncBox
+        visible: shell.friendsOn   // syncing with friends: Full Orbit only (Oliver 06.11.)
         y: meBox.height + 12
-        width: rail.width; height: scol.implicitHeight + 16
+        width: rail.width; height: visible ? scol.implicitHeight + 16 : 0
         Column {
             id: scol
             x: 8; y: 8; width: parent.width - 16
@@ -201,7 +189,7 @@ Item {
             // the two buttons only work once „I understand“ is ticked below the explanation – until then a click opens it
             Btn { width: scol.width; height: 34; compact: true
                   text: !rail.open ? "↑" : tf.shareWait > 0 ? "↑  " + shell.text("Shared") + " · " + rail.waitText(tf.shareWait)
-                                                          : "↑  " + shell.text("Share with friends")
+                                                          : "↑  " + shell.text("Send to friends now")
                   enabled: tf.shareWait <= 0
                   opacity: tf.syncUnderstood ? 1 : 0.5
                   tip: tf.syncUnderstood ? shell.text("Send your shared lists (and your library, if you share it) to your friends now")
@@ -235,7 +223,7 @@ Item {
     // ================= Friends =================
     Box {
         id: frBox
-        y: syncBox.y + syncBox.height + 12
+        y: syncBox.visible ? syncBox.y + syncBox.height + 12 : meBox.height + 12
         width: rail.width; height: Math.max(250, rail.height - y)   // header, at least two friends, button
         Item {
             id: fhead
@@ -280,7 +268,7 @@ Item {
         Flickable {
             ScrollHint {}
             x: 8; y: ask.y + ask.height + (ask.height > 1 ? 6 : 0)
-            width: parent.width - 16; height: parent.height - y - addBtn.height - 16
+            width: parent.width - 16; height: parent.height - y - addBtn.height - 16 - (importErr.visible ? importErr.height + 8 : 0)
             contentHeight: col.implicitHeight
             clip: true; boundsBehavior: Flickable.StopAtBounds
             Column {
@@ -403,13 +391,27 @@ Item {
                 Text {
                     visible: rail.open && tf.friends.length === 0
                     x: 6; width: col.width - 12
-                    text: shell.text("No friends yet – have them send you a file (Export on their side) and load it with “Import …”.")
+                    text: shell.fileFriends ? shell.text("No friends yet – have them send you a file (Export on their side) and load it with “Import …”.")
+                                            : shell.text("No friends yet – add someone by their ID in the friends menu at the top right.")
                     wrapMode: Text.Wrap; color: T.dim; font.family: T.font; font.pixelSize: 13
                 }
             }
         }
+        Text {   // a file that couldn't be read: here instead of a box with OK (no pop-ups), gone with the next import
+            id: importErr
+            visible: rail.open && tf.importError !== "" && tf.friends.length > 0
+            x: 10; width: parent.width - 20; y: addBtn.y - height - 8
+            text: tf.importError
+            wrapMode: Text.Wrap; color: T.text2; font.family: T.font; font.pixelSize: 13
+        }
+        PriceVeil {   // Core and Near Orbit: the whole friends box is the note (saved friends stay, only hidden)
+            visible: !shell.friendsOn
+            note: shell.text("Friends are available in Full Orbit.")
+            anchors.fill: parent; anchors.margins: 1; z: 20
+        }
         Btn {
             id: addBtn
+            visible: shell.fileFriends   // friends by file (orbit.FILE_FRIENDS) – off since 06.11.
             x: 8; y: parent.height - height - 8
             width: parent.width - 16; height: 36; compact: true
             text: rail.open ? shell.text("+ Import friend") : "+"

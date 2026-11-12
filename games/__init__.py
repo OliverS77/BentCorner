@@ -151,9 +151,11 @@ def collection_items(key):
     """Collection of another game – read-only (for the mixed library). [] if there is none."""
     f = mine(key, "collection.json")
     try:
-        return json.loads(f.read_text("utf-8")).get("items") or []
+        raw = json.loads(f.read_text("utf-8")).get("items") or []
     except (OSError, ValueError):
         return []
+    from collection.collection import split_entries   # entries without a card id: skipped (read-only here)
+    return split_entries(raw)[0]
 
 
 _current = None
@@ -191,3 +193,22 @@ def load(key):
         except ImportError:   # its description isn't part of this program
             raise KeyError(key) from None
     raise KeyError(key)
+
+
+def block_withdrawn():
+    """A withdrawn game's sources are asked by nobody – also not as the fallback when our image mirror is down or has
+    no copy, and not its mirror either – whatever the manifest says (games_off only arrives with the update check;
+    legal 04.11.). The hosts come from the game's own off-switch list (offswitch.HOSTS); images then show NoImage."""
+    if not WITHDRAWN:
+        return
+    from urllib.parse import urlparse
+    from games import offswitch
+    from net import netpolite
+    if not hasattr(netpolite, "block_own_paths"):   # netpolite is still loading (imported first): it calls this
+        return                                      # itself once it is complete (end of net/netpolite.py)
+    hosts = {h.lower() for k in WITHDRAWN for h in offswitch.HOSTS.get(k, ())}
+    netpolite.block_hosts(hosts)
+    netpolite.block_own_paths({urlparse(netpolite.MIRROR[h]).path.rstrip("/") + "/" for h in hosts if h in netpolite.MIRROR})
+
+
+block_withdrawn()

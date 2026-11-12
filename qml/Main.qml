@@ -42,6 +42,8 @@ Window {
     readonly property bool covered: sheetHost.opaque
     // Navigation: always the fixed bar (the carousel no longer exists)
     readonly property Item nav: navFixed
+    // the notice at the top (shell.noticeText): the pages move down by its height – content makes room, nothing covered
+    readonly property real noticeSpace: notice.visible ? notice.height + 12 : 0
 
     onClosing: function (close) { close.accepted = shell.requestClose() }
 
@@ -73,7 +75,7 @@ Window {
                 readonly property bool isNew: modelData === win.page
                 readonly property bool isOld: modelData === win.prev && flip.running
                 width: pages.width
-                y: modelData === "scan" ? 0 : win.nav.height
+                y: modelData === "scan" ? 0 : win.nav.height + win.noticeSpace   // the notice makes room (no pop-up)
                 height: pages.height - y
                 active: win.visited[modelData] === true
                 // in pieces, also the page just clicked (review .93, Oliver: a short freeze is fine, but always with
@@ -160,6 +162,14 @@ Window {
         friendsOpen: friendsMenu.open
         friendsBadge: profilePage.requests.length > 0 && profilePage.requests.some(function (r) { return r.dir === "in" })
         onFriendsClicked: function (rx, by) { friendsMenu.open ? (friendsMenu.open = false) : friendsMenu.show(rx, by) }
+        profileOpen: profileMenu.open
+        onProfileClicked: function (rx, by) { friendsMenu.open = false; profileMenu.open ? (profileMenu.open = false) : profileMenu.show(rx, by) }
+    }
+    ProfileMenu {   // the profile button's small menu (Oliver 06.11.): Profile · Edit · Devices
+        id: profileMenu
+        enabled: !win.covered
+        z: 13
+        anchors.fill: parent
     }
     FriendsMenu {   // Friends: menu on the profile button (no page of its own)
         id: friendsMenu
@@ -355,6 +365,36 @@ Window {
             text: tip.text
             color: T.text2; font.family: T.font; font.pixelSize: 12
             wrapMode: Text.Wrap
+        }
+    }
+
+    // ---------- Notice at the top: closable, no pop-up (shell.noticeText – the online backup's expiry, legal 07.11.) ----------
+    Rectangle {
+        id: notice
+        z: 99
+        visible: shell.noticeText !== "" && win.page !== "scan"   // the scan window reaches to the top: not there
+        width: Math.min(win.width - 48, 760)
+        height: noticeRow.implicitHeight + 24
+        x: (win.width - width) / 2
+        y: win.nav.height + 6
+        radius: 12
+        color: T.surface2
+        border.width: 1; border.color: T.line2
+        Row {
+            id: noticeRow
+            anchors.centerIn: parent
+            spacing: 12
+            Text {
+                width: notice.width - noticeGo.width - noticeX.width - 60
+                anchors.verticalCenter: parent.verticalCenter
+                text: shell.noticeText
+                color: T.text; font.family: T.font; font.pixelSize: 13
+                wrapMode: Text.Wrap
+            }
+            Btn { id: noticeGo; text: shell.noticeKey; visible: text !== ""; compact: true; height: 30; anchors.verticalCenter: parent.verticalCenter
+                  onClicked: shell.noticeAct() }
+            Btn { id: noticeX; text: "×"; compact: true; height: 30; anchors.verticalCenter: parent.verticalCenter
+                  onClicked: shell.noticeClose() }
         }
     }
 

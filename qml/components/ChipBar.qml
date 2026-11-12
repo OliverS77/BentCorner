@@ -4,6 +4,8 @@
 // New values grow from width 0 and push the following chips (e.g. „Clear all filters“) directly ahead of
 // them; what Python removes first fades, then slides together towards the left edge (staying in the list as
 // „gone“ meanwhile).
+// tail: items that always come last in the row, after all filter chips (Library: „Group by“, Oliver 05.11.) – they
+// wrap with the row like any other chip.
 import QtQuick
 
 Item {
@@ -12,8 +14,10 @@ Item {
     property var lead: null            // bright chip in front (e.g. selected list): {icon, text}
     signal chipClicked(string id)
     signal leadClicked()
+    property alias tail: tailBox.data
+    readonly property bool hasTail: tailBox.width > 0
     implicitHeight: flow.implicitHeight
-    height: groups.length || lead ? flow.implicitHeight : 0
+    height: groups.length || lead || hasTail ? flow.implicitHeight : 0
     Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     clip: true
 
@@ -229,6 +233,11 @@ Item {
                     TapHandler { onTapped: bar.chipClicked(box.coverId) }
                 }
             }
+        }
+        Item {   // the tail: declared after the Repeater, so always the last one in the Flow
+            id: tailBox
+            width: childrenRect.width; height: 30
+            visible: width > 0
         }
     }
 

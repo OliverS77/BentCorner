@@ -20,6 +20,7 @@ import json
 import logging
 import pathlib
 
+from cards import datakeys
 from scanner.common import DATA
 from system.i18n import tr
 
@@ -164,7 +165,31 @@ def manifest():
         raise PackError(tr(f"Packs not found on the server ({r.status_code})"))
     if not updater.verify(r.content, s.text):
         raise PackError(tr("Pack list not genuinely signed – nothing loaded"))
-    return json.loads(r.content.decode("utf-8")).get("packs") or {}
+    release = json.loads(r.content.decode("utf-8")).get("packs") or {}
+    return datakeys.merge(release, _data_listing())
+
+
+def _data_listing():
+    """New card data signed by the server's data key (cards/datakeys.py) – None if there is none or it doesn't pass:
+    then packs.json alone counts, as before."""
+    from net import netpolite
+    from net import updater
+    if not datakeys.keys():
+        datakeys.refresh(updater.BASE_URL)   # first time: the release manifest says which data keys count
+    if not datakeys.keys():
+        return None
+    try:
+        r = netpolite.get(base_url() + "/packs-data.json", timeout=20)
+        s = netpolite.get(base_url() + "/packs-data.json.sig", timeout=20)
+    except Exception:  # noqa: BLE001
+        return None
+    if r.status_code != 200 or s.status_code != 200:
+        return None
+    try:
+        return datakeys.verify_data(r.content, s.text)
+    except datakeys.DataRejected as e:
+        log.warning("Card data of the data key refused: %s", e)
+        return None
 
 
 def _sha256(path):
@@ -188,7 +213,10 @@ def outdated(key, entry=None):
     entry = entry if entry is not None else manifest().get(key) or {}
     known = _known(key)
     out = []
+    names = datakeys.DATA_FILES.get(key, ()) if entry.get("src") == "data" else datakeys.release_names(key)
     for f in entry.get("files") or []:
+        if not isinstance(f, dict) or f.get("name") not in names:
+            continue   # never a path from the listing
         p = folder(key) / f["name"]
         if not p.exists():
             out.append(f["name"])
@@ -217,14 +245,23 @@ def download(key, progress=lambda text, done, total: None):
     if not entry:
         raise PackMissing(tr(f"Pack “{key}” doesn't exist on the server"))
     dest = folder(key)
-    dest.mkdir(parents=True, exist_ok=True)
     files = entry.get("files") or []
+    # what comes from the server is foreign, whichever key signed it: only the program's own file names, sizes within
+    # the limits (cards/datakeys.py) – the data key only the games and files of its hard list
+    names = datakeys.DATA_FILES.get(key, ()) if entry.get("src") == "data" else datakeys.release_names(key)
+    try:
+        datakeys.check_files(key, files, names)
+    except datakeys.DataRejected as e:
+        raise PackError(tr(f"Pack list refused ({e})")) from None
+    dest.mkdir(parents=True, exist_ok=True)
     # download compressed where the server offers a .gz (card databases: ~1/5 of the size), otherwise the file itself
     total = sum(int((f.get("gz") or f).get("size") or 0) for f in files)
     done = 0
     for f in files:
         name, size, want = f["name"], int(f.get("size") or 0), f.get("sha256")
         target = dest / name
+        if target.resolve().parent != dest.resolve():
+            raise PackError(tr(f"Pack list refused ({name})"))
         known = _known(key)
         if target.exists() and target.stat().st_size == size and (not want or known.get(name, want) == want):
             done += int((f.get("gz") or f).get("size") or 0)   # already there and unchanged
@@ -249,8 +286,10 @@ def download(key, progress=lambda text, done, total: None):
                 with open(part, "ab" if have else "wb") as out:
                     got = have
                     for chunk in r.iter_content(1 << 20):
-                        out.write(chunk)
                         got += len(chunk)
+                        if got > dl_size:   # more than the signed size: never written to the end
+                            break
+                        out.write(chunk)
                         progress(f"{PACKS[key]['name']}: herunterladen …", (done + got) >> 20, total >> 20)
         if dl_want and _sha256(part) != dl_want:
             part.unlink(missing_ok=True)
@@ -260,14 +299,27 @@ def download(key, progress=lambda text, done, total: None):
             import shutil
             progress(f"{PACKS[key]['name']}: auspacken …", (done + dl_size) >> 20, total >> 20)
             raw = dest / (name + ".unpack")
+            room = min(size, datakeys.limit_of(name))
             with gzip.open(part, "rb") as fi, open(raw, "wb") as fo:
-                shutil.copyfileobj(fi, fo, 1 << 20)
+                while block := fi.read(1 << 20):   # counted: a small .gz can unpack to anything (gz bomb)
+                    room -= len(block)
+                    if room < 0:
+                        break
+                    fo.write(block)
             part.unlink(missing_ok=True)
+            if room < 0:
+                raw.unlink(missing_ok=True)
+                raise PackError(tr(f"{name}: larger than announced – not used"))
             if want and _sha256(raw) != want:
                 raw.unlink(missing_ok=True)
                 raise PackError(tr(f"{name}: checksum mismatch – please download again"))
             part = raw
         size = dl_size
+        try:
+            datakeys.probe(name, part)
+        except datakeys.DataRejected as e:
+            part.unlink(missing_ok=True)
+            raise PackError(tr(f"{name}: not a valid data file ({e}) – not used")) from None
         part.replace(target)
         known = _known(key)
         known[name] = want or _sha256(target)

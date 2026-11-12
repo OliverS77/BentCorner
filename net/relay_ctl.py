@@ -47,6 +47,9 @@ class RelayControl:
     def _relay_wake(self):
         """First input after a long pause: back to the normal pace, and fetch now if the last fetch is old."""
         from net import relay
+        if getattr(self, "poll_mode", lambda: False)():   # one question for vault and mailbox: ask now
+            self.poll_now()
+            return
         if getattr(self, "_relay_t", None) is None or not relay.enabled(self.settings):
             return
         self._relay_pace()
@@ -67,6 +70,7 @@ class RelayControl:
         else:
             self._relay_t.stop()
             self._lists_t.stop()
+        getattr(self, "poll_setup", lambda: None)()   # in poll mode the minute question takes over from _relay_t
 
     def relay_auto_lists(self):
         """Every 5 minutes: if shared lists have changed, only the changes go to the friends as small parcels
@@ -76,8 +80,6 @@ class RelayControl:
         from net import relay
         if not relay.enabled(self.settings) or not relay.ok_friends(self.settings):
             return
-        if self.settings.get("share_library") is None:   # friends are there: ask once (not in the background tick)
-            QtCore.QTimer.singleShot(0, self.share_library_ask)
         try:
             n = self.relay_changes()
         except Exception:  # noqa: BLE001
@@ -107,13 +109,18 @@ class RelayControl:
             old = _json.loads(self.relay_fp_file().read_text("utf-8"))
         except (OSError, ValueError):
             return
-        d = relay.delta(old, relay.fingerprint(self.relay_export()))
+        new = relay.fingerprint(self.relay_export())
+        post = relay.posted(self.settings, games.current().key) or {}
+        if relay.has_lib(new) != bool(post.get("lib")) or relay.has_lib(new) != relay.has_lib(old):
+            # library switched on/off since the full post (or a post from before library deltas): never a delta that
+            # adds or drops it – post everything anew, to exactly the friends of share_codes like every post
+            self.relay_send_lists(quiet=True)
+            return
+        d = relay.delta(old, new)
         if not d or d == getattr(self, "_relay_last_delta", None):
             return
-        post = relay.posted(self.settings, games.current().key) or {}
-        aud = relay.state(self.settings).get("audience") or {}
         s, game = self.settings, games.current().key
-        codes = relay.audience_codes(s, aud.get("mode") or "all", aud.get("codes") or ())
+        codes = relay.share_codes(s)
         pid = userprofile.ensure(s).get("id")
         self._relay_last_delta = d
         self._relay_bg("delta", lambda: relay.send_delta(s, game, post.get("t") or 0, d, pid, codes))
@@ -193,9 +200,12 @@ class RelayControl:
 
     def _relay_bg(self, what, fn):
         """Network in the background, result in the main thread (bridge.relay_done)."""
+        from net import relay
+
         def work():
             try:
-                res, err = fn(), ""
+                with relay.job():
+                    res, err = fn(), ""
             except Exception as e:  # noqa: BLE001
                 res, err = None, str(e)
                 if not isinstance(e, __import__("net.relay", fromlist=["relay"]).RelayError):
@@ -224,6 +234,9 @@ class RelayControl:
     def relay_burst(self):
         """Just requested or accepted: fetch more often for a while so the answer arrives quickly (otherwise it
         only came with the next 3-minute round)."""
+        if getattr(self, "poll_mode", lambda: False)():   # the cheap question every 20 s instead of a whole mailbox fetch
+            self.sync_poll_burst()
+            return
         self._relay_fast_until = time.time() + self.RELAY_FAST_FOR
         t = getattr(self, "_relay_fast_t", None)
         if t is None:
@@ -300,13 +313,48 @@ class RelayControl:
             self._relay_bg("rekey", lambda: relay.retire(s, others))
 
     def relay_unblock(self, code):
+        """Unblock – server first (lead 08.11., the web the same): /v1/block on:0, and only when the server took it the
+        entry goes here. Offline or an error: nothing changes. relay_unblock_state = {code: "busy" | "offline" (no
+        connection) | "failed" (the server refused) | "mailbox_off"} (library shows it in the profile's „Blocked“ box; on success the code leaves it and its row
+        disappears). Mailbox off (Core Orbit): not here – the block may lie on the server, unblocking only here would
+        leave it there and the person would silently not reach this ID back in Full Orbit (lead 08.11.)."""
+        from net import relay
+        s, code = self.settings, relay.norm(code)
+        if not hasattr(self, "relay_unblock_state") or self.relay_unblock_state is None:
+            self.relay_unblock_state = {}
+        if self.relay_unblock_state.get(code) == "busy":
+            return
+        if not relay.enabled(s):
+            if not relay.block_on_server(s, code):   # never on the server (a file import …): only here, at once
+                self._unblock_local(code)
+                return
+            self.relay_unblock_state[code] = "mailbox_off"   # nothing changes – the box points to the Orbit settings
+            self._relay_ui()
+            return
+        self.relay_unblock_state[code] = "busy"
+        self._relay_ui()
+
+        def work():   # -> "ok" | "offline" | "failed" (legal 08.11.: no connection told apart from a refusal)
+            try:
+                relay.server_block(s, code, False, strict=True)
+                return "ok"
+            except relay.RelayError as e:
+                return "offline" if not e.status else "failed"
+        self._relay_bg("unblock:" + code, work)
+
+    def _unblock_local(self, code):
         from net import relay
         relay.unblock(self.settings, code)
+        (getattr(self, "relay_unblock_state", None) or {}).pop(code, None)
         self.settings_changed()
         self._relay_ui()
-        s = self.settings
-        if relay.enabled(s):
-            self._relay_bg("block", lambda: relay.server_block(s, code, False))
+
+    def _unblock_done(self, code, res, err):
+        if err or res != "ok":   # the entry stays blocked here; the box says why
+            self.relay_unblock_state[code] = res if res in ("offline", "failed") else "failed"
+            self._relay_ui()
+            return
+        self._unblock_local(code)
 
     def relay_report(self, code):
         """Report: choose a reason, optional note – what you see of them is sent along (name, card back, title)."""
@@ -360,36 +408,55 @@ class RelayControl:
             log.exception("Counting deck cards")
         return out
 
+    def relay_share_contents(self):
+        """What goes to friends – ONE source for the parcel (relay_export, binders: qbinder.auto_share) and every view
+        of it ("Shared with friends", the friends menu, later the profile preview; lead/legal 06.11.):
+        {"lists": [(kind, list)] of the open game shared with friends, "library": bool, "binders": [(game, binder)]}"""
+        from collection import trade
+        from ui import qbinder
+        lists = [(kind, x) for kind in ("wish", "have") for x in trade.lists(kind)
+                 if not x.get("example") and trade.is_shared(x)]
+        # an old "Yes" rests until answered (orbit.hold_sharing, legal 06.11.)
+        return {"lists": lists, "library": self.settings.get("share_library") is True
+                and not self.settings.get("share_library_paused"),
+                "binders": qbinder.shared_binders(self)}
+
     def relay_export(self):
         """What gets shared: only trade and wish lists that are "shared with friends" (default: private)."""
         from collection import trade
         from system import userprofile
         prof = userprofile.ensure(self.settings)
         items = self.collection.items
-        have_ids = [x["id"] for x in trade.lists("have") if not x.get("example") and trade.is_shared(x)]
+        c = self.relay_share_contents()
+        have_ids = [x["id"] for kind, x in c["lists"] if kind == "have"]
         have = trade.have_items(items, have_ids) if have_ids else []
-        wl = [x["id"] for x in trade.lists("wish") if not x.get("example") and trade.is_shared(x)]
+        wl = [x["id"] for kind, x in c["lists"] if kind == "wish"]
         return trade.build_export(prof, items, "lists", trade.wishes(wl) if wl else None, None, have,
-                                  library=self.settings.get("share_library") is True)
+                                  library=c["library"])
 
-    def share_library_ask(self):
-        """Ask once as soon as there are friends: make the Library visible to friends? (can be changed later under
-        Settings → Friends & privacy). In the program window, without waiting."""
-        if self.settings.get("share_library") is not None or getattr(self, "_share_lib_asked", False):
+    def relay_share_friend(self, code, on):
+        """"Shared with friends": a friend gets everything I share – or nothing but name and card back. The audience is
+        saved FIRST (no delta of the regular tick reaches them in between, ports 06.11.), then everything gets a new key
+        for the friends switched on (relay_rekey: board_put replaces the content – the old key opens nothing new).
+        Switched off, their app is asked to delete my shared content (board_gone, decided here – before the new posts
+        rewrite who had what)."""
+        from net import relay
+        s = self.settings
+        relay.set_share(s, code, on)
+        self.settings_changed()
+        if not relay.enabled(s):
             return
-        self._share_lib_asked = True
+        if not on:
+            had = relay.revoke_plan(s, code)
+            if had:
+                self._relay_bg("revoke", lambda: relay.revoke(s, code, had))
+        self.relay_rekey()
 
-        def done(key):
-            if key in ("yes", "no"):
-                self.settings["share_library"] = key == "yes"
-                self.settings_changed()
-                if key == "yes":
-                    self.relay_send_lists(quiet=True)
-        qdialogs.ask(tr("Share your library with friends?"),
-                     tr("Your friends will then see your whole collection of this game – encrypted, visible only to them. Lists are shared one by one (private / shared with friends).") + "\n\n" +
-                     tr("You can change this later under Settings → Friends & privacy."),
-                     [("no", tr("No, keep private"), ""), ("yes", tr("Yes, share with friends"), "active")],
-                     wait=False, on_close=done)
+    def share_audience_once(self):
+        """On the update to per-friend sharing (06.11.): the friends of today keep what they get – see relay.py."""
+        from net import relay
+        if relay.migrate_audience(self.settings):
+            self.settings_changed()
 
     def relay_fp_file(self):
         from scanner import common
@@ -412,18 +479,35 @@ class RelayControl:
         if not relay.enabled(self.settings) or not relay.ok_friends(self.settings):
             return False
         data = data or self.relay_export()
-        aud = relay.state(self.settings).get("audience") or {}
         s, game = self.settings, games.current().key
         if not (data.get("c") or data.get("w") or data.get("lib")):   # nothing shared any more: withdraw, not empty
             if relay.posted(s, game):
                 self._relay_quiet = quiet
                 self._relay_bg("withdraw", lambda: relay.withdraw(s, game))
             return True
-        codes = relay.audience_codes(s, aud.get("mode") or "all", aud.get("codes") or ())
+        codes = relay.share_codes(s)
         self._relay_pending_fp = relay.fingerprint(data)
         self._relay_quiet = quiet   # automatic (hourly): no notice if it worked
         self._relay_bg("lists", lambda: relay.send_lists(s, data, game=game, audience=codes))
         return True
+
+    def relay_share_library_off(self):
+        """The library is no longer shared (the switch, or "Stop sharing" – lead/legal 06.11.: at once, in every game).
+        The open game gets a new parcel without "lib". Another game's parcel can only be rebuilt while that game is
+        open (automatic lists need its card database) – so if it may carry the library it is withdrawn now (friends
+        delete their copy at once) and comes back without it the next time the game is open (relay_auto_lists: no
+        post → share). Older posts don't know whether they had it ("lib" missing): withdrawn as well."""
+        from net import relay
+        s, cur = self.settings, games.current().key
+        self.relay_send_lists(quiet=True)
+        if not relay.enabled(s):
+            return []
+        others = [k.partition("/")[0] for k, v in (relay.state(s).get("posted") or {}).items()
+                  if k.partition("/")[2] == relay.BOARD_LISTS and k.partition("/")[0] != cur
+                  and (v or {}).get("lib") is not False]
+        if others:
+            self._relay_bg("withdraw_lib", lambda: [relay.withdraw(s, g) for g in others])
+        return others
 
     @staticmethod
     def _relay_news(who, change):
@@ -431,8 +515,59 @@ class RelayControl:
         return {"lists": tr(f"New lists from {who}"),
                 "library": tr(f"{who} is sharing their collection with you – see Trade")}.get(change, "")
 
+    def _relay_tickets(self, events):
+        """Trade tickets from the mailbox (net/relay.apply checked them): offers / counter-offers filed, a closing
+        ticket waits to be booked ("closing"), a withdrawal marks the open offer – no dialog, in the ticket's game.
+        Sets ev["filed"]; -> True if something changed"""
+        from collection import offers
+        from system import userprofile
+        changed = False
+        for ev in events:
+            try:
+                if ev["kind"] == "ticket":
+                    ev["filed"] = offers.from_mailbox(ev["ticket"], userprofile.ensure(self.settings).get("id"))
+                elif ev["kind"] == "ticket_gone":
+                    ev["filed"] = offers.gone_from_mailbox(ev["x"], ev.get("pid") or "", ev.get("why") or "withdrawn")
+                else:
+                    continue
+            except Exception:  # noqa: BLE001
+                log.exception("Mailbox: trade ticket")
+                ev["filed"] = None
+            changed = changed or bool(ev.get("filed"))
+        return changed
+
+    # ---------- trade tickets through the mailbox (lead 06.11.: one click "Send to <friend>", never silently) ----------
+    def relay_send_ticket(self, t, code):
+        """Send a ticket to a mailbox friend in the background; the result lands in the offer (offers.set_mail) and
+        the export page redraws. Never called just because a ticket is made or shown."""
+        from net import relay
+        s = self.settings
+        x = t.get("x") or t["id"]
+
+        def go():
+            try:
+                relay.send_ticket(s, code, t)
+                return {"x": x, "g": t.get("g"), "ok": True, "status": 200, "t": time.time()}
+            except relay.RelayError as e:
+                return {"x": x, "g": t.get("g"), "ok": False, "status": e.status, "t": time.time()}
+        self._relay_bg("ticket_send", go)
+
+    def relay_send_ticket_gone(self, code, trade_id, version, why, game=None):
+        from net import relay
+        s = self.settings
+
+        def go():
+            try:
+                relay.send_ticket_gone(s, code, trade_id, version, why)
+                return {"x": trade_id, "g": game, "ok": True, "status": 200, "t": time.time()}
+            except relay.RelayError as e:
+                return {"x": trade_id, "g": game, "ok": False, "status": e.status, "t": time.time()}
+        self._relay_bg("ticket_send", go)
+
     def _relay_done(self, what, res, err):
         from net import relay
+        if what.startswith("unblock:"):
+            return self._unblock_done(what.split(":", 1)[1], res, err)
         toast = getattr(getattr(self, "shell", None), "show_toast", None) or self.stream_toast
         if what.startswith("poll"):
             self._relay_busy = False
@@ -456,6 +591,8 @@ class RelayControl:
                 self._relay_bg("ack", lambda: relay.ack(s, ids))
             if any(ev["kind"] == "team" for ev in names):
                 self.team_inbox_changed(toast=True)
+            if self._relay_tickets(names):   # trade tickets through the mailbox: filed under Trade offers
+                self.trade_offers_changed(open_folder=False)
             for ev in names[:4]:
                 who = ev.get("name") or relay.pretty(ev["code"])
                 if ev["kind"] == "board_key" and str(ev["slot"]).startswith("binder-"):
@@ -463,6 +600,11 @@ class RelayControl:
                 if ev["kind"] == "board_gone" and ev.get("had", True):   # nothing was visible on my side: quiet
                     what_ = tr("a binder") if str(ev.get("slot")).startswith("binder-") else tr("their lists")
                     toast(tr(f"{who} no longer shares {what_} in {games.nick_of(ev.get('game') or '')} with you – that's why it disappeared on your side."))
+                if ev["kind"] == "ticket" and ev.get("filed"):
+                    toast(tr(f"Trade offer from {who} received – Orbit → Trade offers") if ev["filed"] == "received"
+                          else tr(f"{who} accepted – book it under Trade offers"))
+                if ev["kind"] == "ticket_gone" and ev.get("filed"):
+                    toast(tr(f"{who} declined.") if ev.get("why") == "declined" else tr(f"{who} withdrew the offer."))
                 text = {"friend": tr(f"Friend request from {who} – see Profile"),
                         "friend_ok": tr(f"{who} accepted your request"),
                         "friend_no": tr(f"{who} declined"),
@@ -488,6 +630,17 @@ class RelayControl:
                 self.trade_changed()
             if what == "poll_manual" and not names:
                 toast(tr("Mailbox: nothing new"))
+        elif what == "ticket_send":
+            from collection import offers
+            if res:
+                try:
+                    offers.set_mail(res["x"], {k: res[k] for k in ("ok", "status", "t")}, res.get("g"))
+                except Exception:  # noqa: BLE001
+                    log.exception("Mailbox: ticket state")
+            ip = getattr(self, "import_page", None)
+            if ip is not None and hasattr(ip, "mail_done"):
+                ip.mail_done(res)
+            self.trade_offers_changed()
         elif what == "report":
             toast(tr(f"Report not sent: {err}") if err else tr("Thanks – the report has arrived."))
         elif what == "add":
@@ -521,6 +674,10 @@ class RelayControl:
                 if not getattr(self, "_relay_quiet", False) or errors:
                     toast(tr(f"Lists shared – with {n} friends") + (" · " + tr(f"{len(errors)} failed")
                                                                               if errors else ""))
+        elif what == "withdraw_lib":   # other games' parcels with the library (relay_share_library_off): quietly
+            if err:
+                log.info("Mailbox: withdrawing the library of other games: %s", err)
+            self.settings_changed()
         elif what == "withdraw":
             if err:
                 toast(tr(f"Taking it back didn't work: {err}"))
@@ -531,7 +688,7 @@ class RelayControl:
                     pass
                 self.settings_changed()
                 if not getattr(self, "_relay_quiet", False):
-                    toast(tr("You're not sharing anything right now – deleted from the server, your friends no longer see it."))
+                    toast(tr("You're not sharing anything right now – taken off the server; your friends' apps are asked to delete their copy."))
         elif what == "delta":
             if err or (res and res[1]):
                 log.info("Changes to friends: %s", err or res[1])

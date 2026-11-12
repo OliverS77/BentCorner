@@ -18,6 +18,10 @@ All files in the folder `brand/`: the logo in all versions (`logo/` – mark, lo
 app icons (`icon.ico`, `icon.png`) and the logo card of the loading animation (`loadcard.json` – its corner, fold and
 tilt), and this file.
 
+The lettering of the long version (`logo/lockup-lang-*.svg`, made by `tools/brand_lockup.py`) is set in Barlow Semi
+Condensed by Jeremy Tribby (SIL Open Font License 1.1, `fonts/OFL-Barlow.txt`) and stored as outlines; the font's
+licence stays with the font, the rights reserved here concern the logo.
+
 ## Without this folder
 
 The code that shows these assets (`qml/components/Lockup.qml`, the loading shader, the launcher's `DrawLoadCard`,

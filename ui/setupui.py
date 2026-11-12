@@ -49,7 +49,10 @@ class FirstRunBackend(QtCore.QObject):
     def __init__(self):
         super().__init__()
         from system import i18n
-        self._choice, self._other, self._error = "docs", "", ""
+        # collections already on this PC (only looked at, nothing copied): then nothing is preselected – a new, empty
+        # collection only by an explicit choice (lead 06.11.2026)
+        self._found = self._look_for_existing()
+        self._choice, self._other, self._error = ("" if self._found else "docs"), "", ""
         self._page, self._lang, self._games = 0, i18n.LANG, []
         self._browser = None
         self.result_home, self.result_lang, self.result_games, self.accepted = None, self._lang, [], False
@@ -67,6 +70,9 @@ class FirstRunBackend(QtCore.QObject):
     @QtCore.Slot()
     def next(self):
         if self._page == 1 and not self._check_folder():
+            return
+        if self._page == 1 and self._keeps_collection():   # an existing collection: it keeps its games
+            self.go()
             return
         if self._page == 2:
             self.go()
@@ -123,10 +129,82 @@ class FirstRunBackend(QtCore.QObject):
         self._games = [g for g in self._games if g != key] if key in self._games else self._games + [key]
         self.changed.emit()
 
+    # ---------- 1: collections already there ----------
+    @staticmethod
+    def _note(text):
+        """firstrun.log next to the starter notes (%LOCALAPPDATA%\\BentCorner or BC_STARTER_LOCAL): the program log
+        only starts once the data folder is settled – this says what the first start offered and what was chosen."""
+        try:
+            d = datahome._local_home()
+            d.mkdir(parents=True, exist_ok=True)
+            with open(d / "firstrun.log", "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + text + "\n")
+        except OSError:
+            pass
+
+    @classmethod
+    def _look_for_existing(cls):
+        try:
+            found = datahome.existing()
+        except Exception as e:  # noqa: BLE001 – a look around must never stop the setup
+            cls._note(f"looking for existing collections failed: {type(e).__name__}: {e}")
+            return []
+        cls._note("found: " + ("; ".join(f"{e['path']} ({e['cards']} cards{'' if e['reachable'] else ', not reachable'})"
+                                         for e in found) or "nothing"))
+        return found
+
+    @QtCore.Property("QVariantList", notify=changed)
+    def found(self):
+        """[{key, path, sub, reachable}] for the page – at most three (the remembered folder and the latest)."""
+        out = []
+        for i, e in enumerate(self._found[:3]):
+            if not e["reachable"]:
+                sub = tr("Can't be reached right now – is the drive plugged in?")
+            else:
+                when = time.strftime("%d.%m.%Y", time.localtime(e["changed"])) if e["changed"] else ""
+                cards = tr("{n} cards").replace("{n}", f"{e['cards']:,}".replace(",", "."))
+                sub = cards + (" · " + tr("last used {date}").replace("{date}", when) if when else "")
+            out.append({"key": f"found:{i}", "path": _clean(e["path"]), "sub": sub, "reachable": e["reachable"]})
+        return out
+
+    @QtCore.Slot()
+    def recheck(self):
+        """[Check again] next to a collection that can't be reached (a drive plugged in in the meantime)."""
+        self._found = self._look_for_existing()
+        if self._choice.startswith("found:") and int(self._choice[6:]) >= len(self._found):
+            self._choice = ""
+        self.changed.emit()
+
+    @QtCore.Property(bool, constant=True)
+    def portableOk(self):
+        """"Next to the program" only for a portable copy – an installed one deletes its folder on uninstalling."""
+        return datahome.PORTABLE is not None
+
+    @QtCore.Property(bool, notify=changed)
+    def canGoOn(self):
+        return self._page != 1 or self._choice != ""
+
+    def _found_entry(self):
+        if self._choice.startswith("found:"):
+            i = int(self._choice[6:])
+            return self._found[i] if i < len(self._found) else None
+        return None
+
     def chosen(self):
+        if self._choice.startswith("found:"):
+            e = self._found_entry()
+            return pathlib.Path(e["path"]) if e and e["reachable"] else None
         if self._choice == "other":
             return pathlib.Path(self._other) if self._other else None
-        return datahome.DEFAULT if self._choice == "docs" else datahome.PORTABLE
+        if self._choice == "port":
+            return datahome.PORTABLE
+        return datahome.DEFAULT if self._choice == "docs" else None
+
+    def _keeps_collection(self):
+        """The chosen folder already holds a collection (found, or picked by hand): it is used as it is – no games
+        page, settings.json stays (startup.py never overwrites it)."""
+        p = self.chosen()
+        return p is not None and (p / "settings.json").exists()
 
     @QtCore.Property(str, notify=changed)
     def choice(self):
@@ -151,7 +229,7 @@ class FirstRunBackend(QtCore.QObject):
 
     @QtCore.Property(str, constant=True)
     def portPath(self):
-        return _clean(datahome.PORTABLE)
+        return _clean(datahome.PORTABLE) if datahome.PORTABLE is not None else ""
 
     # folder choice: the file browser in the same window
     @QtCore.Property(QtCore.QObject, notify=browseChanged)
@@ -175,7 +253,15 @@ class FirstRunBackend(QtCore.QObject):
     def _check_folder(self):
         p = self.chosen()
         if p is None:
-            self.browse()
+            if self._choice.startswith("found:"):
+                self._error = tr("This folder can't be reached right now.")
+                self.changed.emit()
+            elif self._choice == "other":
+                self.browse()
+            return False
+        if datahome.in_program(p):
+            self._error = tr("This folder is deleted when Bent°Corner is uninstalled – please choose another one.")
+            self.changed.emit()
             return False
         try:
             p.mkdir(parents=True, exist_ok=True)
@@ -190,10 +276,11 @@ class FirstRunBackend(QtCore.QObject):
 
     @QtCore.Slot()
     def go(self):
-        if not self._games or not self._check_folder():
+        if not self._check_folder() or not (self._games or self._keeps_collection()):
             return
         order = [g for g in READY if g in self._games]
         self.result_home, self.result_lang, self.result_games = self.chosen(), self._lang, order
+        self._note(f"chosen: {self.result_home} ({'existing collection' if self._keeps_collection() else 'new'})")
         self.accepted = True
         self.finished.emit()
 
@@ -222,7 +309,10 @@ def quick_first_run():
         win = roots[0]
         loop = QtCore.QEventLoop()
         b.finished.connect(loop.quit)
-        win.closing.connect(lambda *_: loop.quit())
+        # window closed with X: end the setup. Not via closing(QQuickCloseEvent) – PySide can't pass that event to a
+        # Python slot (TypeError), the loop kept running and the program stayed on invisibly, holding the
+        # single-instance lock (05.11.2026)
+        win.visibleChanged.connect(lambda shown: shown or loop.quit())
         win.show()
         loop.exec()
         win.hide()
@@ -393,7 +483,9 @@ def run_mover(argv):
     env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     cmd = [datahome.program()] if getattr(sys, "frozen", False) else [sys.executable, argv[0]]
-    cmd += datahome.restart_args()
+    cmd += datahome.restart_args() + [f"--after={os.getpid()}"]   # waits until this process is gone
+    from ui import tray
+    tray.release()
     subprocess.Popen(cmd, env=env, creationflags=flags, close_fds=True)
     return 0
 
@@ -404,5 +496,7 @@ def relaunch():
     env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     cmd = [datahome.program()] if getattr(sys, "frozen", False) else [sys.executable, sys.argv[0]]
-    cmd += datahome.restart_args()
+    cmd += datahome.restart_args() + [f"--after={os.getpid()}"]   # waits until this process is gone
+    from ui import tray
+    tray.release()
     subprocess.Popen(cmd, env=env, creationflags=flags, close_fds=True)

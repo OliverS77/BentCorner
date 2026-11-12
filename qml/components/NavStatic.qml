@@ -31,6 +31,8 @@ Item {
     property int direction: 1
     signal picked(string key)
     signal friendsClicked(real rightX, real bottomY)   // own button right of the profile: friends menu
+    signal profileClicked(real rightX, real bottomY)   // the profile button: its small menu (Profile · Edit · Devices)
+    property bool profileOpen: false
     property bool friendsOpen: false
     property bool friendsBadge: false                    // open requests
     // full screen: own close button (Windows/Linux far right, macOS left – where the window buttons sit)
@@ -168,15 +170,22 @@ Item {
             navLevel: nav.openOnly && modelData === nav.current && nav.glide > 0.55 ? 0 : nav.level   // the name once there is room
             led: !icon
             active: modelData === nav.current || (nav.backOn && modelData === nav.backKey)
+                    || (modelData === "profile" && nav.profileOpen)
             pulse: nav.backOn && modelData === nav.backKey ? nav.backPulse : -1
             opacity: nav.dimmed(modelData) ? 0.5 : 1
             Behavior on opacity { enabled: shell.animate; NumberAnimation { duration: 220 } }
-            badge: nav.badges[modelData] === true
+            badge: nav.badges[modelData] === true || nav.badges[modelData] === "pulse"
+            badgeUrgent: nav.badges[modelData] === "pulse"   // a request waiting to be seen (PLAN-EINFACH D)
             badgeCount: typeof nav.badges[modelData] === "number" ? nav.badges[modelData] : 0
             tip: modelData === nav.backKey ? shell.text("Back to") + " " + nav.oneLine(modelData)
                                            : modelData === "trade" ? nav.oneLine(modelData) + " · " + shell.text("Friends · Trade · Lists · Prices")
                                            : (icon || nav.level >= 2 ? nav.oneLine(modelData) : "")
             onClicked: {
+                if (modelData === "profile") {   // Oliver 06.11.: a small menu – „Profile“ is what the button did before
+                    var p = mapToItem(null, width, height + 6)
+                    nav.profileClicked(p.x, p.y)
+                    return
+                }
                 var a = nav.indexOf(nav.current)
                 nav.clickDir = index > a ? 1 : (index < a ? -1 : 0)
                 nav.picked(modelData)

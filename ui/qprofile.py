@@ -95,6 +95,58 @@ def shown_name(p):
     return relay.pretty(p["code"]) if p.get("code") else tr("no name")
 
 
+# „You can undo this in your profile“ (the block question, the file import) – here (lead 08.11.): only while someone is
+# blocked; the second click as a line; afterwards the entry is gone and either side can send a new request
+UNBLOCK_ASK = "Unblock? You won't be friends again, but this person can send you a friend request again."   # legal 08.11.
+UNBLOCK_BUSY = "Unblocking …"   # legal 08.11.
+UNBLOCK_OFFLINE = "No connection – nothing was changed. Try again in a moment."   # legal 08.11.: only a real connection error
+UNBLOCK_FAILED = "That didn't work – nothing was changed. Try again later."   # legal 08.11.: the server said no
+UNBLOCK_ORBIT = ("Unblocking needs the mailbox – it is part of Full Orbit. Nothing was changed.")   # legal 08.11. (performance:
+# without the mailbox the server's block would silently stay – so nothing happens locally either)
+
+
+def blocked_items(ui, ctrl, mem, refresh):
+    """The box „Blocked“: one row per blocked mailbox ID (the name as known + the short ID) with [Unblock]."""
+    from net import relay
+    try:
+        rows = [(c, f) for c, f in relay.friends(ctrl.settings).items() if f.get("status") == "blocked"]
+    except Exception:  # noqa: BLE001 – the profile never fails over this
+        rows = []
+    if not rows or not hasattr(ctrl, "relay_unblock"):
+        return []
+    out = []
+    states = getattr(ctrl, "relay_unblock_state", None) or {}   # server first: busy | offline | failed | mailbox_off
+    for code, f in rows:
+        who = f"<b>{_esc(f.get('name') or '')}</b> · {_esc(relay.pretty(code))}" if f.get("name") else _esc(relay.pretty(code))
+        state = states.get(code)
+        if state == "busy":
+            out.append(ui.row([ui.label(who, rich=True), ui.stretch(), ui.label(tr(UNBLOCK_BUSY), color="gray")]))
+            continue
+        if state == "mailbox_off" and mem.get("ask") != code:
+            from ui import backupui   # the way to the Orbit (the key Backup and Devices use too)
+            out += [ui.row([ui.label(who, rich=True), ui.stretch()]),
+                    ui.label(tr(UNBLOCK_ORBIT), color="gray"),
+                    ui.row([ui.button(tr(backupui.ORBIT_SETTINGS), lambda: backupui.to_orbit(ctrl)), ui.stretch()])]
+            continue
+        if state in ("offline", "failed") and mem.get("ask") != code:
+            out += [ui.row([ui.label(who, rich=True), ui.stretch(),
+                            ui.button(tr("Unblock"), lambda c=code: (mem.update(ask=c), refresh()))]),
+                    ui.label(tr(UNBLOCK_OFFLINE if state == "offline" else UNBLOCK_FAILED), color="gray")]
+            continue
+        if mem.get("ask") == code:
+            def go(c=code):
+                mem.clear()
+                ctrl.relay_unblock(c)
+                refresh()
+            out += [ui.label(who, rich=True),
+                    ui.row([ui.label(tr(UNBLOCK_ASK), fixed=True), ui.button(tr("Yes"), go),
+                            ui.button(tr("Back"), lambda: (mem.clear(), refresh())), ui.stretch()])]
+        else:
+            out.append(ui.row([ui.label(who, rich=True), ui.stretch(),
+                               ui.button(tr("Unblock"), lambda c=code: (mem.update(ask=c), refresh()))]))
+    return [ui.group(tr("Blocked"), out, flat=True)]
+
+
 class ProfileBackend(QtCore.QObject):
     changed = QtCore.Signal()
 
@@ -136,7 +188,9 @@ class ProfileBackend(QtCore.QObject):
         return self._back_form
 
     def _build_me(self, ui):
-        return self._me(ui, self.ctrl.settings)[0]
+        me = self._me(ui, self.ctrl.settings)[0]
+        blocked = blocked_items(ui, self.ctrl, self.__dict__.setdefault("unblock", {}), self.refresh)
+        return ui.col([me] + blocked, spacing=18) if blocked else me
 
     def _build_back(self, ui):
         return self._me(ui, self.ctrl.settings)[1]
@@ -174,7 +228,7 @@ class ProfileBackend(QtCore.QObject):
         from collection import binders
         from cards import carddb
         from cards import packs
-        from collection.tradelib import eur
+        from collection.tradelib import value as eur   # a binder's worth: a card value – not in Orbit's Core
         cur = games.current().key
         order = list(self.ctrl.settings.get("binder_order") or [])
         rows = self._binder_files()
@@ -196,7 +250,7 @@ class ProfileBackend(QtCore.QObject):
                         # formerly shared only via the menu (no flag): counts as shared while on display
                         "shared": bool(b["shared"]) if "shared" in b else bool(
                             __import__("net.relay", fromlist=["relay"]).posted(self.ctrl.settings, g, f"binder-{b['id']}")),
-                        "name": b.get("name") or tr("Binders"), "value": eur(total) if total else "–",
+                        "name": b.get("name") or tr("Binders"), "value": (eur(total) if total else "–") if eur(0) != "" else "",
                         "info": tr(f"{have} of {n} cards"), "owned": ok, "icon": self._game_icon(g),
                         "hue": (sum(ord(c) for c in b["id"]) * 37) % 360})
         if len(out) < self.MAX_BINDERS:
@@ -319,7 +373,7 @@ class ProfileBackend(QtCore.QObject):
             qbinder.share_put(self.ctrl, game, b)
         else:
             qbinder.share_withdraw(self.ctrl, game, bid)
-            self.ctrl.stream_toast(tr("Binder is private again – it disappears for your friends."))
+            self.ctrl.stream_toast(tr("Binder is private again – your friends' apps are asked to delete it."))
         self.ctrl.settings_changed()
         self.refresh()
 
@@ -379,8 +433,9 @@ class ProfileBackend(QtCore.QObject):
         """One line at the very bottom: offline or shared with friends."""
         from net import relay
         s = self.ctrl.settings
-        if not relay.enabled(s) or not relay.ok_friends(s):
-            return tr("Offline profile – nobody but you can see it.")
+        if not relay.enabled(s) or not relay.ok_friends(s):   # Core and Near Orbit (legal 06.11.: this sentence)
+            from system import orbit
+            return tr(orbit.PROFILE_PRIVATE)
         parts = [tr("your name and your card back")]
         if s.get("share_library") is True:
             parts.append(tr("your library"))
@@ -388,6 +443,35 @@ class ProfileBackend(QtCore.QObject):
         return tr("Shared profile – your friends see ") + ", ".join(parts[:-1]) + tr(" and ") + parts[-1] + "."
 
     # ---------- Friends menu on the profile button ----------
+    @QtCore.Property("QVariantMap", notify=changed)
+    def libShare(self):
+        """The lasting line in the friends menu while something goes out (legal 06.11., no pop-up) – exact: to how many
+        friends. The (c′) card lives on "Shared with friends" (ui/qshared.py); "Change" opens that page.
+        {kind: "on" | "", text, action}"""
+        from net import relay
+        s = self.ctrl.settings
+        if not relay.enabled(s) or not relay.ok_friends(s):
+            return {"kind": "", "text": "", "action": ""}
+        n = len(relay.share_codes(s))
+        c = self.ctrl.relay_share_contents()
+        if not n or not (c["library"] or c["lists"] or c["binders"]):
+            return {"kind": "", "text": "", "action": ""}
+        from ui import qshared
+        if c["library"]:
+            text = qshared.library_line(n)
+        else:
+            what = qshared.things(len(c["lists"]), len(c["binders"]))
+            text = tr(f"You share {what} with 1 friend.") if n == 1 else tr(f"You share {what} with {n} friends.")
+        return {"kind": "on", "text": text, "action": tr("Change")}
+
+    @QtCore.Slot()
+    def libShareAction(self):
+        """"Change": the page "Shared with friends" in Orbit."""
+        self.ctrl.stream.show_page("trade", back=True)
+        tb = self.ctrl.shell.backends.get("trade")
+        if tb is not None:
+            tb.showFolder("shared")
+
     @QtCore.Property("QVariantMap", notify=changed)
     def me(self):
         from net import relay
@@ -410,6 +494,37 @@ class ProfileBackend(QtCore.QObject):
                             "pretty": relay.pretty(p["code"]) if p["code"] else ""})
         return out
 
+    # ---------- a friend has moved (rekey, PAIRING §3 – legal's wording 07.11.2026; logic: performance) ----------
+    MOVED = ("{name} has moved (new device or set up again). Only accept if you're sure it comes from {name} –"
+             " ask them if in doubt.")
+
+    @QtCore.Property("QVariantList", notify=changed)
+    def moves(self):
+        """Friends whose move waits for my answer – [{code, name, text}] (relay friends[old]["moved"])."""
+        from net import relay
+        out = []
+        for code, f in relay.friends(self.ctrl.settings).items():
+            if f.get("moved") and f.get("status") == "ok":
+                name = f.get("name") or relay.pretty(code)
+                out.append({"code": code, "name": name, "text": tr(self.MOVED).format(name=name)})
+        return out
+
+    @QtCore.Property(str, notify=changed)
+    def moveNote(self):
+        return getattr(self, "_move_note", "")
+
+    @QtCore.Slot(str, bool)
+    def moveAnswer(self, code, accept):
+        """[Accept] / [Decline] – two equal keys; declined says where sharing stays (old address gone or not)."""
+        from net import relay
+        f = relay.friends(self.ctrl.settings).get(code) or {}
+        name = f.get("name") or relay.pretty(code)
+        gone = bool((f.get("moved") or {}).get("old_gone"))
+        if hasattr(self.ctrl, "friend_move_answer"):
+            self.ctrl.friend_move_answer(code, bool(accept))
+        self._move_note = "" if accept else (tr("Declined. You'll only share with {name} again once you connect anew.") if gone else tr("Declined. Sharing with {name} stays at the old address.")).format(name=name)
+        self.refresh()
+
     @QtCore.Slot()
     def copyCode(self):
         code = self.me.get("code")
@@ -428,8 +543,7 @@ class ProfileBackend(QtCore.QObject):
                 return tr("Turn on exchange via the server first.")
         if len(code.replace("-", "")) < 8:
             return tr("That doesn't look like an ID (e.g. 7F3A-21C9-0B44-E1D2).")
-        self.ctrl.relay_add(code)
-        self.ctrl.stream_toast(tr("Request sent"))
+        self.ctrl.relay_add(code)   # reports the result itself, once it is there ("sent" or "not sent: …")
         QtCore.QTimer.singleShot(1500, self.refresh)
         return ""
 
@@ -463,11 +577,14 @@ class ProfileBackend(QtCore.QObject):
                 ui.label(f"<span style='font-size:17px'><b>{code}</b></span>", rich=True, wrap=False),
                 ui.row([ui.button(tr("Copy"), lambda: ctrl.copy_text(code, tr("ID copied"))), ui.stretch()])],
                 spacing=4)))
+        name = ui.edit(prof.get("name") or "", lambda t: (userprofile.ensure(s, t[:40]), changed()),
+                       key="name", placeholder=tr("Your name or nickname"))
+        if getattr(ctrl, "focus_profile_name", False):   # export without a name sent us here (importview, 06.11.)
+            name["focus"] = True
+            ctrl.focus_profile_name = False
         return (
             ui.group(tr("You"), [
-                ui.form([(tr("Name"), ui.edit(prof.get("name") or "", lambda t: (userprofile.ensure(s, t[:40]),
-                                                                                  changed()),
-                                              key="name", placeholder=tr("Your name or nickname")))] + ids),
+                ui.form([(tr("Name"), name)] + ids),
                 ui.note(tr("Only your friends can see your name – a nickname is fine. Everything here stays on this computer unless you share it yourself.")),
             ], flat=True),
             ui.group(tr("Your card back"), [

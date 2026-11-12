@@ -1,4 +1,9 @@
-<!-- LOGO: placeholder – Oliver chooses the version (mark / horizontal lockup / steps) before the first export. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo/lockup-lang-auf-dunkel.svg">
+    <img alt="Bent°Corner" src="brand/logo/lockup-lang-auf-hell.svg" width="420">
+  </picture>
+</p>
 
 # Bent°Corner
 

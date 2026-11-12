@@ -22,6 +22,15 @@ class UpkeepControl:
         from collection import collectibles
         from net import updater
         updater.cleanup_old()
+        from system import installinfo
+        try:   # first start after the move from the old starter to the installer: tidy up, say it once
+            if installinfo.after_move(self.settings):
+                self.settings_changed()
+                QtCore.QTimer.singleShot(4000, lambda: self.stream_toast(tr(
+                    "From now on Bent°Corner is properly installed (Start menu, uninstall under Windows Apps). "
+                    "Your collection stays where it is.")))
+        except Exception:  # noqa: BLE001
+            log.exception("Move to the installer")
         if not getattr(self, "_collectibles_done", False):   # back up tickets & co. (data/collectibles)
             self._collectibles_done = True
             QtCore.QTimer.singleShot(15000, collectibles.startup)
@@ -171,10 +180,15 @@ class UpkeepControl:
                 self.save_session()
                 self.save_collection()
                 self.save_settings()
-                self.updater.install()
+                done = self.updater.install()
         except Exception as e:  # noqa: BLE001
             log.exception("Installing update")
             self.stream_toast(tr(f"Update not installed: {e}"))
+            return
+        if done == "setup":   # the installer closes nothing of ours by force: we quit, it starts the new version
+            log.info("Update: installer started – quitting")
+            self.force_quit = True
+            self.request_quit()
             return
         log.info("Update installed – restarting")
         self.restart()
@@ -278,8 +292,10 @@ class UpkeepControl:
         from system import autobackup
         from net import teamnews
         u = getattr(self, "updater", None)
+        from ui import backupui
         state = (teamnews.unread(self.settings) > 0, autobackup.attention(self.settings),
-                 bool(u is not None and u.state in ("ready", "available")), autobackup.lamp(self.settings))
+                 bool(u is not None and u.state in ("ready", "available")), autobackup.lamp(self.settings),
+                 backupui.request_unseen(self) or __import__("ui.qsync", fromlist=["x"]).join_request_unseen(self))
         if only_changed and state == getattr(self, "_badge_state", None):
             return
         self._badge_state = state
@@ -290,7 +306,8 @@ class UpkeepControl:
             # Settings: backup missing (until at least one is set up) or update ready
             warn = bool(state[3])   # the lamp follows lamp(); the notice text (state[1]) may stay without it
             # (the backup lamp only lights up in the settings: button at the top + "Backup" tab)
-            st.set_badge("settings", warn or state[2])
+            # a protection-code request not seen yet: the button pulses (PLAN-EINFACH D)
+            st.set_badge("settings", "pulse" if state[4] else (warn or state[2]))
             st.set_badge("import", False)
             ib = getattr(getattr(self, "shell", None), "backends", {}).get("import")
             if ib is not None:

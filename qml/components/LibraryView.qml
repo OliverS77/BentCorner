@@ -125,29 +125,29 @@ Item {
         x: page.pad; width: page.width - 2 * page.pad
         anchors.top: advPanel.bottom; anchors.topMargin: lib.group.open ? 10 : 0
     }
-    // the chip row: the active filters – and "Group by" always at its right end (Oliver, 30.10.)
+    // the chip row: the active filters – and "Group by" always as the last chip, left after the others (Oliver, 05.11.;
+    // before: at the right end)
     Item {
         id: chipRow
         x: page.pad; width: page.width - 2 * page.pad
         anchors.top: groupPanel.bottom
         anchors.topMargin: lib.chips.length || lib.listChip || groupChips.shown ? 8 : 0
-        height: Math.max(chips0.height, groupChips.height)
+        height: chips0.height
         ChipBar {
             id: chips0
             // a picked list: the chips move a little to the right while its rows slide in (review .101)
             property real shift: lib.isMain && lib.listBar ? 16 : 0
             Behavior on shift { enabled: shell.animate; NumberAnimation { duration: 220 * shell.speed; easing.type: Easing.OutCubic } }
-            x: shift; width: chipRow.width - shift - (groupChips.shown ? groupChips.width + 10 : 0)
+            x: shift; width: chipRow.width - shift
             groups: lib.chips
             lead: lib.listBar ? null : lib.listChip   // a picked list has its own tool row below
             onChipClicked: function (id) { lib.chip(id) }
             onLeadClicked: lib.clearList()
-        }
-        GroupChips {
-            id: groupChips
-            objectName: "groupChips"
-            g: lib.group
-            anchors.right: parent.right
+            tail: GroupChips {
+                id: groupChips
+                objectName: "groupChips"
+                g: lib.group
+            }
         }
     }
     // extra chips (Trade: „have“, „missing“ …)
@@ -1254,6 +1254,10 @@ Item {
             linkColor: T.text   // total value (underlined): click expands the value history
             onLinkActivated: function (link) { if (link === "value") lib.toggleValue() }
             HoverHandler { cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        }
+        PriceVeil {   // Orbit's Core: the short line next to the counts (where the value stood)
+            full: false; visible: !shell.pricesOn && lib.isMain
+            width: 190; height: 30; anchors.verticalCenter: parent.verticalCenter
         }
         Btn {
             visible: !lib.hasDb

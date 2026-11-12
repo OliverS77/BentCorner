@@ -24,7 +24,9 @@ from PySide6 import QtCore, QtGui
 from system import contacts
 from system.i18n import tr
 
-STEPS = ("profile", "friends", "stats", "background", "finish")
+STEPS = ("profile", "friends", "rescue", "stats", "background", "finish")
+# the rescue code is a page of the Orbit step (only with the online backup on) – it doesn't count as a step of its own
+NUMBER = {"profile": 4, "friends": 5, "rescue": 6, "stats": 6, "background": 7, "finish": 8}
 LOADING = ("carddb", "pack")   # jobs the setup waits for: card database (Scryfall) and data packs
 # Card database (Magic): share of each section in the total duration – for bar and time left
 PHASES = (("Scryfall fragen", 0.02), ("Kartendaten: herunterladen", 0.45), ("Kartendaten: einlesen", 0.35),
@@ -59,6 +61,9 @@ class Onboarding:
         self.t0, self.f0, self.job = None, 0.0, None
         self.had_download, self.sig = False, None
         self.timer = QtCore.QTimer(ctrl, interval=1500, timeout=self._tick)
+        bridge = getattr(ctrl, "bridge", None)   # the rescue code's upload reports through the sync row's signal
+        if bridge is not None and hasattr(bridge, "sync_state"):
+            bridge.sync_state.connect(lambda: self.dlg.refresh() if self.dlg is not None and self.step == "rescue" else None)
 
     # ---------- Flow ----------
     @property
@@ -75,7 +80,7 @@ class Onboarding:
     def back(self):
         i = STEPS.index(self.step)
         if 0 < i < STEPS.index("finish"):
-            self.go(STEPS[i - 1])
+            self.go("friends" if STEPS[i - 1] == "rescue" else STEPS[i - 1])   # back past the code page: the Orbit step
 
     def finish(self):
         self.timer.stop()
@@ -154,10 +159,22 @@ class Onboarding:
     # ---------- Pages ----------
     def build(self, ui, d):
         step = self.step
-        n = STEPS.index(step) + 4
-        head = ui.row([ui.label(tr(f"Step {n} of 8"), color="gray", fixed=True), ui.stretch(), self._indicator(ui)])
+        # the rescue code is a step of its own (lead 06.11.) – counted only while the online backup is chosen
+        extra = 1 if self._with_rescue() else 0
+        n = NUMBER[step] + (extra if step in ("stats", "background", "finish") else 0)
+        total = 8 + extra
+        head = ui.row([ui.label(tr(f"Step {n} of {total}"), color="gray", fixed=True), ui.stretch(), self._indicator(ui)])
         body = getattr(self, "_" + step)(ui)
         return ui.col([head] + body, spacing=12)
+
+    def _with_rescue(self):
+        """The online backup is chosen in this setup: the sync built in, Full Orbit (picked or on) and the switch on."""
+        from system import orbit
+        from ui import backupui
+        if not backupui.built():
+            return False
+        lv = self.st.get("orbit") or orbit.level(self.s)
+        return lv == "full" and self.st.get("backup", True) is not False
 
     def _nav(self, ui, *buttons, back=True):
         row = [ui.button(tr("Back"), self.back)] if back else []
@@ -195,7 +212,10 @@ class Onboarding:
             if want == "full" and not orbit.age_ok(self.s):
                 want = "near"
             orbit.set_level(self.ctrl, want)
-            self.go("stats")
+            from ui import backupui   # online backup chosen: the rescue code first – nothing goes up before (legal)
+            on = want == "full" and self.st.get("backup", True) and backupui.available(self.ctrl) \
+                and self.s.get("sync_backup") is not True
+            self.go("rescue" if on else "stats")
 
         def confirm(on):
             if on:
@@ -205,7 +225,13 @@ class Onboarding:
                  ui.label(tr("Orbit is everything around your collection: prices, marketplaces, friends and trading. The rings show how far your data travels.")),
                  ui.space(6),
                  ui.orbit(orbit.LEVELS.index(lv), pick,   # back here after Full Orbit was set: what leaving does
-                          leave=tr(orbit.LEAVE) if orbit.level(self.s) == "full" else "")]
+                          leave=tr(orbit.LEAVE) if orbit.level(self.s) == "full" else "",
+                          # „Daten online sichern, verschlüsselt“ right under the columns (lead 06.11.)
+                          sync=__import__("ui.backupui", fromlist=["x"]).setup_sync(self.st, lv, self.dlg.refresh))]
+        # the terms (legal 04.11., § 305 (2) BGB): whenever "Next" would turn Full Orbit on – also with the age
+        # confirmed earlier (then without the age line); right above the age line when that is asked
+        if lv == "full" and (orbit.level(self.s) != "full" or not orbit.age_ok(self.s)):
+            items.append(ui.note(tr(orbit.TERMS_LINE).replace("{url}", contacts.SITE + "/nutzung.html")))
         if lv == "full" and not orbit.age_ok(self.s):
             items += [ui.check(tr(orbit.AGE), False, confirm), ui.note(tr(orbit.AGE_NOTE))]
         items += [ui.space(6),
@@ -216,6 +242,15 @@ class Onboarding:
                                   rich=True))
         items.append(self._nav(ui, ui.button(tr("Next"), next_, primary=True)))
         return items
+
+    def _rescue(self, ui):
+        from ui import backupui
+
+        def back():   # no backup – nothing uploaded; the Orbit page with the switch off
+            self.st["backup"] = False
+            self.go("friends")
+        return backupui.rescue_items(ui, self.ctrl, self.st.setdefault("rescue", {}), self.dlg.refresh,
+                                     on_back=back, on_done=lambda: self.go("stats"), form=getattr(self.dlg, "form", None))
 
     def _stats(self, ui):
         from net import anonstats

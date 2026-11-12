@@ -124,7 +124,7 @@ Item {
                         }
                     }
                     Text { width: parent.width; elide: Text.ElideRight
-                           text: (bt.modelData.value || "") + "  ·  " + (bt.modelData.info || "")
+                           text: [bt.modelData.value, bt.modelData.info].filter(function (x) { return !!x }).join("  ·  ")
                            color: T.muted; font.family: T.font; font.pixelSize: 12 }
                 }
 

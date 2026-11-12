@@ -254,7 +254,7 @@ def load_library(exclude=()):
         npz = f.with_suffix(".npz")
         if not meta or not npz.exists():
             continue
-        with np.load(npz) as z:
+        with np.load(npz, allow_pickle=False) as z:
             P, D, O = z["pts"], z["des"], z["offsets"]
         if len(O) - 1 != len(meta["cards"]):
             continue  # incomplete, rebuilt on the next download
@@ -629,7 +629,7 @@ def _migrate_single_file():
     if not old_cards.exists() or not old_npz.exists():
         return
     cards = json.loads(old_cards.read_text("utf-8"))
-    with np.load(old_npz) as z:
+    with np.load(old_npz, allow_pickle=False) as z:
         pts = [z[f"p{i}"] for i in range(len(cards))]
         des = [z[f"d{i}"] for i in range(len(cards))]
     SETS.mkdir(parents=True, exist_ok=True)
@@ -708,6 +708,52 @@ def export_sets(codes, path, progress=lambda text, done, total: None):
     return len(files)
 
 
+# a set package from outside (review 08.11., Gordon B2/B5): image paths only below card-images/, sane sizes
+_IMG_REL = re.compile(r"(data/)?card-images/[\w.-]+(/[\w.-]+)*\.jpg")   # as the card lists store it
+PACK_MAX = {".json": 64 * 1024 ** 2, ".npz": 512 * 1024 ** 2, ".jpg": 16 * 1024 ** 2}
+
+
+def _safe_img(rel):
+    """An image path from a set's card list: relative, below card-images/, no way out."""
+    return isinstance(rel, str) and ".." not in rel and bool(_IMG_REL.fullmatch(rel.replace("\\", "/")))
+
+
+def _pack_cards_ok(raw):
+    """The card list of a set from a package: every image path safe (else the whole package is refused)."""
+    try:
+        d = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return False
+    cards = d.get("cards") if isinstance(d, dict) else None
+    if not isinstance(cards, list):
+        return False
+    for c in cards:
+        if not isinstance(c, dict):
+            return False
+        for k, v in c.items():
+            if k.startswith("img") and v not in (None, "") and not _safe_img(v):
+                return False
+    return True
+
+
+def _read_limited(z, name):
+    """An entry of the package, at most PACK_MAX bytes for its kind – also while reading (sizes can lie)."""
+    limit = PACK_MAX.get(pathlib.PurePosixPath(name).suffix.lower(), 16 * 1024 ** 2)
+    if z.getinfo(name).file_size > limit:
+        raise RuntimeError(tr("This is not a Bent°Corner set package."))
+    out, n = [], 0
+    with z.open(name) as src:
+        while True:
+            chunk = src.read(1 << 20)
+            if not chunk:
+                break
+            n += len(chunk)
+            if n > limit:
+                raise RuntimeError(tr("This is not a Bent°Corner set package."))
+            out.append(chunk)
+    return b"".join(out)
+
+
 def import_sets(path, progress=lambda text, done, total: None):
     """Counterpart to export_sets. Only takes files under recognition/ and card-images/ (older packages:
     erkennung/ and bilder/). -> list of set codes"""
@@ -725,11 +771,14 @@ def import_sets(path, progress=lambda text, done, total: None):
                                                r"(/[\w-]+)?/[\w.-]+\.jpg)", n)]
         if not any(new_name(n).startswith("recognition/") for n in ok):
             raise RuntimeError(tr("This is not a Bent°Corner set package."))
+        # every card list first: one unsafe image path and nothing at all is written (review 08.11. B2)
+        for n in ok:
+            if n.endswith(".json") and not _pack_cards_ok(_read_limited(z, n)):
+                raise RuntimeError(tr("This is not a Bent°Corner set package."))
         for i, n in enumerate(ok, 1):
             target = DATA / new_name(n)
             target.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(n) as src:
-                data = src.read()
+            data = _read_limited(z, n)
             tmp = target.with_name(target.name + ".part")
             tmp.write_bytes(data)
             tmp.replace(target)

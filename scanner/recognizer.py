@@ -26,6 +26,10 @@ log = logging.getLogger("booster")
 
 HINT_AFTER = 1.5   # s without a match until a tip (glare, dark, blurry) appears – setting "scan_hints"
 UNKNOWN_AFTER = 1.5   # s a sharp card lies there without a hit until the card search opens (Esc = skip)
+SLOW_LOG = 3.0   # s: a card counted later than this – or gone uncounted after this long – gets one line in the local
+#                  log: what its frames were (only counts, no pictures; lead 07.11.2026 – why are some cards slow?)
+SLOW_WHY = (("Loading reference images", "loading"), ("fingerprint disagrees", "close"), ("at the edge", "edge"),
+            ("similar print", "similar"))
 # "Empty" frames (no edges in the scan zone) – only the mat itself ends a card (Oliver, live 0.9.2: a card lying there
 # was counted twice): a dark frame (the camera waking up) or a hand over the card doesn't
 DARK_BELOW = 30       # mean brightness (0–255) of the scan zone: darker = the camera isn't seeing yet
@@ -343,6 +347,8 @@ class Recognizer:
                 self.status = tr("camera image dark") if kind == "dark" else tr("card covered")
                 self.stage = "idle"
                 return seq
+            if getattr(self, "_card_t0", None) is not None:
+                self._slow_line("gone without counting", time.time() - self._card_t0)
             self._ai_reset()
             if self._offered and not self.offer_open:   # gone, its search never opened: the [K] note goes
                 self.unknown_gone = True
@@ -372,6 +378,7 @@ class Recognizer:
         skipped = getattr(self, "_blur_skips", 0)
         if sharp < 0.4 * self._sharp_ref and skipped < 6:
             self._blur_skips = skipped + 1
+            self._slow_note("blurry")
             return seq
         self._blur_skips = 0
         known = getattr(self, "_ai_known", None)
@@ -401,6 +408,8 @@ class Recognizer:
             entry = None
         self.current = entry
         name = entry["name"] if entry else None
+        if fresh_search and not (name and name == getattr(self, "_ai_last_name", None)):   # not the counted one
+            self._slow_frame(res)
         if res["status"] == "none":   # a sharp card lies there, nothing found: hand over to the card search early
             if self._nohit_since is None:
                 self._nohit_since = now
@@ -480,6 +489,7 @@ class Recognizer:
                 before = f" · frame was {last[0]} {now - last[1]:.1f} s ago" if last and now - last[1] < 60 else ""
                 log.info("Counted: %s %s #%s after %.2f s · %s%s", entry["name"], entry["set"], entry["number"],
                          now - (self._card_t0 or now), res.get("how"), before)
+                self._slow_line(f"{entry['set']} #{entry['number']} counted", now - (self._card_t0 or now))
                 self._card_t0 = now
                 self._remember_crop(cur["added"], entry, res.get("how"))
                 if res.get("lang"):  # confirmed via the image in this language: language is already settled
@@ -604,7 +614,8 @@ class Recognizer:
         the new card is scanned as usual. Checked every 0.3 s in the background, so scanning never blocks.
         -> True if the question was dropped."""
         now = time.time()
-        if self.fp_index is None or now < getattr(self, "_pend_next", 0.0):
+        pending = self.pending   # the user may answer it on the UI thread meanwhile (it is then None)
+        if pending is None or self.fp_index is None or now < getattr(self, "_pend_next", 0.0):
             return False
         self._pend_next = now + 0.3
         fh, fw = frame.shape[:2]
@@ -623,8 +634,8 @@ class Recognizer:
         how = res.get("how") or ""
         sure = res.get("status") == "ok" and (res.get("strength", 0) >= aiscan.COUNT_NEEDS or "unambiguous" in how)
         name = (res.get("entry") or {}).get("name") or ""
-        asked = (self.pending.get("r") or {}).get("name") or ""
-        if not sure or not name or name == asked:
+        asked = (pending.get("r") or {}).get("name") or ""
+        if not sure or not name or name == asked or self.pending is not pending:   # answered while looking: done
             return False
         self.resolve(None)
         self.question_dropped = asked
@@ -662,12 +673,39 @@ class Recognizer:
         return (box is not None and was is not None and last is not None and name != self._ai_last_name
                 and _iou(box, was) >= 0.5 and _iou(last, was) < 0.3)
 
+    def _slow_note(self, what, sim=0.0):
+        """One frame of the card being looked at, for the slow-card line (only counts)."""
+        if getattr(self, "_slow", None) is None:
+            self._slow, self._slow_sim = collections.Counter(), 0.0
+        self._slow[what] += 1
+        self._slow_sim = max(self._slow_sim, sim or 0.0)
+
+    def _slow_frame(self, res):
+        """A fresh search's result -> why this frame didn't count (yet)."""
+        how = res.get("how") or ""
+        if res["status"] == "none":
+            what = next((k for t, k in SLOW_WHY if t in how), "nothing")
+        elif res["status"] == "ask":
+            what = "print unclear"
+        else:
+            what = "found"
+        self._slow_note(what, res.get("sim"))
+
+    def _slow_line(self, head, since):
+        """A card that took longer than SLOW_LOG: one line with what its frames were; then start over."""
+        tally = getattr(self, "_slow", None)
+        if tally and since >= SLOW_LOG and sum(n for k, n in tally.items() if k != "blurry"):
+            log.info("Slow card: %s after %.1f s · frames: %s · best fingerprint %.2f", head, since,
+                     ", ".join(f"{k} {n}" for k, n in tally.most_common()), self._slow_sim)
+        self._slow, self._slow_sim = None, 0.0
+
     def _ai_reset(self):
         self.live._foot_reads = []   # collector line reads of the card that is gone – never for the next one
         self._ai_known = self._ai_thumb = self._ai_last_name = self._ai_last_lang = None
         self._ai_hist, self._card_t0, self._ai_fail_since = [], None, None
         self._ai_counted, self._ai_other_lang = {}, []
         self._ai_prev, self._ai_boxes = None, {}
+        self._slow, self._slow_sim = None, 0.0
         self.current, self.hit, self.looking = None, None, False
 
     def _fetch_card_image(self, entry):

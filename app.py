@@ -11,6 +11,15 @@ import sys
 if "--ai-worker" in sys.argv:   # AI worker process (aiworker.py): no Qt or windows, just network + text recognition
     from scanner import aiworker
     aiworker.serve()
+if "--forget-server" in sys.argv:   # uninstaller: delete our data on the server – nothing else, no window (net/forget.py)
+    from net import forget
+    forget.main()
+if "--wipe-local" in sys.argv:   # „Bent°Corner löschen“: delete the collection after the program ended (system/wipe.py)
+    from system import wipe
+    wipe.main()
+if any(a.startswith("--selftest-scan=") for a in sys.argv):   # Win10 test stick: SCAN° on test frames, no window,
+    from system import selftest                                # no network, only the given data folder (system/selftest.py)
+    selftest.run()
 
 import collections
 import html
@@ -62,6 +71,9 @@ from scanner.core import INFO_DEFAULTS, Matcher, Session, pack_total, price_of, 
 from scanner.scan_ctl import ScanControl   # APP-SPLIT D: MainWindow mixin
 
 from net.relay_ctl import RelayControl   # APP-SPLIT C: MainWindow mixin
+from net.sync_ctl import SyncControl     # own devices in sync (test build only, collection/syncrun.py)
+from net.poll_ctl import PollControl     # the minute question: sync and mailbox without buttons (07.11.)
+from net.devices_ctl import DevicesControl   # own devices one by one: remove one, join requests (B5)
 
 from system.upkeep_ctl import UpkeepControl   # APP-SPLIT C: MainWindow mixin
 
@@ -76,7 +88,7 @@ from system.startup import SETTINGS_FILE, saved_language   # APP-SPLIT C: start-
 
 set_language(saved_language())  # before all translated texts (including the constants below)
 
-from ui.scanlook import eur, finish_label, finish_short, refresh_color_consts, shown_name  # noqa: E402
+from ui.scanlook import eur, finish_label, money, signed, finish_short, refresh_color_consts, shown_name  # noqa: E402
 from ui.scanlook import CYAN, MAGENTA  # noqa: E402,F401 – qcharts reads app.CYAN / app.MAGENTA
 
 
@@ -105,7 +117,13 @@ SETTINGS_PAGES = [("general", "settings", "General", "Game, language, program wi
                   ("updates", "update", "Updates", "New versions and patch history"),
                   ("legal", "legal", "Legal", "Legal notice, privacy policy, terms, sources and licenses"),
                   ("about", "heart", "About Bent°Corner", "Who is behind it, version and a coffee"),
-                  ("game", "game", "Scalper Invaders", "Psst – a little easter egg")]
+                  ("game", "game", "Scalper Invaders", "Psst – a little easter egg"),
+                  # the last one (PLAN.md § 5.1): the server part and this PC, inline (ui/qforget.py)
+                  ("delete", "trash", "Delete Bent°Corner", "Your data on the server and on this PC")]
+from collection import syncrun as _syncrun   # noqa: E402
+if _syncrun.available():   # own devices in sync: only in a test build (lead 03.11.)
+    SETTINGS_PAGES.insert([k for k, *_ in SETTINGS_PAGES].index("backup") + 1,
+                          ("devices", "swap", "Your devices", "Sync with your other devices"))
 SETTINGS_SECTIONS = {"general": "Everyday", "display": "Looks", "backup": "Your data", "updates": "Advanced"}
 LEGAL_TEXT = [
     ("Preise", "Bent°Corner doesn't make its own prices. It shows the guide values of the two big marketplaces: "
@@ -332,6 +350,9 @@ class Bridge(QtCore.QObject):
     catalog = QtCore.Signal(object, bool)        # set list from Scryfall, triggered by hand?
     ticket = QtCore.Signal(object)               # camera read a trade ticket
     relay_done = QtCore.Signal(str, object, str)  # mailbox: kind, result, error
+    sync_done = QtCore.Signal(str, object, object)  # sync: step, result, error (exception or None)
+    sync_soon = QtCore.Signal()                   # sync: a save produced ops (sync in 20 s)
+    sync_state = QtCore.Signal()                  # sync: the status changed (the sync row)
     backup_done = QtCore.Signal(object)           # automatic backup: [(target, ok, text)]
     update_changed = QtCore.Signal()              # updater (updater.py): state/progress
 
@@ -383,7 +404,7 @@ class UndoKeys(QtCore.QObject):
         return True
 
 
-class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObject):
+class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl, PollControl, DevicesControl, QtCore.QObject):
     """Program control (camera, recognition, sessions, sets, collection, settings) – not a window: everything is
     shown by Qt Quick (quickshell)."""
     sess_changed = QtCore.Signal()  # Sessions: table, selection, overview or pack list changed
@@ -405,6 +426,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
             self.settings["perf_level"] = perf.detect(self.hw)
         perf.set_level(self.settings["perf_level"])
         currency.set_current(self.settings["currency"])
+        orbit.bind(self.settings)   # Core shows no card prices (orbit.prices_shown)
         QtCore.QTimer.singleShot(4000, carddb.prewarm_printed)  # names in other languages for the search (background)
         self.camera = Camera()
         self.camera.phone_starter = self.phone_start   # phone as camera: server only when needed
@@ -441,6 +463,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         self.bridge.job_done.connect(self.on_job_done)
         self.bridge.catalog.connect(self.on_catalog)
         self.bridge.ticket.connect(self.ticket_seen)
+        # a protection-code request arrives with the sync: Settings + „Backup“ pulse (PLAN-EINFACH D)
+        self.bridge.sync_state.connect(lambda: self.autobackup_badge(only_changed=True))
         self.recognizer.on_ticket = self.bridge.ticket.emit
 
         self._save_timer = QtCore.QTimer(self, singleShot=True, interval=500, timeout=self.save_settings)
@@ -508,13 +532,43 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
     def load_settings(self):
         s = json.loads(json.dumps(DEFAULTS))
         try:
-            s.update(json.loads(SETTINGS_FILE.read_text("utf-8")))
+            data = json.loads(SETTINGS_FILE.read_text("utf-8"))
         except (OSError, ValueError):
-            pass
+            data = None
+        if isinstance(data, dict):   # anything else (a list, a number …) never crashes the start (review 08.11. F2)
+            s.update(data)
         return s
 
     def settings_changed(self):
         self._save_timer.start()
+        lv = orbit.level(self.settings)   # prices (Core) and friends/tickets (Full Orbit) follow the level
+        if lv != getattr(self, "_orbit_level", lv):
+            QtCore.QTimer.singleShot(0, self.orbit_changed)   # after the caller has finished changing the settings
+        self._orbit_level = lv
+
+    def orbit_changed(self):
+        """Level changed: card prices (Core) and friends/tickets (Full Orbit) appear/disappear – redraw what shows them."""
+        if getattr(self, "sync_engine", None) is not None:
+            self.sync_setup()   # the sync pauses outside Full Orbit and goes on when it's back (lead 07.11.)
+        shell = getattr(self, "shell", None)
+        if shell is not None:
+            shell.orbitChanged.emit()
+        self.currency_changed()
+        tp = getattr(self, "trade_page", None)
+        if tp is not None and hasattr(tp, "fill_friends"):
+            tp.fill_friends()
+        from ui import qlibrary
+        qlibrary.orbit_changed()   # every library view: sort list (price only from Near Orbit on) and label
+        tb = (getattr(shell, "backends", None) or {}).get("trade")
+        if tb is not None:
+            tb.listsChanged.emit()   # the Orbit sidebar: subtitles and counts per level
+        if orbit.level(self.settings) == "full" and self.settings.pop("shared_ask_on_full", None):
+            # first time in Full Orbit since the update (orbit.hold_sharing): "Shared with friends" asks first – no window
+            self.settings_changed()
+            tb = getattr(getattr(self, "shell", None), "backends", {}).get("trade")
+            self.stream.show_page("trade")
+            if tb is not None:
+                tb.showFolder("shared")
 
     def save_settings(self):
         if getattr(self, "restored", False):
@@ -1103,6 +1157,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
             from system import undo
             with undo.quiet():
                 self.logs_check(why=tr("undone"))
+                if getattr(self, "sync_on", None) is not None and self.sync_on():
+                    self.logs_fields_check()
             if hasattr(self, "coll_info"):
                 self.refresh_collection_info()
         dp = getattr(self, "deck_page", None)
@@ -1181,7 +1237,9 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         return True
 
     def start_ticket(self, game, how):
-        """"New session → Trade ticket": load as an image or scan from the phone with the camera."""
+        """"New session → Trade ticket": load as an image or scan from the phone with the camera – Full Orbit only."""
+        if not orbit.friends_shown():
+            return False
         if game != games.current().key:
             return self.switch_game(game, then=lambda: self.start_ticket(game, how))
         tp = getattr(self, "trade_page", None)
@@ -1195,8 +1253,10 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         return True
 
     def ticket_seen(self, t):
-        """The camera read a trade ticket (main thread)."""
+        """The camera read a trade ticket (main thread) – booked only in Full Orbit (tickets belong to friends)."""
         self.recognizer.ticket_mode = False
+        if not orbit.friends_shown():
+            return
         tp = getattr(self, "trade_page", None)
         if tp is not None:
             tp.book_ticket(t)
@@ -1528,6 +1588,9 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
             QtCore.QTimer.singleShot(1500, self.maybe_welcome)
         QtCore.QTimer.singleShot(8000, self.maybe_backup_reminder)
         self.relay_setup()   # friends online: fetch if switched on
+        QtCore.QTimer.singleShot(3000, self.forget_pending_check)   # a deletion that waited for a connection first
+        QtCore.QTimer.singleShot(3500, getattr(self, "leave_pending_check", lambda: None))   # U5 T5: a cancelled join
+        self.sync_setup()    # own devices in sync – only in a test build and when switched on
         QtCore.QTimer.singleShot(12000, self.alarms_at_start)   # report price alerts even without a new price update
         from collection import trade as _trade   # automatic trade lists need the collection and deck cards
         _trade.COLLECTION[0] = lambda: self.collection.items
@@ -1549,8 +1612,9 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         if onboarding.active(self.settings):   # first-run setup part 2 (profile, friends, numbers, background)
             QtCore.QTimer.singleShot(600, lambda: onboarding.start(self))
         self.lists_private_once()
-        if not onboarding.active(self.settings):   # after the update: ask once whether the Library is shared
-            QtCore.QTimer.singleShot(9000, self.share_library_ask)
+        if orbit.hold_sharing(self.settings):   # not in Full Orbit at the update: asked first later (legal 06.11.)
+            self.settings_changed()
+        self.share_audience_once()   # before anything is shared: per friend since 06.11.
         QtCore.QTimer.singleShot(2500, self.patchnotes_once)
         self.game_jobs()
 
@@ -1561,17 +1625,18 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         import version
         seen = self.settings.get("seen_version")
         if seen == version.VERSION:
-            self.orbit_once()
+            self.after_news()
             return
         self.settings["seen_version"] = version.VERSION
         self.settings_changed()
         if self.settings.get("first_setup") or onboarding.active(self.settings):
+            self.settings["shared_page_seen"] = True   # new: nothing shared from before to look at
             return
         try:
             import patchnotes
             notes = patchnotes.NOTES
         except ImportError:
-            self.orbit_once()
+            self.after_news()
             return
 
         def key(v):   # shipped version (three digits) includes all its work-in-progress builds: 0.9.1 = 0.9.1.∞
@@ -1582,15 +1647,17 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         else:   # previous version unknown (first time with this display): everything from the current release
             new = [n for n in notes if version.release_of(n[0]) == version.release_of()]
         if not new:
-            self.orbit_once()
+            self.after_news()
             return
-        # shipped versions in between with highlights: only those (at most 5 points – more nobody reads)
-        hl = [t for r, pts in sorted(getattr(version, "HIGHLIGHTS", {}).items(), key=lambda x: key(x[0]), reverse=True)
-              if (not seen or key(seen) < key(r)) and key(r) <= key(version.VERSION) for t in pts][:5]
+        # shipped versions in between with highlights: only those (at most 5 points – more nobody reads); a version
+        # that stands alone (version.HIGHLIGHT_ONLY, e.g. the sharing rules of 0.9.7) comes with its heading
+        title, hl = version.highlights_since(seen)
         more = 0 if hl else len(new) - 5   # with highlights: „All changes“ leads to the rest
 
         def build(ui, d):
             rows = [ui.label(tr(f"Bent°Corner is now on {version.label()}. What's new:"), big=True)]
+            if title:
+                rows.append(ui.label(f"<b>{html.escape(tr(title))}</b>", rich=True))
             if hl:
                 rows.append(ui.label("<table>" + "".join(
                     f"<tr><td style='padding:4px 12px 4px 0; vertical-align:top'>•</td>"
@@ -1607,11 +1674,35 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
                 d.close("all")
                 self.stream.show_page("settings", back=True)
                 self.show_settings("updates")
+            from ui import backupui   # the online backup's card for existing users in Full Orbit (lead 06.11.)
+            card = backupui.news_items(ui, self, d, d.refresh)
             rows += [ui.space(4), ui.row([ui.stretch(), ui.button(tr("All changes"), all_notes),
                                           ui.button(tr("Next"), lambda: d.close("ok"), primary=True)])]
-            return ui.col([ui.scroll(rows[:-2], h=min(520, 130 + 56 * (len(hl) or min(5, len(new)))))] + rows[-2:],
+            return ui.col([ui.scroll(rows[:-2], h=min(520, 130 + 56 * (len(hl) or min(5, len(new)))))] + card + rows[-2:],
                           spacing=12)
-        qdialogs.show(tr("What's new?"), build, wait=False, on_close=lambda _r: self.orbit_once())
+        qdialogs.show(tr("What's new?"), build, wait=False, on_close=lambda _r: self.after_news())
+
+    def after_news(self):
+        """After "What's new?" (or none): the Orbit question once (users from before Orbit), then once the page
+        "Shared with friends"."""
+        self.orbit_once()
+        self.shared_once()
+
+    def shared_once(self):
+        """Once after the update to "Shared with friends" (Oliver/lead 06.11.) – only where there is something to see:
+        Full Orbit with friends. No window, nothing blocks: Back or any other tab work right away (legal)."""
+        from net import relay
+        s = self.settings
+        if s.get("shared_page_seen"):
+            return
+        s["shared_page_seen"] = True
+        self.settings_changed()
+        if not relay.enabled(s) or not relay.ok_friends(s):
+            return
+        tb = getattr(getattr(self, "shell", None), "backends", {}).get("trade")
+        self.stream.show_page("trade")
+        if tb is not None:
+            tb.showFolder("shared")
 
     def orbit_once(self):
         """Since Bent°Corner Orbit (Oliver, 2026-10-29): users from before are asked ONCE, right after "What's new?".
@@ -1908,6 +1999,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
             self.save_collection()
         self._ended = s if undoable and st["cards"] else None
         self._fresh_session(s)
+        self.sync_event()   # a log ended: the other own devices get it now (lead 07.11.)
         return self._ended is not None
 
     def _fresh_session(self, old):
@@ -1983,7 +2075,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         parts = [info.get("title") or tr("no title"),
                  Overlay.sets_text(info) or tr("no sets"),
                  tr(f"{info.get('packs_planned') or '–'} packs planned"),
-                 tr(f"Spent {eur(info['paid'])}") if info.get("paid") else tr("Spent –")]
+                 tr(f"Spent {money(info['paid'])}") if info.get("paid") else tr("Spent –")]
         self.info_summary.setText(" · ".join(parts))
 
     # --- Statistics ---
@@ -2155,7 +2247,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
                 f"Scan {scan_no[s['id']]}" if s["id"] in scan_no else "–")   # the same in German
             if s["id"] == self.session.id:
                 title = tr("● running · ") + title
-            profit = tr("–") if st["profit"] is None else ("+" if st["profit"] >= 0 else "−") + eur(abs(st["profit"]))
+            profit = tr("–") if st["profit"] is None else signed(st["profit"])
             counts = {}
             for pk in s.get("packs", []):
                 if pk.get("cards"):
@@ -2167,7 +2259,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
                 types = tr("Scan cards")
             tags = ", ".join(info.get("tags") or []) or "–"
             vals = (date, title, types, tags, str(st["packs"]) if has_packs(info) else "–", str(st["cards"]), eur(st["total"]),
-                    eur(st["paid"]) if st.get("paid") else "–", profit)
+                    money(st["paid"]) if st.get("paid") else "–", profit)
             cells = [{"text": x, "color": "", "tip": ""} for x in vals]
             cells[2]["tip"], cells[3]["tip"] = types, tags
             if st["profit"] is not None:
@@ -2209,7 +2301,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         st = s["stats"]
         n = int(st.get("cards") or 0)
         vals = (date, self._manual_title(s), tr("By hand"), "–", "–", (f"+{n}" if n > 0 else f"−{-n}" if n < 0 else "0"),
-                ("" if st["total"] >= 0 else "−") + eur(abs(st["total"])), "–", "–")
+                signed(st["total"], ""), "–", "–")
         cells = [{"text": x, "color": "", "tip": ""} for x in vals]
         cells[2]["tip"] = tr("Changes by hand outside the scanner – each line can be undone on its own")
         return {"sid": s["id"], "cells": cells, "imp": False, "singles": False, "kind": "manual"}
@@ -2238,7 +2330,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
                           "price": tr("–") if e.get("price") is None else eur(e["price"]),
                           "note": edit_note(e.get("edit")) or e.get("why") or "",
                           "fin": finish_short(e), "entry": e, "manual": True, "added": e.get("added")})
-        self.sess_packs.append({"pi": 0, "name": tr(f"{len(lines)} changes"), "type": "", "typeKey": "",
+        self.sess_packs.append({"pi": 0, "name": tr("1 change") if len(lines) == 1 else tr(f"{len(lines)} changes"), "type": "", "typeKey": "",
                                 "typeColor": "", "price": eur(st["total"]), "cards": cards, "plain": True, "manual": True})
         self.sess_changed.emit()
 
@@ -2313,12 +2405,13 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         if info.get("tags"):
             lines.append(tr("Tags: ") + " ".join(f"<span style='background:#4a3a1f; color:#ffe9c2'>&nbsp;{t}&nbsp;</span>"
                                                   for t in info["tags"]))
-        money = tr(f"Value <b style='color:#f2f2f2'>{eur(st['total'])}</b>")   # greyscale, no accent
+        value = tr(f"Value <b style='color:#f2f2f2'>{eur(st['total'])}</b>")   # greyscale, no accent
         if st.get("paid"):
             pr = st["profit"]
-            money += tr(f" · spent {eur(st['paid'])} · balance ") + \
-                f"<b style='color:{'#46d17a' if pr >= 0 else '#ff4d5e'}'>{'+' if pr >= 0 else '−'}{eur(abs(pr))}</b>"
-        lines.append(money)
+            value += tr(f" · spent {money(st['paid'])} · balance ") + \
+                f"<b style='color:{'#46d17a' if pr >= 0 else '#ff4d5e'}'>{signed(pr)}</b>"
+        if orbit.prices_shown():   # Orbit's Core: value and balance are market values – the line goes
+            lines.append(value)
         top, second, foil = (tr(x) for x in games.current().counter_labels())
         lines.append((tr(f"{st['packs']} packs · {st['cards']} cards") if has_packs(info) else tr(f"{st['cards']} cards")) +
                      f" · {top} {counts['mythic']} · {second} {counts['rare']} · {foil} {counts['foil']}")
@@ -2750,6 +2843,54 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
             log.exception("Logs as source: check")
             return 0
 
+    def logs_fields_check(self):
+        """With the sync on, after an undo (SYNC-LOGS §5): the collection went back, its logs not – without lines the
+        next sync would bring the undone change back. A copy by hand gets an edit line back, a scanned copy its old
+        value in its log card again (the newer write wins everywhere). -> changes written."""
+        from collection import bookings, manual, shadow, synclogs
+        try:
+            logs = sessions.load_all(include_hidden=True)
+            diffs = shadow.compare(self.collection.items, logs, bookings.load())
+        except Exception:  # noqa: BLE001
+            log.exception("Logs as source: fields after undo")
+            return 0
+        by_key = {}
+        for k, f, _w, have in diffs:
+            if f != "count":
+                by_key.setdefault(k, {})[f] = have
+        n = 0
+        for k, fields in by_key.items():
+            it = next((x for x in self.collection.items if (x.get("src") or "uid:" + str(x.get("uid"))) == k), None)
+            if it is None:
+                continue
+            if k.startswith("uid:"):
+                want = shadow.rebuild(self.collection.items, logs, bookings.load()).get(k) or {}
+                manual.record_edit(dict(it), {f: [want.get(f), v] for f, v in fields.items()}, why=tr("undone"))
+                n += 1
+                continue
+            sid, _, added = k.partition("/")
+            try:
+                added = float(added)
+            except ValueError:
+                continue
+            if sid == self.session.id:
+                s = self.session
+            elif (sessions.SESSIONS / f"{sid}.json").exists():
+                s = Session(self.cards, sessions.load(sid))
+            else:
+                continue
+            with s.lock:
+                e = next((c for p in s.packs for c in p["cards"] if c.get("added") == added), None)
+                if e is None:
+                    continue
+                e.update({f: v for f, v in fields.items()})
+            if s is not self.session:
+                sessions.save(s.to_dict())
+            n += 1
+        if n:
+            log.info("Logs as source: %d field(s) after undo written into the logs (%s)", n, synclogs.SUFFIX[0])
+        return n
+
     def heal_prints(self):
         """Before the game's data is loaded: references to prints that left its card database move to the English
         print of the same card (collection.printmove – Yu-Gi-Oh!: the prints from YGOJSON)."""
@@ -2958,7 +3099,15 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         from ui.busy import busy
         try:
             with busy(self, tr("Exporting collection …")):
-                n = export_csv(groups, path, fmt, names)
+                text = None   # „mit Kartentext“ (collection/exporttext.py): only Excel, only allowed games
+                from collection import exporttext
+                g = games.current()
+                if fmt == "excel" and self.settings.get("export_text") and exporttext.allowed(g.key):
+                    rows = carddb.cards_by_ids({x["sid"] for x in groups}) if carddb.exists() else {}
+                    loc = getattr(g, "locale_print", None)
+                    text = {"game": g.key, "rows": rows,
+                            "locale": {sid for sid in rows if loc(sid)} if loc is not None else set()}
+                n = export_csv(groups, path, fmt, names, text)
             msg.setText(tr(f"{n} rows exported: {path}"))
         except OSError as e:
             msg.setText(tr(f"Export failed: {e}"))
@@ -3019,8 +3168,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         self.save_settings()
         self.save_session()
         self.save_collection()
-        if getattr(self, "tray", None) is not None:
-            self.tray.server.close()
+        from ui import tray
+        tray.release()   # the mover restarts the program afterwards – it must not find this one
         setupui.start_move(BASE, target)
         self.force_quit = True
         self.request_quit()
@@ -3036,15 +3185,17 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         self.save_settings()
         self.save_session()
         args = sys.argv[1:] if getattr(sys, "frozen", False) else sys.argv
-        args = [a for a in args if a not in ("--first-run-test", "--continue-test")] + datahome.restart_args()
+        args = [a for a in args if a not in ("--first-run-test", "--continue-test") and not a.startswith("--after=")]
+        args += datahome.restart_args()
         # The .exe (PyInstaller) must not share the old process's unpacked folder – it gets deleted on
         # exit. PYINSTALLER_RESET_ENVIRONMENT makes the new process unpack itself anew.
         import os
         import subprocess
         env = {k: v for k, v in os.environ.items() if not k.startswith("_PYI") and k != "_MEIPASS2"}
         env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
-        if getattr(self, "tray", None) is not None:
-            self.tray.server.close()
+        args.append(f"--after={os.getpid()}")   # the new one waits until this one is gone (system/startup.py)
+        from ui import tray
+        tray.release()   # the next instance must not find this one and just ask it to show itself
         flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         try:
             subprocess.Popen([datahome.program(), *args], env=env, cwd=str(BASE), creationflags=flags, close_fds=True)
@@ -3077,12 +3228,17 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, QtCore.QObj
         self.save_session()  # stays open and is offered for continuing at the next start
         sessions.flush()     # logs changed a moment ago (Log page): written now
         self.save_collection()
+        try:
+            self.sync_flush()   # own unsent changes to the other devices – at most 3 s (lead 07.11.)
+        except Exception:  # noqa: BLE001 – closing must never fail because of it
+            log.exception("Sync on exit")
         if self.library_win is not None:
             self.library_win.close()
         self.recognizer.running = False
         self.camera.stop()
         try:
-            self.autobackup_on_exit()   # a last backup if something changed (at most 8 s, invisible)
+            if not getattr(self, "wiping", False):   # "Delete Bent°Corner": no new backup of what is to go
+                self.autobackup_on_exit()   # a last backup if something changed (at most 8 s, invisible)
         except Exception:  # noqa: BLE001 – closing must never fail because of it
             log.exception("Backup on exit")
         QtWidgets.QApplication.quit()

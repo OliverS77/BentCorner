@@ -30,6 +30,8 @@ def save(items):
     tmp = FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps({"version": 1, "binders": items}, ensure_ascii=False, indent=1), "utf-8")
     tmp.replace(FILE)
+    from collection import syncrun
+    syncrun.saved(FILE, {"version": 1, "binders": items})
 
 
 def get(bid):
@@ -75,6 +77,34 @@ def slot_of(row, lang="en", foil=False):
     return {"sid": row.get("id") or row.get("sid"), "set": str(row.get("set_code") or row.get("set") or "").lower(),
             "number": str(row.get("number") or ""), "lang": lang or "en", "foil": bool(foil),
             "name": row.get("name") or ""}
+
+
+def complete(doc, game=None):
+    """F4 (Oliver's test round 11.11.): a slot that came through the sync carries only sid/lang/foil – set, number and
+    name are derived (syncops SCHEMA) and filled here from the card database before the file is written; a card the
+    database doesn't know keeps empty ones (never a KeyError further on). -> the same doc, completed in place."""
+    lacking = [s for b in (doc or {}).get("binders") or [] for s in b.get("slots") or []
+               if isinstance(s, dict) and not (s.get("set") and s.get("number") and s.get("name"))]
+    if not lacking:
+        return doc
+    rows = {}
+    try:
+        from cards import carddb
+        rows = carddb.cards_by_ids({s["sid"] for s in lacking if s.get("sid")}, game) or {}
+    except Exception:  # noqa: BLE001 – no database (yet): empty fields, filled on a later write
+        rows = {}
+    for s in lacking:
+        r = rows.get(s.get("sid")) or {}
+        full = slot_of(r) if r else {}
+        for k in ("set", "number", "name"):
+            if not s.get(k):
+                s[k] = full.get(k) or ""
+    return doc
+
+
+def key(s):
+    """(set, number) of a slot – the owned-map key; tolerant of a slot without them."""
+    return str(s.get("set") or ""), str(s.get("number") or "")
 
 
 def _grow(b, n):
@@ -152,7 +182,7 @@ def value(b, owned, prices):
             continue
         p = prices.get(s.get("sid")) or 0
         total += p
-        if owned.get((s["set"], s["number"])):
+        if owned.get(key(s)):
             have += p
     return total, have
 
@@ -187,18 +217,18 @@ def owned_map(items):
 def progress(b, owned):
     """(owned, cards in the binder) – empty slots do not count."""
     cards = [s for s in b.get("slots") or [] if s]
-    have = sum(1 for s in cards if owned.get((s["set"], s["number"])))
+    have = sum(1 for s in cards if owned.get(key(s)))
     return have, len(cards)
 
 
 def missing(b, owned):
-    return [s for s in b.get("slots") or [] if s and not owned.get((s["set"], s["number"]))]
+    return [s for s in b.get("slots") or [] if s and not owned.get(key(s))]
 
 
 def share_payload(b, owned):
     """For friends (put out): slots compact as [set, number, language, foil, owned?] or None – without names."""
     return {"v": 1, "kind": "binder", "id": b["id"], "name": b["name"], "cols": b.get("cols", 3),
             "rows": b.get("rows", 3),
-            "slots": [None if s is None else [s["set"], s["number"], s.get("lang") or "en", int(bool(s.get("foil"))),
-                                              1 if owned.get((s["set"], s["number"])) else 0]
+            "slots": [None if s is None else [*key(s), s.get("lang") or "en", int(bool(s.get("foil"))),
+                                              1 if owned.get(key(s)) else 0]
                       for s in b.get("slots") or []]}

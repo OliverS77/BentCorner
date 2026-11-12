@@ -264,7 +264,8 @@ class TestBackend(QtCore.QObject):
         game = self.game
         if game is None:
             return ""
-        parts = [tr(f"Turn {game.turn}"), tr(f"{len(game.library)} cards in the library")]
+        n = len(game.library)
+        parts = [tr(f"Turn {game.turn}"), tr("1 card in the library") if n == 1 else tr(f"{n} cards in the library")]
         if game.to_bottom:
             parts.append(tr(f"Click {game.to_bottom} card(s) in your hand to put them on the bottom"))
         elif game.choosing:   # Lorcana mulligan

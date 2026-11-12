@@ -1,5 +1,7 @@
 ﻿# Baut dist\BentCorner.exe
-#   powershell -ExecutionPolicy Bypass -File build.ps1
+#   powershell -ExecutionPolicy Bypass -File build.ps1          normaler Build: Abgleich AUS (Olivers app\, Arbeitsstände)
+#   powershell -ExecutionPolicy Bypass -File build.ps1 -Ship    Kandidat/Ship: Abgleich + Online-Sicherung AN (lead 08.11.)
+param([switch]$Ship)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 # PyInstaller sucht fehlende DLLs auch im PATH – conda/msys/mingw (z. B. über das PowerShell-Profil) brachten so 43 fremde
@@ -99,6 +101,8 @@ if ($LASTEXITCODE -ne 0) { throw "comtypes.gen nicht angelegt" }
 
 # Badges & Collectibles: Muster-Ticket + Code, wenn sich am Ticket etwas geändert hat (assets\collectibles)
 .\.venv\Scripts\python.exe tools\ticket_snapshot.py
+# ein Absturz hier (0.9.7.33/34: Qt-Abbruch beim Zeichnen des Musters) darf nicht still weiterbauen
+if ($LASTEXITCODE -ne 0) { throw "tools\ticket_snapshot.py fehlgeschlagen (Exit $LASTEXITCODE) - nicht gebaut" }
 
 # Programmsymbol aus dem Logo-Paket brand\logo (16-24 Pixelbilder, ab 32 aus den SVG – ui/iconkit.py) nach brand\icon.ico.
 # Die Marke (brand\) ist nicht GPL: ohne den Ordner (Forks) ein neutrales Platzhalter-Symbol in build\ und kein Logo
@@ -114,11 +118,32 @@ if ($LASTEXITCODE -ne 0) { throw "Programmsymbol nicht gebaut (ui/iconkit.py)" }
 # Kennung dieses Builds (Version + Zeitstempel): Ordnername der Programmdateien in „Bent°Corner Essentials“. Die
 # kleine BentCorner.exe liegt dort an einem FESTEN Ort, ihre Dateien im Ordner mit der Kennung (--contents-directory) –
 # so bleibt der Pfad des laufenden Programms über Updates gleich (Windows merkt sich das Tray-Symbol je Pfad)
-# Lizenztexte der Bausteine nach licenses\ (LGPL für Qt/FFmpeg/GEOS, Python, OpenCV, ONNX Runtime, jedes Paket) – in der
+# Lizenztexte der Bausteine nach licenses\ (LGPL für Qt/GEOS, Python, OpenCV, ONNX Runtime, jedes Paket) – in der
 # App ohne Internet lesbar (Einstellungen → Rechtliches → Hinweise zu Drittanbietern); THIRD_PARTY_NOTICES verweist darauf
 .\.venv\Scripts\python.exe tools\collect_licenses.py
 if ($LASTEXITCODE -ne 0) { throw "Lizenztexte nicht gesammelt (tools\collect_licenses.py) – nicht gebaut" }
 $LicenseDir = @("--add-data", "licenses;licenses")
+# SCAN°-Selbsttest für den Win10-Teststick (system\selftest.py): der Prüfstand fest in der exe – nur im privaten Repo
+# vorhanden (tools/public/manifest.txt), ohne ihn meldet der Selbsttest „nicht in diesem Build“
+$Bench = @()
+if (Test-Path tools\scan-bench\bench.py) {
+    $Bench = @("--paths", "tools\scan-bench", "--hidden-import", "bench", "--hidden-import", "benchlib",
+               "--hidden-import", "distort", "--add-data", "tools\scan-bench\cards.json;scan-bench",
+               "--add-data", "tools\scan-bench\expected.json;scan-bench")
+}
+# Abgleich + Online-Sicherung (collection/syncrun.available): nur im Ship-Build an – die Marke ship-sync.flag kommt dann
+# in die exe; ein normaler Build hat sie nie (Standard AUS, lead 08.11.: Olivers echte App darf nicht gegen den Server
+# abgleichen, solange der Live-Server den Abgleich noch nicht hat)
+New-Item -ItemType Directory -Force build | Out-Null
+Remove-Item build\ship-sync.flag -ErrorAction SilentlyContinue
+$ShipData = @()
+if ($Ship) {
+    Set-Content -Path build\ship-sync.flag -Value "sync" -Encoding ascii
+    $ShipData = @("--add-data", "build\ship-sync.flag;.")
+    Write-Host "Ship-Build: Abgleich + Online-Sicherung AN"
+} else {
+    Write-Host "Normaler Build: Abgleich AUS"
+}
 $BuildId = (.\.venv\Scripts\python.exe -c "import version, datetime; print(version.VERSION + '-' + datetime.datetime.now().strftime('%y%m%d%H%M'))").Trim()
 $env:BC_BUILD_ID = $BuildId
 .\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onedir --noupx --windowed `
@@ -142,6 +167,8 @@ $env:BC_BUILD_ID = $BuildId
     --collect-submodules net --collect-submodules ui --collect-submodules system `
     --hidden-import _cffi_backend `
     --collect-all nacl `
+    @Bench `
+    @ShipData `
     app.py
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller fehlgeschlagen" }
 # Fehlt PyInstaller ein Paket, baut es trotzdem – die exe startet, aber ohne Netz/Signaturen. Also hier stoppen.
@@ -158,6 +185,10 @@ if ($dml) { throw "DirectML.dll darf nicht in die exe:`n$(($dml.FullName) -join 
 # Jede DLL/.pyd nur aus venv, Python oder Windows – sonst kam sie zufällig über den PATH (Liste in der Meldung)
 $foreign = .\.venv\Scripts\python.exe tools\check_binaries.py build\BentCorner\COLLECT-00.toc
 if ($LASTEXITCODE -ne 0) { throw "Fremde Bibliotheken in der exe – nicht gebaut:`n$($foreign -join "`n")" }
+# Schlanker Build: was die App nicht nutzt (ungenutzte Qt-Teile, Übersetzungen außer qtbase_de, AVIF, FFmpeg), gleich
+# aus dem Programmordner löschen – eine Liste für alles (tools\build_launcher.py SKIP)
+.\.venv\Scripts\python.exe tools\build_launcher.py --prune
+if ($LASTEXITCODE -ne 0) { throw "Schlank machen fehlgeschlagen" }
 
 # Eine einzelne exe zum Verteilen: Starter (launcher\Launcher.cs) + das Programm als Zip dahinter. Der Starter legt
 # es einmal je Version in „Bent°Corner Essentials“ neben den Daten ab und startet danach direkt von dort.
@@ -165,7 +196,16 @@ if ($LASTEXITCODE -ne 0) { throw "Fremde Bibliotheken in der exe – nicht gebau
 if ($LASTEXITCODE -ne 0) { throw "Starter fehlgeschlagen" }
 # Dieselbe Prüfung im fertigen Paket (Zip hinter dem Starter)
 .\.venv\Scripts\python.exe tools\check_package.py dist\BentCorner.exe
-if ($LASTEXITCODE -ne 0) { throw "Verbotene Dateien im fertigen Paket (DirectML/Qt Timeline/VirtualKeyboard) – nicht verteilen" }
+if ($LASTEXITCODE -ne 0) { throw "Verbotene oder weggelassene Dateien im fertigen Paket – nicht verteilen" }
+
+# Installer (Inno Setup, pro Nutzer) und portables ZIP aus demselben Programmordner, ohne die Dateien, die der Starter
+# weglässt (tools\make_dist.py; ohne Inno Setup nur das ZIP)
+.\.venv\Scripts\python.exe tools\make_dist.py
+if ($LASTEXITCODE -ne 0) { throw "Installer/ZIP fehlgeschlagen" }
+# Dieselbe Prüfung für das, was Setup und ZIP enthalten (auch die Größe)
+$zip = Get-ChildItem dist -Filter "BentCorner-*-portable.zip" | Sort-Object LastWriteTime | Select-Object -Last 1
+.\.venv\Scripts\python.exe tools\check_package.py dist\app-stage $zip.FullName
+if ($LASTEXITCODE -ne 0) { throw "Verbotene oder weggelassene Dateien in Setup/ZIP – nicht verteilen" }
 
 Write-Host ""
 Write-Host "Fertig: dist\BentCorner.exe"

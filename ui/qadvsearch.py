@@ -11,6 +11,7 @@ import games
 from cards import library
 from collection.collection import LANGS
 from system.i18n import tr
+from system import orbit
 from ui.searchbox import RANGES, TEXT_FIELD_LABELS, CheckSection, ColorSection, CountSection, ListSection, \
     OptionSection, RangeSection, SetSection, TextSection
 
@@ -103,7 +104,8 @@ class AdvBackend(QtCore.QObject):
             elif isinstance(sec, RangeSection):
                 d.update(kind="range", rows=[{"key": k, "label": tr(label), "dec": dec,
                                               "lo": sec.spins[k][0].value(), "hi": sec.spins[k][1].value()}
-                                             for k, label, dec in RANGES])
+                                             for k, label, dec in RANGES
+                                             if k != "price" or orbit.prices_shown()])   # not in Orbit's Core
             elif isinstance(sec, CountSection):
                 d.update(kind="count", n=sec.slider.value, mode=sec.mode.currentData() or "min",
                          labels=list(sec.LABELS))

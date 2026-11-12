@@ -2,7 +2,8 @@
 
     core   Core        everything stays with you – lists, binders, sub-collections; no prices are fetched
     near   Near Orbit  you only fetch something: prices, marketplaces, price alerts – nothing of yours goes out
-    full   Full Orbit  you share: lists, binders and tickets go end-to-end encrypted to friends (the mailbox, net/relay)
+    full   Full Orbit  you share: lists, binders and your library go end-to-end encrypted to friends (the mailbox,
+                       net/relay) – trade tickets are images, they never go through the mailbox
 
 One level = exactly what leaves the device beyond what every level needs. Card data, card images, data packs, updates
 and look-ups (EDHREC, Commander Spellbook …) are NOT part of Orbit – they have their own settings. The anonymous
@@ -25,10 +26,17 @@ LINES = {"core": "Your collection stays with you.",
 SHORT = {"core": "Your collection stays with you.", "near": "You only fetch.", "full": "You share – encrypted."}
 POINTS = {"core": ["No prices", "No friends", "Your collection stays with you"],
           "near": ["Prices & marketplaces", "Price alerts", "Your collection stays with you"],
-          "full": ["+ Friends & trading", "Shared lists & binders", "End-to-end encrypted"]}
-# the one shared line: only what you share is encrypted; the sources see the IP address (privacy policy §4)
-FOOT = ("What you share is end-to-end encrypted. Card data, images and prices come from sources like Scryfall, "
-        "which see your IP address.")
+          "full": ["+ Friends & trading", "Share lists, binders and trade tickets end-to-end encrypted"]}
+# E2E only where true (legal 06.11.): trade tickets go through the mailbox since the ticket sending (ports, big 0.9.7) –
+# before that the point was "Share lists & binders end-to-end encrypted"
+# the shared line under the columns, per level (legal 04.11.): card data and images – Magic straight from Scryfall,
+# the rest mostly through our server, only if needed from the source (privacy policy §4); the prices stand in OUT.
+# Only Full Orbit shares something – the encryption sentence only there
+_FOOT = ("Card data and images come straight from Scryfall for Magic, otherwise mostly through our server and only if "
+         "needed straight from the source – whoever delivers them sees your IP address.")
+FOOTS = {"core": _FOOT, "near": _FOOT, "full": "What you share through the mailbox is end-to-end encrypted. " + _FOOT}
+# directly above the age line, only at the step to Full Orbit (legal 04.11., § 305 (2) BGB – as in the web app)
+TERMS_LINE = "By turning it on, you agree to the <a href='{url}'>terms of use ›</a>"
 # the small print: exactly what leaves the device (privacy policy §4/§5) – honest about the IP address
 OUT = {"core": "Nothing from your collection leaves the device.",
        "near": "Price downloads from our price server and the price sources (MTGJSON, Cardmarket, exchange rates) – "
@@ -56,6 +64,67 @@ def index(settings):
 def prices_on(settings):
     """Prices, exchange rates, price history and price alerts are fetched/checked – from Near Orbit on."""
     return level(settings) != "core"
+
+
+_bound = None   # the app's settings (bind() at start) – the display gate below reads the level live from them
+
+
+def bind(settings):
+    global _bound
+    _bound = settings
+
+
+def prices_shown():
+    """Card prices (market values from the card data/price sources) may be SHOWN – from Near Orbit on (Oliver/legal
+    06.11.: in Core no such price appears anywhere: library, detail, search, decks, binders, scan, logs, export). Money
+    a user types in (trade money, what they spent) is no market value and stays. Unbound (tools, tests): shown."""
+    return _bound is None or prices_on(_bound)
+
+
+def friends_shown():
+    """Friends and trade tickets – only in Full Orbit (Oliver 06.11., B: "Wer Core wählt, bekommt keine Freunde, auch
+    nicht selbst hinzugefügt über Dateiaustausch"). Saved friends and what they sent stay on disk, only hidden.
+    Unbound (tools, tests): shown."""
+    return _bound is None or level(_bound) == "full"
+
+
+# Friends by FILE (trade file "Import friend …" / "Create my trade file …"): off in every level (Oliver 06.11.) –
+# switched off, not removed, so it can come back. Trade tickets as images are NOT this (they follow friends_shown).
+FILE_FRIENDS = False
+
+def hold_sharing(settings):
+    """Once at the update to per-friend sharing (legal 06.11., condition to „Was ist neu?“ 0.9.7): whoever is NOT in
+    Full Orbit then is asked first when turning it on – until the answer nothing goes out, and an old "Yes" to "Share
+    library?" doesn't count. So: nobody switched on (instead of today's friends), the library rests until answered, and
+    "Shared with friends" opens once on the way into Full Orbit. In Full Orbit at the update: relay's own migration
+    (today's friends keep what they get). -> True if it held something now"""
+    from net import relay
+    st = relay.state(settings)
+    if st.get("audience_v") == relay.AUDIENCE_V or relay.enabled(settings):
+        return False
+    st["audience"] = {"mode": "only", "codes": []}
+    st["audience_v"] = relay.AUDIENCE_V
+    if settings.get("share_library") is True and not settings.get("share_library_confirmed"):
+        settings["share_library_paused"] = True
+    if relay.friends(settings):
+        settings["shared_ask_on_full"] = True
+    return True
+
+
+FRIENDS_NOTE = "Friends are available in Full Orbit."
+FILE_FRIEND_LINE = "This friend is only connected by file – connect through your IDs to share via the mailbox."
+
+
+# the note in place of prices / of the price alerts (legal 06.11.) – the key only opens the settings, never changes the level
+PRICES_NOTE = "Prices are available from Near Orbit on – nothing from your collection goes out."
+PRICES_SHORT = "Prices from Near Orbit"
+CHANGE_LEVEL = "Change level"
+PROFILE_PRIVATE = "Nobody sees your profile."
+
+
+def card_price(text):
+    """A formatted card price as it is – or "" in Core (the caller formats, this only gates)."""
+    return text if prices_shown() else ""
 
 
 def price_mode(settings):

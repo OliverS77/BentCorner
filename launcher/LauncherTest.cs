@@ -126,6 +126,7 @@ static class LauncherTest
         CloudMoveNewLayout();
         TwoInstallations();
         TestEnvSwitches();
+        TestMarker();
         Check("log went to the test file", File.Exists(Launcher.LogOverride) && File.ReadAllText(Launcher.LogOverride).Length > 0);
         Check("real starter.log untouched", (File.Exists(realLog) ? File.ReadAllText(realLog) : null) == realLogBefore);
         File.Delete(Launcher.LogOverride);
@@ -203,6 +204,52 @@ static class LauncherTest
             Environment.SetEnvironmentVariable("BC_STARTER_ROAMING", oldRoaming);
             Launcher.LocalOverride = null;
             Launcher.RoamingOverride = null;
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    // bc-testkopie.txt next to the starter (Oliver 05.11.2026): a double click without BC_STARTER_* stays in the test
+    // folder; a broken or relative file, or switches already set, change nothing; a test run copies it into Essentials
+    static void TestMarker()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "bc-launcher-marker-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string[] keys = { "BC_STARTER_LOCAL", "BC_STARTER_ROAMING", "BC_STARTER_DOCUMENTS", "BC_LOCAL_DL", "BC_CHECK" };
+        var old = keys.ToDictionary(k => k, k => Environment.GetEnvironmentVariable(k));
+        Action clear = () => { foreach (string k in keys) Environment.SetEnvironmentVariable(k, null); };
+        try
+        {
+            Directory.CreateDirectory(root);
+            string file = Path.Combine(root, Launcher.TEST_MARKER);
+            string good = "BC_STARTER_LOCAL=" + Path.Combine(root, "local") + "\r\nBC_STARTER_ROAMING=" + Path.Combine(root, "roaming") +
+                          "\r\nBC_STARTER_DOCUMENTS=" + Path.Combine(root, "docs") + "\r\nBC_CHECK=1\r\nPATH=C:\\evil\r\n";
+            string path = Environment.GetEnvironmentVariable("PATH");
+            clear();
+            Check("marker: no file -> nothing", !Launcher.ApplyTestMarker(file) && Environment.GetEnvironmentVariable("BC_STARTER_LOCAL") == null);
+            File.WriteAllText(file, good);
+            Check("marker: applied", Launcher.ApplyTestMarker(file) && Environment.GetEnvironmentVariable("BC_STARTER_LOCAL") == Path.Combine(root, "local")
+                  && Environment.GetEnvironmentVariable("BC_CHECK") == "1");
+            Check("marker: unknown keys ignored", Environment.GetEnvironmentVariable("PATH") == path);
+            Environment.SetEnvironmentVariable("BC_STARTER_LOCAL", Path.Combine(root, "other"));
+            Check("marker: switches already set win", !Launcher.ApplyTestMarker(file) && Environment.GetEnvironmentVariable("BC_STARTER_LOCAL") == Path.Combine(root, "other"));
+            clear();
+            File.WriteAllText(file, good.Replace(Path.Combine(root, "docs"), "docs"));
+            Check("marker: relative folder -> nothing at all", !Launcher.ApplyTestMarker(file) && Environment.GetEnvironmentVariable("BC_STARTER_LOCAL") == null);
+            File.WriteAllText(file, "BC_STARTER_LOCAL=" + Path.Combine(root, "local") + "\r\n");
+            Check("marker: incomplete -> nothing", !Launcher.ApplyTestMarker(file) && Environment.GetEnvironmentVariable("BC_STARTER_LOCAL") == null);
+
+            string ess = Path.Combine(root, "ess");
+            Directory.CreateDirectory(ess);
+            Launcher.CopyTestMarker(ess);
+            Check("marker: not a test run -> not copied", !File.Exists(Path.Combine(ess, Launcher.TEST_MARKER)));
+            File.WriteAllText(file, good);
+            Launcher.ApplyTestMarker(file);
+            Launcher.CopyTestMarker(ess);
+            string copied = File.Exists(Path.Combine(ess, Launcher.TEST_MARKER)) ? File.ReadAllText(Path.Combine(ess, Launcher.TEST_MARKER)) : "";
+            Check("marker: test run -> copied into Essentials", copied.Contains("BC_STARTER_DOCUMENTS=" + Path.Combine(root, "docs")) && !copied.Contains("PATH="));
+        }
+        finally
+        {
+            foreach (var kv in old) Environment.SetEnvironmentVariable(kv.Key, kv.Value);
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
     }

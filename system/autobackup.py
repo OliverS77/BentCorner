@@ -130,10 +130,24 @@ def content_sum():
 def _prune(folder):
     """Keep the last KEEP backups, at most one per hour: within an hour only the newest stays (a new backup in the
     same hour replaces the one before)."""
-    files = sorted((f for f in folder.glob("BentCorner backup *.zip")), key=lambda f: f.stat().st_mtime, reverse=True)
+    # by the time in OUR name, never the file date (review 08.11. F5: five planted files dated 2099 deleted every new
+    # backup); names that aren't ours or lie in the future are left alone and never count
+    import re
+    now = datetime.datetime.now() + datetime.timedelta(days=1)
+    stamped = []
+    for f in folder.glob("BentCorner backup *.zip"):
+        m = re.fullmatch(r"BentCorner backup (\d{4}-\d{2}-\d{2} \d{2}-\d{2})\.zip", f.name)
+        try:
+            when = datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H-%M") if m else None
+        except ValueError:
+            when = None
+        if when is not None and when <= now:
+            stamped.append((when, f))
+    stamped.sort(key=lambda x: x[0], reverse=True)
+    files = [f for _, f in stamped]
     hours = {}
-    for f in files:   # sorted newest first: the first one per hour is its newest
-        hours.setdefault(datetime.datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H"), f)
+    for when, f in stamped:   # sorted newest first: the first one per hour is its newest
+        hours.setdefault(when.strftime("%Y-%m-%d %H"), f)
     keep = {f for _, f in sorted(hours.items(), reverse=True)[:KEEP]}
     for f in files:
         if f not in keep:
@@ -276,9 +290,13 @@ def lamp(settings):
     if settings.get("backup_risk_ok"):   # "I know the risk": stop reminding
         return False
     c = cfg(settings)
-    if not c["on"] or not c["targets"]:
-        return True
-    return _failing(c, time.time()) if LOCAL_OK_CLEARS else True
+    if c["on"] and c["targets"]:   # a target set up: off – back only if none has worked for 14 days (an error)
+        return _failing(c, time.time()) if LOCAL_OK_CLEARS else True
+    # PLAN-EINFACH C (Oliver 07.11.): off as soon as any backup exists – one is enough: a file made by hand (or an
+    # automatic one before its target was removed: last_backup) or the online backup on in Full Orbit
+    if settings.get("last_backup"):
+        return False
+    return not (orbit.level(settings) == "full" and settings.get("sync_backup") is True)
 
 
 def attention(settings):
