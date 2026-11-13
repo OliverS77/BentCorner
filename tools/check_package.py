@@ -24,6 +24,9 @@ from build_launcher import SKIP  # noqa: E402
 FORBIDDEN = re.compile(r"(^|/)(directml[^/]*\.dll|qt6quicktimeline[^/]*\.dll|qt6virtualkeyboard[^/]*\.dll)$"
                        r"|/qml/qtquick/(timeline|virtualkeyboard)/", re.I)
 LIMIT_MB = 420   # 0.9.7.50 had 470 MB (with the exe), slim ~401 MB
+# data the program reads next to its code (Path(__file__).with_name) – PyInstaller only collects the .py of a package;
+# 0.9.7 shipped without nicknames.json and every first sync failed (13.11.2026). build.ps1 adds them with --add-data.
+REQUIRED = ("system/nicknames.json",)
 
 
 def program_zip(path):
@@ -53,6 +56,12 @@ def forbidden_entries(path):
     return [n for n, _ in entries(path) if FORBIDDEN.search(n)]
 
 
+def missing_entries(path):
+    """-> REQUIRED files that are not in the package (under the program's own folder, any build-id prefix)."""
+    names = [n for n, _ in entries(path)]
+    return [r for r in REQUIRED if not any(n == r or n.endswith("/" + r) for n in names)]
+
+
 def slim_entries(path):
     """-> names the slim build leaves out (build_launcher.SKIP) that are in the package anyway."""
     return [n for n, _ in entries(path) if re.search(SKIP, "/" + n)]
@@ -69,6 +78,10 @@ def main():
         if found:
             print(f"{path}: darf nicht ins Paket:", *found, sep="\n  ")
             bad = True
+        gone = missing_entries(path)
+        if gone:
+            print(f"{path}: fehlt im Paket (build.ps1 --add-data):", *gone, sep="\n  ")
+            bad = True
         back = slim_entries(path)
         if back:
             print(f"{path}: wieder drin, obwohl der schlanke Build es weglässt (Filter in tools/build_launcher.py SKIP "
@@ -80,7 +93,7 @@ def main():
             print(f"WARNUNG: über {LIMIT_MB} MB – ist ein neues großes Paket dazugekommen? (tools/check_package.py)")
     if bad:
         sys.exit(1)
-    print("Paket ohne DirectML/Timeline/VirtualKeyboard und ohne die weggelassenen Teile – ok")
+    print("Paket ohne DirectML/Timeline/VirtualKeyboard und ohne die weggelassenen Teile, mit allen nötigen Daten – ok")
 
 
 if __name__ == "__main__":

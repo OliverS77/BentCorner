@@ -1,5 +1,6 @@
 """Patch-Historie – erzeugt von version.py (nicht von Hand ändern)."""
 NOTES = [
+    ('0.9.8', '2026-11-13', 'Hotfix – „Behebt einen Fehler, durch den die Online-Sicherung am PC nicht startete.“ (nicknames.json im Paket; Oliver/Gordon 13.11.)'),
     ('0.9.7', '2026-11-12', 'Release – VERSION = "0.9.7" (Arbeitsstand 0.9.7.58, qtquick 84b0ab61); Highlights 0.9.7 stehen schon in version.py'),
     ('0.9.7.58', '2026-11-06', 'Sicherheit: „Bent°Corner löschen“ entfernt nur noch eigene Dateien, auch wenn ein Testschalter gesetzt ist, und der Sync-Testschalter wirkt in der fertigen App nicht mehr.'),
     ('0.9.7.57', '2026-11-06', 'Decks: Kartennamen in der Deckliste und der Deckname oben liegen nicht mehr unter Hinweisen und Tasten – zu lange Namen werden gekürzt.'),

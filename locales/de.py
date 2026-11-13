@@ -4095,6 +4095,11 @@ TEXTS.update({  # Lampen-Tooltip mit Online-Sicherung (legal 07.11.)
         'Fällt der Computer aus, holst du deine Daten aus der Online-Sicherung zurück – über ein anderes gekoppeltes Gerät oder mit deinem Schutz-Code; eine Sicherungsdatei ist ein zweiter Weg zurück. Die Lampe geht dann aus.',
 })
 
+TEXTS.update({  # „Was ist neu?“ – Hotfix 0.9.8 (Oliver/Gordon 13.11.)
+    "Fixes a bug that kept the online backup from starting on the PC.":
+        "Behebt einen Fehler, durch den die Online-Sicherung am PC nicht startete.",
+})
+
 TEXTS.update({  # „Was ist neu?“ – 0.9.7 mit Abgleich, Schutz-Code, Tickets (lead/legal 07.11.)
     'Sync with your devices – and new rules for friends, sharing and prices':
         'Abgleich mit deinen Geräten – und neue Regeln für Freunde, Teilen und Preise',

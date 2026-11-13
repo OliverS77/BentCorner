@@ -10,12 +10,15 @@ import re
 # Arbeitsstände haben vier Stellen (0.8.20.0, 0.8.20.1 …): nur hier auf dem PC und auf GitHub, nie auf dem
 # Update-Server. Erst wenn der Nutzer „shippen“ sagt, wird daraus die Version mit drei Stellen (0.8.20) gebaut und
 # mit tools/publish_release.py veröffentlicht (das verweigert vierstellige). Danach geht es mit 0.8.21.0 weiter.
-VERSION = "0.9.7"
+VERSION = "0.9.8"
 
 
 # „Was ist neu?“ nach einem Update: je geshippter Version höchstens 5 kurze Punkte (mehr liest keiner) – englisch,
 # Deutsch in locales/de.py. Alles Weitere bleibt unter Einstellungen → Updates.
 HIGHLIGHTS = {
+    "0.9.8": [   # hotfix (Oliver/Gordon 13.11.): nicknames.json was missing in the 0.9.7 package
+        "Fixes a bug that kept the online backup from starting on the PC.",
+    ],
     "0.9.7": [   # Oliver 06.11. + lead/legal 07.11./08.11.: sync, devices, protection code, backup, tickets + sharing rules (legal)
         'New in Full Orbit: your collection, decks, lists, binders and more can be backed up online, end-to-end encrypted, and kept in sync between your devices – one switch, “Online backup and sync”, which you can turn off at any time.',
         'Your devices and backups are simpler: each device with its name, add one with a code, remove one with ✕; online and offline backups in two boxes.',

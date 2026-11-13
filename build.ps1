@@ -150,6 +150,7 @@ $env:BC_BUILD_ID = $BuildId
     --name BentCorner --icon $Icon --version-file version_info.txt --contents-directory $BuildId `
     --exclude-module tkinter `
     --add-data "setliste.json;." `
+    --add-data "system\nicknames.json;system" `
     --add-data "THIRD_PARTY_NOTICES.md;." `
     --add-data "LICENSE;." `
     --add-data "LICENSE-ASSETS.md;." `
