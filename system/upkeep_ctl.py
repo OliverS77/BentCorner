@@ -241,7 +241,7 @@ class UpkeepControl:
         return True
 
     def autobackup_hold(self):
-        """Not now: the camera runs (scanning) or the game (Scalper Invaders) is open – the backup waits for quiet."""
+        """Not now: the camera runs (scanning) or the mini game (ui/scalper.py) is open – the backup waits for quiet."""
         cam = getattr(self, "camera", None)
         if cam is not None and getattr(cam, "running", False):
             return True
@@ -254,7 +254,7 @@ class UpkeepControl:
         is waited for instead."""
         from system import autobackup
         c = autobackup.cfg(self.settings)
-        if not c["on"] or not c["targets"]:
+        if not c["on"] or not c["targets"] or autobackup.restored:   # just restored: not to all targets (review F10)
             return
         t = getattr(self, "_ab_thread", None)
         if t is None or not t.is_alive():
@@ -295,7 +295,8 @@ class UpkeepControl:
         from ui import backupui
         state = (teamnews.unread(self.settings) > 0, autobackup.attention(self.settings),
                  bool(u is not None and u.state in ("ready", "available")), autobackup.lamp(self.settings),
-                 backupui.request_unseen(self) or __import__("ui.qsync", fromlist=["x"]).join_request_unseen(self))
+                 backupui.request_unseen(self) or __import__("ui.qsync", fromlist=["x"]).join_request_unseen(self)
+                 or __import__("ui.qsync", fromlist=["x"]).code_set_unseen(self))
         if only_changed and state == getattr(self, "_badge_state", None):
             return
         self._badge_state = state

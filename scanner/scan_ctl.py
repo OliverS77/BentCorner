@@ -215,6 +215,8 @@ class ScanControl:
         """✕/U: deleted shortly after the scan -> maybe a mistake (only noted, to be evaluated with care)."""
         if entry and time.time() - float(entry.get("added") or 0) < 15:
             self.scan_removed(entry, "vielleicht")
+        if entry:
+            self.wish_bar().card_removed(entry)   # the wish hit's card taken back: its wishes go back too
 
     def scan_correction(self, old, new):
         """Card in the pack corrected: if we still have the crop, store it as a scan datum."""
@@ -507,18 +509,42 @@ class ScanControl:
 
     def scan_sound_check(self):
         """Sound for the last automatically counted card (scansound.py): only the highest matching one. If the price
-        comes later (e.g. Pokémon from the index), wait at most 1.5 s – otherwise a hit sounds like a normal card."""
+        comes later (e.g. Pokémon from the index), wait at most 1.5 s – otherwise a hit sounds like a normal card.
+        A newly counted card is asked once whether it is on a wish list (wishbar.py) – a wish hit sounds at once."""
         auto = self.session.last_auto
         if auto is not None and auto is not getattr(self, "_sound_seen", None):
             self._sound_seen = auto
-            self._sound_due = (auto, time.monotonic())
+            wish = self.wish_bar().check(auto, self.settings)   # really counted – never a preview (lead 14.11.)
+            self._sound_due = (auto, time.monotonic(), wish)
         due = getattr(self, "_sound_due", None)
-        if due is None or (due[0].get("price") is None and time.monotonic() - due[1] < 1.5):
+        if due is None or (not due[2] and due[0].get("price") is None and time.monotonic() - due[1] < 1.5):
             return
         self._sound_due = None
-        if self.settings.get("scan_sounds", True):
-            from scanner import scansound
-            scansound.play(scansound.kind_for(due[0].get("price"), self.settings.get("hit")))
+        from scanner import scansound
+        level = scansound.level_of(self.settings)
+        if level:
+            scansound.play(scansound.kind_for(due[0].get("price"), self.settings.get("hit"), wish=due[2]), level)
+
+    def wish_bar(self):
+        bar = getattr(self, "_wish_bar", None)
+        if bar is None:
+            from scanner.wishbar import WishBar
+            bar = self._wish_bar = WishBar()
+        return bar
+
+    def set_scan_volume(self, level):
+        """The dock's sound slider (0 = off): kept in the settings; the checkbox in Settings → Scanning follows."""
+        from scanner import scansound
+        level = max(0, min(scansound.LEVELS, int(level)))
+        if level == scansound.level_of(self.settings):
+            return
+        self.settings["scan_volume"] = level
+        self.settings["scan_sounds"] = level > 0
+        if level:
+            self.settings["scan_volume_on"] = level   # the checkbox switches back on to this level
+        self.save_settings()
+        if level:
+            threading.Thread(target=scansound.sample, args=(level,), daemon=True, name="scansound").start()
 
     CAM_SLEEP_AFTER = 60.0  # s on another page until the camera turns off (a quick look: stays on) – Oliver's c2
 

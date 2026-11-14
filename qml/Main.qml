@@ -7,7 +7,8 @@ import "components"
 
 Window {
     id: win
-    title: typeof brandInfo !== "undefined" ? brandInfo.name : ""   // ui/brand.NAME
+    // ui/brand.NAME; the DEV version (no ship flag, version.dev_build) says so in the title: „Bent°Corner DEV 0.9.8.100“
+    title: typeof brandInfo === "undefined" ? "" : brandInfo.dev ? brandInfo.name + " " + brandInfo.devLabel : brandInfo.name
     color: T.bg
     minimumWidth: 1120
     minimumHeight: 560
@@ -415,11 +416,28 @@ Window {
         border.width: 1; border.color: T.line2
         Text {
             id: toastText
+            textFormat: Text.RichText   // quickshell.show_toast hands over safe rich text only
             anchors.centerIn: parent
             width: Math.min(588, implicitWidth)
             color: T.text; font.family: T.font; font.pixelSize: 13
             wrapMode: Text.Wrap
         }
         Timer { id: toastT; interval: 6000; onTriggered: toast.opacity = 0 }
+    }
+
+    // DEV version (Oliver 13.11.2026): a small red label at the top edge, always on top, never in the way of a click
+    Rectangle {
+        visible: typeof brandInfo !== "undefined" && brandInfo.dev
+        z: 100000
+        enabled: false
+        anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+        width: devText.implicitWidth + 20; height: 18; radius: 4
+        color: "#E5484D"   // ui/iconkit.DEV_RED
+        Text {
+            id: devText
+            anchors.centerIn: parent
+            text: typeof brandInfo !== "undefined" ? brandInfo.devLabel : ""
+            color: "#ffffff"; font.family: T.font; font.pixelSize: 11; font.bold: true
+        }
     }
 }

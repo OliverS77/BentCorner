@@ -42,7 +42,7 @@ class GuardSetLineTest(unittest.TestCase):
         c.guard_on = lambda: False
         t = self.page(c)
         self.assertNotIn(backupui.GUARD_SET, t)
-        self.assertIn(backupui.NEW_CODE, t)
+        self.assertIn(backupui.ADD_SET_UP, t)
 
     def test_not_while_deleting_is_asked(self):
         c = ctrl()[0]

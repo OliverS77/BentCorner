@@ -48,6 +48,7 @@ from collection import decks
 from cards import packtypes
 from ui import scanui
 from ui import setupui
+from ui import scalper as _scalper   # the mini game's name (TITLE) for the settings page
 from system import datahome
 from scanner.camera import Camera
 from scanner.recognizer import Recognizer
@@ -117,7 +118,7 @@ SETTINGS_PAGES = [("general", "settings", "General", "Game, language, program wi
                   ("updates", "update", "Updates", "New versions and patch history"),
                   ("legal", "legal", "Legal", "Legal notice, privacy policy, terms, sources and licenses"),
                   ("about", "heart", "About Bent°Corner", "Who is behind it, version and a coffee"),
-                  ("game", "game", "Scalper Invaders", "Psst – a little easter egg"),
+                  ("game", "game", _scalper.TITLE, "Psst – a little easter egg"),   # the name: ui/scalper.py TITLE only
                   # the last one (PLAN.md § 5.1): the server part and this PC, inline (ui/qforget.py)
                   ("delete", "trash", "Delete Bent°Corner", "Your data on the server and on this PC")]
 from collection import syncrun as _syncrun   # noqa: E402
@@ -203,8 +204,9 @@ LEGAL_TEXT = [
                     "images of {mirror_games} come through our image mirror (only if it can't "
                     "deliver an image does the app ask the source directly), Yu-Gi-Oh! data, images and prices from our "
                     "server. Prices and exchange rates only from Near Orbit on (Bent°Corner Orbit, Settings → Friends & "
-                    "privacy). Only if you turn them on: the exchange with friends (Full Orbit, end-to-end encrypted), anonymous "
-                    "usage numbers (once a week, without any ID) and uploads from the Scan Studio. Details: <a "
+                    "privacy). Only in Full Orbit, which you turn on yourself: the exchange with friends (end-to-end "
+                    "encrypted), anonymous usage numbers if you also turn them on there (once a week, without any ID), and "
+                    "uploads from the Scan Studio. Details: <a "
                     "href='https://bentcorner.app/datenschutz.html'>privacy policy</a>."),
     ("Scan data", "When you correct a misrecognized card, Bent°Corner keeps the crop of that card (not the whole "
                   "camera image – so no faces or rooms) and a line of text: what was recognized and what is right. At "
@@ -1598,7 +1600,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         self.autobackup_setup()   # automatic backup (quietly in the background)
         self.updater_setup()      # updates via our own server (signed)
         from scanner import scansound          # generate scan sounds once (in the background – first scan won't wait)
-        threading.Thread(target=scansound.prepare, daemon=True, name="scansound").start()
+        threading.Thread(target=scansound.prepare, args=(scansound.level_of(self.settings),), daemon=True,
+                         name="scansound").start()
         self.packs_check()   # data bundles of the chosen games (not in the .exe) – missing ones get downloaded
         if self.settings.get("first_setup"):
             waits = any(j["kind"] == "pack" for j in self.jobs + ([self.current] if self.current else []))
@@ -1639,9 +1642,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             self.after_news()
             return
 
-        def key(v):   # shipped version (three digits) includes all its work-in-progress builds: 0.9.1 = 0.9.1.∞
-            parts = [int(x) for x in str(v).split(".") if x.isdigit()]
-            return tuple(parts + [10 ** 9] * (4 - len(parts)))
+        key = version._vkey   # one order for ships and work builds (old style before, new style after their ship)
         if seen:
             new = [n for n in notes if key(seen) < key(n[0]) <= key(version.VERSION)]
         else:   # previous version unknown (first time with this display): everything from the current release

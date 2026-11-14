@@ -14,6 +14,9 @@ from unittest import mock
 from net import devices_ctl, pairing, relay, sync_ctl, vault
 from tests.test_syncrun import SEED as SYNC_SEED, Device, FakeVault, deck
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 SEED = base64.b64encode(b"\x11" * 32).decode()
 
 

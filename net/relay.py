@@ -58,7 +58,9 @@ def enabled(settings):
 
 
 def url(settings):
-    return (state(settings).get("url") or URL).rstrip("/")
+    """The box for the mailbox – decided in ONE place (net/boxbase.py: Ship = live, DEV = the test instance)."""
+    from net import boxbase
+    return boxbase.base(settings)
 
 
 def _signing(settings):
@@ -111,11 +113,13 @@ OWN_PATHS = frozenset({"/v1/fetch", "/v1/ack", "/v1/board/put", "/v1/board/del",
 
 
 def _post(settings, path, payload, again=True):
-    from net import vault
+    from net import boxbase, vault
     try:
         r = vault.gated("POST", url(settings) + path, 20, json=payload)   # the gate cookie only for the test instance
     except vault.GateMissing:
         raise RelayError(tr("The access code for the test server is missing."), 401) from None
+    except boxbase.Blocked:
+        raise RelayError(tr(boxbase.BLOCKED_TEXT), boxbase.BLOCKED_STATUS) from None
     except Exception as e:  # noqa: BLE001
         raise RelayError(tr(f"Server unreachable ({e.__class__.__name__})")) from None
     try:
@@ -123,7 +127,8 @@ def _post(settings, path, payload, again=True):
     except ValueError:
         d = {}
     if r.status_code != 200:
-        if again and d.get("unknown") and path != "/v1/register":
+        from net import boxbase
+        if again and d.get("unknown") and path != "/v1/register" and boxbase.full():   # never outside Full Orbit
             # the server no longer knows my address (removed after a year without use): register anew, once
             state(settings).pop("registered", None)
             register(settings)
@@ -285,12 +290,14 @@ def moved_away(settings, data):
 
 def lookup(settings, code):
     """Public key of an address – verified: it must match the address (the server cannot swap it)."""
-    from net import vault
+    from net import boxbase, vault
     code = norm(code)
     try:
         r = vault.gated("GET", f"{url(settings)}/v1/key/{code}", 20)
     except vault.GateMissing:
         raise RelayError(tr("The access code for the test server is missing."), 401) from None
+    except boxbase.Blocked:
+        raise RelayError(tr(boxbase.BLOCKED_TEXT), boxbase.BLOCKED_STATUS) from None
     except Exception as e:  # noqa: BLE001
         raise RelayError(tr(f"Server unreachable ({e.__class__.__name__})")) from None
     if r.status_code == 404:
@@ -697,6 +704,11 @@ def slim_export(data):
 # otherwise a second device shares with nobody, or – with an old "all" – with everybody.
 AUDIENCE_V = 2
 MAX_SLOTS = 20   # posts per address on the mailbox (box.py MAX_SLOTS) – lists per game + each shared binder
+# review H2-6 (as the web, ports 10.11.): what strangers and friends can make this device keep is bounded – at most
+# MAX_IN open requests (the oldest go), a "no" comes back as a request only after NO_WAIT, a friend's boards at most
+# MAX_SLOTS (an existing one may still change)
+MAX_IN, NO_WAIT = 50, 7 * 86400
+_SLOT_OK = re.compile(r"[A-Za-z0-9_-]{1,40}")
 
 
 def migrate_audience(settings):
@@ -1171,6 +1183,13 @@ def apply(settings, env):
         if f is not None and f.get("status") in ("ok", "out"):   # both sent a request at the same time
             f.update(person, status="ok", sign_pk=env["_sign_pk"], t=time.time())
             return {"kind": "friend_ok", "code": code, "name": person["name"]}
+        if f is not None and f.get("status") == "no" and time.time() - float(f.get("t") or 0) < NO_WAIT:
+            return None   # asked again too soon after a "no" (H2-6)
+        if f is None or f.get("status") != "in":   # a new open request: the oldest go beyond MAX_IN (H2-6)
+            open_ = sorted((c for c, x in fs.items() if isinstance(x, dict) and x.get("status") == "in"),
+                           key=lambda c: float(fs[c].get("t") or 0))
+            for c in open_[:max(0, len(open_) - MAX_IN + 1)]:
+                fs.pop(c, None)
         fs[code] = dict(person, status="in", sign_pk=env["_sign_pk"], t=time.time())
         return {"kind": "friend", "code": code, "name": person["name"]}
     if kind == "rekey":   # a friend moved (PAIRING.md §3) – legal 07.11.: shown with Accept / Decline, never silent
@@ -1190,8 +1209,12 @@ def apply(settings, env):
         return {"kind": "friend_no", "code": code, "name": f.get("name")}
     if kind == "board_key" and f.get("status") == "ok":
         game, slot = str(body.get("game") or ""), str(body.get("slot") or "")
-        if not game or not slot or not isinstance(body.get("key"), str):
-            return None
+        key = body.get("key")
+        if (game not in {k for k, *_ in __import__("games").GAMES} or not _SLOT_OK.fullmatch(slot)
+                or not isinstance(key, str) or len(key) > 100):
+            return None   # as the web (H2-5/H2-6): a known game, a harmless slot name, a key of sane length
+        if f"{game}/{slot}" not in (f.get("boards") or {}) and len(f.get("boards") or {}) >= MAX_SLOTS:
+            return None   # H2-6: a friend's boards at most MAX_SLOTS – an existing one may still change
         f.setdefault("boards", {})[f"{game}/{slot}"] = {"key": body["key"], "t": int(body.get("t") or 0),
                                                         "until": int(body.get("until") or 0),
                                                         "title": str(body.get("title") or "")[:60]}

@@ -1,6 +1,7 @@
 // One element of a mirrored form (see qform.py). Containers (row/col/form/grid/group) draw their
 // children recursively; input goes back to the real widget via mirror.act(id, wert).
 import QtQuick
+import QtQuick.Window
 
 Item {
     id: n
@@ -547,14 +548,25 @@ Item {
         }
     }
     Component {
-        id: cGame   // Scalper Invaders (scalper.py) – at most 480 wide, centred
+        id: cGame   // the mini game (scalper.py, its name = TITLE there) – at most 480 wide, centred
         Item {
-            implicitHeight: game.height
+            implicitHeight: gameStrip.height + (gameStrip.visible ? 8 : 0) + game.height
+            // the "Done" strip above the field (lead 13.11.: as in the web, score and lives stay visible)
+            GameStrip { id: gameStrip; game: game; width: game.width; anchors.horizontalCenter: parent.horizontalCenter }
             ScalperGame {
                 id: game
-                width: Math.min(480, n.width); anchors.horizontalCenter: parent.horizontalCenter
+                // fit (setup 0.9.8, lead 13.11.): the px the rest of the page needs – the field then never makes the
+                // page scroll (1280×720): height ≤ window height − fit (− the strip while it shows), width = 3/4 of it,
+                // never below 240
+                width: Math.min(480, n.width, n.nv.fit ? Math.max(240, (Window.height - n.nv.fit
+                                                                        - (gameStrip.visible ? gameStrip.height + 8 : 0)) * 0.75) : 480)
+                y: gameStrip.visible ? gameStrip.height + 8 : 0
+                anchors.horizontalCenter: parent.horizontalCenter
                 ship: n.nv.ship || ""; sprites: n.nv.sprites || ({}); best: n.nv.best || 0
+                title: n.nv.title || ""; canGo: n.nv.go === true; done: n.nv.done === true
+                doneText: n.nv.doneText || ""; keepText: n.nv.keepText || ""; goText: n.nv.goText || ""
                 onNewBest: function (s) { n.mirror.act(n.nv.id, ["best", s]) }
+                onGo: n.mirror.act(n.nv.id, ["go"])
             }
         }
     }

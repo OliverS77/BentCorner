@@ -53,12 +53,11 @@ LOCAL_OURS = re.compile(r"^(Bent°Corner Essentials|essentials(-[0-9a-f]{16})?\.
 
 
 def _local_targets():
-    """-> (paths that go, folder removed if empty). %LOCALAPPDATA%\\BentCorner is ours as a whole; a folder named by
-    BC_STARTER_LOCAL (test copies – or someone setting it from outside, lead 06.11.) only with our own entries in it,
-    so an environment variable can never point "Delete Bent°Corner" at a foreign folder."""
+    """-> (paths that go, folder removed if empty). Only the starter's own entries (LOCAL_OURS), never the folder as a
+    whole: a folder named by BC_STARTER_LOCAL (test copies – or someone setting it from outside, lead 06.11.) must
+    never take a foreign folder along, and %LOCALAPPDATA%\\BentCorner is the data folder of new installations (Oliver
+    13.11.) – its collection goes by the data rule in plan(), foreign files and the folder itself stay unless empty."""
     home = _local_home()
-    if not os.environ.get("BC_STARTER_LOCAL", "").strip():
-        return [home], []
     if not home.is_dir():
         return [], []
     return sorted(p for p in home.iterdir() if LOCAL_OURS.match(p.name)), [home]
@@ -97,7 +96,8 @@ def latest_backup(settings):
 def plan(settings):
     base = pathlib.Path(BASE)
     local, tidy = _local_targets()
-    delete = [str(p) for p in (base / "settings.json", base / "data", datahome._config_dir(), *local) if p.exists()]
+    data = [base / "data"] if datahome.ours(base / "data") else []   # an unrelated D:\data stays (review F9)
+    delete = [str(p) for p in (base / "settings.json", *data, datahome._config_dir(), *local) if p.exists()]
     backup, when = latest_backup(settings)
     return Plan(folder=str(base), delete=delete, backup=backup, backup_time=when,
                 backup_goes=bool(backup) and _inside(backup, delete), tidy=[str(d) for d in tidy])

@@ -42,7 +42,8 @@ def money_text(t, my_id):
         return ""
     if ticket.kind(t) == "f":   # closing ticket: the deal is agreed – who pays whom, nobody "wants" (lead 06.11.)
         sd = ticket.side(t, my_id)
-        other = (sd[2][1] if sd else "") or ""
+        from ui import textsafe
+        other = textsafe.name(sd[2][1] if sd else "")   # a friend's name, shown as text only
         if m > 0:
             return tr(f"You pay {eur(m)} to {other}") if other else tr(f"You pay {eur(m)} to your friend")
         return tr(f"{other} pays you {eur(-m)}") if other else tr(f"Your friend pays you {eur(-m)}")

@@ -1,6 +1,8 @@
-// First start, part 1 – small Qt Quick window before the program: 1 Language (flags) · 2 Where should the data live?
-// · 3 Which games? After that it continues in the program window (onboarding.py). Folder choice with the file browser
-// in the same window. Logic: setup (setupui.FirstRunBackend). Switching language rebuilds the content (all texts).
+// First start, part 1 – small Qt Quick window before the program: 1 Language (flags) · 2 Storage location (preset,
+// [OK] or [Customise]; not in a portable copy) · 3 Which games? After that it continues in the program window
+// (onboarding.py). Leaner setup 0.9.8 (lead 13.11.): one sentence per step, the rest behind „▸ More“. Folder choice
+// with the file browser in the same window. Logic: setup (setupui.FirstRunBackend). Switching language rebuilds the
+// content (all texts).
 import QtQuick
 import QtQuick.Window
 import "components"
@@ -8,6 +10,7 @@ import "components"
 Window {
     id: win
     width: 760; height: 600 + (setup.found.length > 0 ? 70 + 68 * Math.min(setup.found.length, 3) : 0)
+    property bool more: false   // „▸ More“ on the games page
     minimumWidth: 640; minimumHeight: 560
     visible: false
     color: T.bg
@@ -100,16 +103,11 @@ Window {
         anchors.fill: parent
         visible: setup.browser === null
         sourceComponent: Item {
-            // ---------- Header: step dots ----------
-            Row {
-                x: 32; y: 30; spacing: 6
-                Repeater {
-                    model: 3
-                    Rectangle { required property int index
-                                width: index === setup.page ? 22 : 8; height: 8; radius: 4
-                                color: index <= setup.page ? T.hi : T.line2
-                                Behavior on width { NumberAnimation { duration: 160 } } }
-                }
+            // ---------- Header: „Step n of m“ – the same line as in the program window (whole setup counted) ----------
+            Text {
+                x: 32; y: 26
+                text: shell.text("Step " + setup.stepNo + " of " + setup.steps)   // locales RULES: „Schritt n von m“
+                color: T.dim; font.family: T.font; font.pixelSize: 13
             }
 
             // ---------- 1: Language ----------
@@ -154,27 +152,37 @@ Window {
                 visible: setup.page === 1
                 x: 32; y: 60; width: parent.width - 64
                 spacing: 12
-                Text { text: shell.text("Welcome to Bent°Corner"); color: T.text; font.family: T.display; font.pixelSize: 32 }
                 Text { width: parent.width; wrapMode: Text.Wrap
-                       text: shell.text("Scan cards, collect them and open boosters live. Where should your data live? That's where Bent°Corner keeps your collection, logs, settings and card data.")
-                       color: T.text2; font.family: T.font; font.pixelSize: 14 }
-                Item { width: 1; height: 4 }
+                       text: shell.text("Your collection is stored here:")
+                       color: T.text; font.family: T.display; font.pixelSize: 28 }
+                // preset (lead 13.11.): the folder, [Customise] opens today's choices
+                Rectangle {
+                    visible: !setup.customise
+                    width: parent.width; height: 56; radius: 12
+                    color: T.surface2; border.width: 1; border.color: T.line2
+                    Text { x: 16; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 32
+                           text: setup.choice === "port" ? setup.portPath : setup.docsPath; elide: Text.ElideMiddle
+                           color: T.text; font.family: T.font; font.pixelSize: 15 }
+                }
+                Btn { visible: !setup.customise; height: 36; compact: true; text: shell.text("Customise")
+                      onClicked: setup.setCustomise(true) }
                 // collections already on this PC (only shown – nothing is copied or moved)
-                Text { visible: setup.found.length > 0; width: parent.width; wrapMode: Text.Wrap
+                Text { visible: setup.customise && setup.found.length > 0; width: parent.width; wrapMode: Text.Wrap
                        text: setup.found.length === 1 ? shell.text("Found a collection on this PC – use it?")
                                                      : shell.text("Found collections on this PC – which one is yours?")
                        color: T.text; font.family: T.font; font.pixelSize: 15; font.bold: true }
-                Repeater { model: setup.found; Found { required property var modelData; entry: modelData } }
-                Text { text: shell.text("I already have a collection – choose its folder")
+                Repeater { model: setup.customise ? setup.found : []; Found { required property var modelData; entry: modelData } }
+                Text { visible: setup.customise; text: shell.text("I already have a collection – choose its folder")
                        color: T.text2; font.family: T.font; font.pixelSize: 13; font.underline: hav.hovered
                        HoverHandler { id: hav; cursorShape: Qt.PointingHandCursor }
                        TapHandler { onTapped: setup.browse() } }
-                Text { visible: setup.found.length > 0; text: shell.text("Or start a new, empty collection:")
+                Text { visible: setup.customise && setup.found.length > 0; text: shell.text("Or start a new, empty collection:")
                        color: T.dim; font.family: T.font; font.pixelSize: 13; topPadding: 6 }
-                Choice { key: "docs"; label: shell.text("In “Documents” (recommended)"); sub: setup.docsPath }
-                Choice { key: "port"; visible: setup.portableOk; label: shell.text("Next to the program (portable, e.g. for a USB stick)"); sub: setup.portPath }
+                Choice { key: "docs"; visible: setup.customise; label: shell.text("Recommended"); sub: setup.docsPath }
+                Choice { key: "port"; visible: setup.customise && setup.portableOk; label: shell.text("Next to the program (portable, e.g. for a USB stick)"); sub: setup.portPath }
                 Choice {
                     id: other
+                    visible: setup.customise
                     key: "other"; label: shell.text("Other folder …")
                     sub: setup.other !== "" ? setup.other : shell.text("Choose folder …")
                     extra: browseBtn
@@ -184,9 +192,6 @@ Window {
                 }
                 Text { visible: setup.error !== ""; width: parent.width; wrapMode: Text.Wrap; text: setup.error
                        color: "#e08080"; font.family: T.font; font.pixelSize: 13 }
-                Text { width: parent.width; wrapMode: Text.Wrap
-                       text: shell.text("You can change the data folder later in the settings.")
-                       color: T.dim; font.family: T.font; font.pixelSize: 13 }
             }
 
             // ---------- 3: Games ----------
@@ -196,7 +201,11 @@ Window {
                 x: 32; y: 60; width: parent.width - 64
                 spacing: 12
                 Text { text: shell.text("Which games do you want to scan?"); color: T.text; font.family: T.display; font.pixelSize: 28 }
-                Text { width: parent.width; wrapMode: Text.Wrap
+                Text { text: (win.more ? "▾ " : "▸ ") + shell.text("More"); color: T.dim; font.family: T.font
+                       font.pixelSize: 13; font.underline: mh.hovered
+                       HoverHandler { id: mh; cursorShape: Qt.PointingHandCursor }
+                       TapHandler { onTapped: win.more = !win.more } }
+                Text { visible: win.more; width: parent.width; wrapMode: Text.Wrap
                        text: shell.text("Tap a card back – you can pick more than one. Bent°Corner gets everything it needs to recognize cards right away, including cards in other languages.")
                        color: T.text2; font.family: T.font; font.pixelSize: 14 }
                 Item { width: 1; height: 6 }
@@ -258,7 +267,8 @@ Window {
                 anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 28
                 height: 42; width: 170; primary: true
                 enabled: setup.canGoOn && (setup.page !== 2 || setup.games.length > 0)
-                text: setup.page === 2 ? shell.text("Let's go") : shell.text("Next")
+                text: setup.page === 2 ? shell.text("Let's go") : (setup.page === 1 && !setup.customise ? shell.text("OK")
+                                                                                                     : shell.text("Next"))
                 onClicked: setup.next()
             }
         }

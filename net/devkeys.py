@@ -234,11 +234,10 @@ def decide(settings, about, ok, guard_code=None):
 
 def leave(settings):
     """Sign this device out of the registry (only its own key may) – the caller then forgets seed and keys."""
-    from net import vault
     k = _load(False)
     if not k or not registered(settings):
         return False
-    code, t = vault._me(settings)
+    code, t = relay.my_code(settings), int(time.time())   # no register first: the leave is the only call (legal 14.11.)
     msg = f"dev_leave|{code}|{k['dev_id']}|{t}"
     _post(settings, "/v1/dev/leave", {"code": code, "dev_id": k["dev_id"], "t": t,
                                       "sig_id": relay._signed(settings, msg), "sig_dev": sign(msg)})
@@ -249,12 +248,11 @@ def leave_seed(seed, url=None):
     """Sign this device out of the registry of ANOTHER identity (seed): cancelling at the comparison table after it was
     added there (lead/ports 11.11., U5 T3/T5) – the device's own bookkeeping already points back to its old address, so
     no registered() check here; raises VaultError on an answer (403/404/410: not there any more), OSError offline."""
-    from net import vault
     k = _load(False)
     if not k or not seed:
         return False
     s = {"relay": {"seed": str(seed), "url": url}}
-    code, t = vault._me(s)
+    code, t = relay.my_code(s), int(time.time())   # no register first: the leave is the only call (legal 14.11.)
     msg = f"dev_leave|{code}|{k['dev_id']}|{t}"
     _post(s, "/v1/dev/leave", {"code": code, "dev_id": k["dev_id"], "t": t,
                                "sig_id": relay._signed(s, msg), "sig_dev": sign(msg)})

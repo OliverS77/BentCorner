@@ -10,6 +10,9 @@ from unittest import mock
 from collection import offers, ticket
 from net import relay
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 ME, ANNA, BEN = ("m" * 32, "Me"), ("a" * 32, "Anna"), ("b" * 32, "Ben")
 CARD = ["mh2", "50", "en", 0, 1, "Counterspell"]
 ANNA_CODE = "A" * 16

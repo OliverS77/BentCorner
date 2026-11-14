@@ -118,8 +118,17 @@ def setup():
         return None
     icon = ROOT / "brand" / "icon.ico" if (ROOT / "brand" / "icon.ico").exists() else ROOT / "build" / "icon.ico"
     signing = ["/DSign", "/Sbcsign=" + SIGN] if SIGN else []
+    # wizard images from the brand (0.9.9): a Ship build (build.ps1 wrote build\ship-sync.flag) always the normal brand,
+    # a work build the red DEV copy if build.ps1 made one – a stale brand-dev never reaches a Ship build
+    ship = (ROOT / "build" / "ship-sync.flag").exists()
+    brand = ROOT / "build" / "brand-dev" if not ship and (ROOT / "build" / "brand-dev" / "logo").is_dir() else ROOT / "brand"
+    images = ROOT / "build" / "setup-images"
+    subprocess.run([sys.executable, str(ROOT / "tools" / "make_setup_images.py"), str(images), str(brand)], check=True,
+                   env=dict(os.environ, QT_QPA_PLATFORM="offscreen"))
+    pics = ([f"/DSmallImage={images / 'setup-small.png'}", f"/DBigImage={images / 'setup-big.png'}"]
+            if (images / "setup-small.png").exists() else [])
     r = subprocess.run([str(iscc), "/Q", f"/DAppVersion={version.VERSION}", f"/DSrcDir={STAGE}", f"/DIconFile={icon}",
-                        f"/DOutDir={DIST}", *signing, str(ROOT / "installer" / "bentcorner.iss")],
+                        f"/DOutDir={DIST}", *signing, *pics, str(ROOT / "installer" / "bentcorner.iss")],
                        capture_output=True, text=True, encoding="oem", errors="replace")
     if r.returncode != 0:
         print(r.stdout[-3000:], r.stderr[-3000:])

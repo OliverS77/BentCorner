@@ -153,8 +153,12 @@ class Setup(unittest.TestCase):
         self.local = pathlib.Path(self.tmp.name) / "local"
         self.patch = mock.patch.object(datahome, "_local_home", lambda: self.local)
         self.patch.start()
+        # an installed copy: a portable one skips the storage step since 0.9.8 (tests/test_setup98.py)
+        self.portable = mock.patch.object(datahome, "PORTABLE", None)
+        self.portable.start()
 
     def tearDown(self):
+        self.portable.stop()
         self.patch.stop()
         self.tmp.cleanup()
 

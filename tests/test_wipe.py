@@ -25,9 +25,10 @@ class Wipe(unittest.TestCase):
         (self.base / "data" / "my-data").mkdir(parents=True)
         (self.base / "data" / "my-data" / "collection.json").write_text("{}", "utf-8")
         (self.base / "settings.json").write_text("{}", "utf-8")
-        for d in (self.roaming, self.local):
-            d.mkdir(parents=True)
-            (d / "note.txt").write_text("x", "utf-8")
+        self.roaming.mkdir(parents=True)
+        (self.roaming / "note.txt").write_text("x", "utf-8")   # %APPDATA%\BentCorner: ours as a whole
+        self.local.mkdir(parents=True)
+        (self.local / "starter.log").write_text("x", "utf-8")  # %LOCALAPPDATA%\BentCorner: only the starter's entries
         for p in (mock.patch.object(wipe, "BASE", self.base),
                   mock.patch.object(datastore, "BACKUPS", self.base / "data" / "backups"),
                   mock.patch.object(wipe.datahome, "_config_dir", lambda: self.roaming),
@@ -46,7 +47,8 @@ class Wipe(unittest.TestCase):
     def test_plan_names_exactly_our_paths(self):
         p = wipe.plan(self.settings)
         self.assertEqual(sorted(p.delete), sorted(str(x) for x in (self.base / "settings.json", self.base / "data",
-                                                                   self.roaming, self.local)))
+                                                                   self.roaming, self.local / "starter.log")))
+        self.assertEqual(p.tidy, [str(self.local)], "the local folder itself only goes when empty afterwards")
         self.assertEqual(p.folder, str(self.base))
         self.assertEqual(p.backup, "")
 

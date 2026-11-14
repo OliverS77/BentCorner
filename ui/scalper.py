@@ -1,4 +1,7 @@
-"""Scalper Invaders – mini game (first-run setup, while the data loads, and easter egg under Settings → Game).
+"""The mini game (first-run setup, while the data loads, and easter egg under Settings → Game).
+
+Its name lives ONLY in TITLE (lead 13.11.2026: Gordon + legal, register check pending – otherwise "Scalper Battle"):
+the settings page, the game's start picture and – through tools/export_web_scalper.py – the web take it from here.
 
 Your card back is the ship. From above fall boosters (collect +1, golden +5) and scalpers (shoot down +1,
 with a "Sold out" sign 2 hits = +2). If a scalper reaches the line above the ship: −1 of 3 lives. Boosters that
@@ -11,6 +14,8 @@ import base64
 
 from PySide6 import QtCore, QtGui
 
+from system.i18n import tr
+
 PACK = ["k.k.k.k.k.", "kkkkkkkkkk", "hsssssssss", "hsssssssss", "hsBBBBBBss", "hsBwwwwBss", "hsBwBBwBss",
         "hsBwwwwBss", "hsBBBBBBss", "hsssssssss", "hsssssssss", "hsssssssss", "kkkkkkkkkk", "k.k.k.k.k."]
 BANDS = ("#3987e5", "#d95926", "#199e70")
@@ -18,6 +23,7 @@ SCALPER = [".....hhhh.......", "....hhhhhh......", "...gggggggg.....", "....hhhh
            "....dddddd......", "...dddddddd.....", "...dd.dd.ddtcccc", "...dd.dd.dd.cpqc", ".....dd.....cqpc",
            "....d..d....cccc", "...dd..dd....o.o"]
 SCALE = 3
+TITLE = "Scalper Invasion"   # the game's name – the one place (a test checks the old one is gone)
 _cache = {}
 
 
@@ -59,8 +65,11 @@ def ship_url(back):
     return _png_url(img)
 
 
-def node(ui, settings, on_change=None):
-    """Game as a form building block (qform): card back from the profile, high score from the settings."""
+def node(ui, settings, on_change=None, done=None, on_go=None):
+    """Game as a form building block (qform): card back from the profile, high score from the settings.
+    In the first-run setup (library's onboarding.py): done = the download is finished; on_go = "Let's go" – when done
+    turns True WHILE the game is shown, a strip "Done – keep playing or let's go" appears in it (only with on_go;
+    already done when the game opens: no strip). Update the node in place – a rebuilt page starts the game anew."""
     from system import userprofile
     prof = userprofile.get(settings) or {}
 
@@ -69,5 +78,9 @@ def node(ui, settings, on_change=None):
             settings["game_best"] = int(v[1])
             if on_change:
                 on_change()
+        elif v and v[0] == "go" and on_go:
+            on_go()
     return {"t": "game", "id": ui._id(act), "ship": ship_url(prof.get("back") or userprofile.DEFAULT_BACK),
-            "best": int(settings.get("game_best") or 0), "sprites": sprites()}
+            "best": int(settings.get("game_best") or 0), "sprites": sprites(), "title": TITLE,
+            "done": bool(done), "go": on_go is not None,
+            "doneText": tr("Done – everything is downloaded."), "keepText": tr("Keep playing"), "goText": tr("Let's go")}

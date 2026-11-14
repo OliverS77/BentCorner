@@ -53,7 +53,9 @@ class Worker(unittest.TestCase):
         script.write_text(FAKE, "utf-8")
         self.patches = [mock.patch.object(aiworker, "_command", lambda: [sys.executable, str(script)]),
                         mock.patch.object(aiworker, "ENABLED", True),
-                        mock.patch.object(aiworker, "START_TIMEOUT", 20.0),
+                        # like the app (60 s): a fresh Python at low priority took over 20 s under several suites
+                        # at once (library 10./11.11.: the first call() of a test -> Unavailable)
+                        mock.patch.object(aiworker, "START_TIMEOUT", 60.0),
                         mock.patch.object(fingerprint, "CHOICE_FILE", pathlib.Path(self.tmp.name) / "ai-device.json"),
                         mock.patch.object(ocrscan, "_gpu_known", [])]
         for p in self.patches:
@@ -118,6 +120,17 @@ class Worker(unittest.TestCase):
                 th.join(10)
             end.assert_called_once()
         self.assertEqual(aiworker.call("echo", 2), 2)    # a new start doesn't wait for the old one
+
+    def test_a_worker_too_slow_to_connect_is_reported_as_timeout(self):
+        slow = pathlib.Path(self.tmp.name) / "slow_worker.py"
+        slow.write_text("import time\ntime.sleep(30)\n", "utf-8")
+        with mock.patch.object(aiworker, "_command", lambda: [sys.executable, str(slow)]), \
+                mock.patch.object(aiworker, "START_TIMEOUT", 0.5), \
+                self.assertLogs(aiworker.log, "WARNING") as logs:
+            self.assertFalse(aiworker.start())
+        # not the misleading "digest received was wrong" of our own poke that releases the waiting accept()
+        self.assertIn("no connection within", logs.output[0])
+        self.assertNotIn("digest", logs.output[0])
 
 
 class Fallback(unittest.TestCase):

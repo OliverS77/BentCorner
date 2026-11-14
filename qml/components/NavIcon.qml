@@ -248,6 +248,14 @@ Canvas {
                 line(gx + Math.cos(ga) * 3.6, gy + Math.sin(ga) * 3.6, gx + Math.cos(ga) * 5.4, gy + Math.sin(ga) * 5.4)
             }
             g.lineWidth = 1.9
+        } else if (k === "sound" || k === "soundOff") {   // speaker + two waves (the waves ring out); off: crossed out
+            poly([[-8, -2.6], [-4.6, -2.6], [0, -7], [0, 7], [-4.6, 2.6], [-8, 2.6]], true)
+            if (k === "sound") {
+                g.beginPath(); g.arc(0.5, 0, 4 + 0.8 * b, -0.9, 0.9); g.stroke()
+                g.beginPath(); g.arc(0.5, 0, 7.6 + 1.2 * b, -0.85, 0.85); g.stroke()
+            } else {
+                line(-9, 8, 9, -8)
+            }
         } else if (k === "search") {   // magnifier – moves in a small circle (searching)
             g.translate(1.6 * Math.sin(Math.PI * 2 * t) * b, -1.6 * (1 - Math.cos(Math.PI * 2 * t)) * 0.5 * b)
             g.beginPath(); g.arc(-1.8, -1.8, 5.2, 0, Math.PI * 2); g.stroke()

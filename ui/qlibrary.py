@@ -722,6 +722,11 @@ class LibraryBackend(QtCore.QObject):
             out.append({"sep": True})
             out.append({"text": tr("private"), "key": "share:0", "on": not on})
             out.append({"text": tr("shared with friends"), "key": "share:1", "on": on})
+        if kind == "wish":   # wishhit (Oliver/lead 14.11.): per list, default on
+            x = next((x for x in trade.lists(kind) if x["id"] == lid), {})
+            out.append({"sep": True})
+            out.append({"text": tr("Remove automatically when scanning"), "key": "scan:toggle",
+                        "on": trade.scan_removes(x)})
         out.append({"sep": True})
         out.append({"text": tr("Move to"), "enabled": False})
         for k, t in self.LIST_KINDS:
@@ -753,6 +758,10 @@ class LibraryBackend(QtCore.QObject):
             return
         if key == "delete":
             self.deleteList(kind, lid)
+            return
+        if key == "scan:toggle":
+            trade.set_scan_remove(lid, not trade.scan_removes(x))
+            self.changed.emit()
             return
         if key.startswith("share:"):
             trade.set_shared(kind, lid, key == "share:1")

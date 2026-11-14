@@ -26,6 +26,7 @@ from scanner.common import image_rel
 from ui.librarycore import DetailHost, LibraryCore
 from collection.tradelib import PAY_NOTE, Browser, money_text, offer_image, same_cards
 from ui import qdialogs
+from ui import textsafe
 
 
 def eur(v):
@@ -66,6 +67,23 @@ def pinned_rows(rows, pinned, have_any=()):
                 need[r["name"]] -= n
                 out.append(dict(r, count=n, pinned_name=True, pinned_match=exact))
     return out
+
+CLOSING_DIFFERS = "This closing ticket doesn't match your last offer – it's waiting under Orbit → Trade offers."
+
+
+def _price(r, foil):
+    """A card row's price: foil if it is a foil and that price exists, else the normal one (None without a row)."""
+    if r is None:
+        return None
+    return r.get("eur_foil") if foil and r.get("eur_foil") is not None else r.get("eur")
+
+
+def _not_mine(t):
+    """A ticket between two other people: say so (names only as text) – nothing happens. -> None"""
+    names = " ⇄ ".join(textsafe.name(x) for x in ((t.get("f") or ["", ""])[1], (t.get("o") or ["", ""])[1]) if x)
+    qdialogs.info(tr("Trade ticket"), tr(f"This ticket ({names}) wasn't issued to you."))
+    return None
+
 
 class FriendSource:
     """Provides a friend's cards the same way as your own collection (groups/owned/summary/items/rev), so the
@@ -722,9 +740,7 @@ class TradePage(QtCore.QObject):
                     continue
                 left[c[5]] -= n
             r = db.get((str(c[0]).lower(), str(c[1])))
-            price = None
-            if r:
-                price = r.get("eur_foil") if c[3] and r.get("eur_foil") is not None else r.get("eur")
+            price = _price(r, c[3])
             rows.append({"key": f"{c[0]}|{c[1]}|{c[2]}|{c[3]}", "name": c[5], "set": str(c[0]).upper(),
                          "number": str(c[1]), "lang": c[2] or "en", "foil": bool(c[3]), "count": n, "price": price,
                          "db": r, "rarity": (r or {}).get("rarity"), "tags": []})
@@ -799,9 +815,7 @@ class TradePage(QtCore.QObject):
             r["count"] += 1
         else:
             db = carddb.by_prints([(card[0], card[1])], game=game).get((str(card[0]).lower(), str(card[1])))
-            price = None
-            if db:
-                price = db.get("eur_foil") if card[3] and db.get("eur_foil") is not None else db.get("eur")
+            price = _price(db, card[3])
             rows.append({"key": key, "name": card[5] or f"{str(card[0]).upper()} #{card[1]}",
                          "set": str(card[0]).upper(), "number": str(card[1]), "lang": card[2] or "en",
                          "foil": bool(card[3]), "count": 1, "price": price, "db": db, "rarity": (db or {}).get("rarity"),
@@ -896,19 +910,13 @@ class TradePage(QtCore.QObject):
             out = []
             for c in cards:
                 g = ticket.card_game(c, t)
-                if g != ticket.game_of(t):
-                    r = carddb.by_prints([(c[0], c[1])], game=g).get((str(c[0]).lower(), str(c[1])))
-                    p = None if r is None else (r.get("eur_foil") if c[3] and r.get("eur_foil") is not None else r.get("eur"))
-                    out.append({"name": f"{(c[5] if len(c) > 5 and c[5] else (r or {}).get('name') or '?')} · "
-                                        f"{games.SHORT.get(g, g.upper())}",
-                                "set": str(c[0]).upper(), "number": str(c[1]), "count": int(c[4] or 1), "price": p,
-                                "lang": c[2] or "en", "foil": bool(c[3])})
-                    continue
-                r = db.get((str(c[0]).lower(), str(c[1])))
-                p = None if r is None else (r.get("eur_foil") if c[3] and r.get("eur_foil") is not None else r.get("eur"))
-                out.append({"name": (c[5] if len(c) > 5 and c[5] else (r or {}).get("name")) or "?",
-                            "set": str(c[0]).upper(), "number": str(c[1]), "count": int(c[4] or 1), "price": p,
-                            "lang": c[2] or "en", "foil": bool(c[3])})
+                other = g != ticket.game_of(t)   # a card of another game: its own database, the game's short name
+                key = (str(c[0]).lower(), str(c[1]))
+                r = (carddb.by_prints([(c[0], c[1])], game=g) if other else db).get(key)
+                name = (c[5] if len(c) > 5 and c[5] else (r or {}).get("name")) or "?"
+                out.append({"name": f"{name} · {games.SHORT.get(g, g.upper())}" if other else name,
+                            "set": str(c[0]).upper(), "number": str(c[1]), "count": int(c[4] or 1),
+                            "price": _price(r, c[3]), "lang": c[2] or "en", "foil": bool(c[3])})
             return out
         img = offer_image((prof.get("name") or tr("Me"), prof.get("back")), (partner[1] or "?", friend.get("back")),
                           rows(get), rows(give), t, priced=self.priced())
@@ -933,9 +941,7 @@ class TradePage(QtCore.QObject):
         me = userprofile.ensure(self.ctrl.settings)
         sd = ticket.side(t, me.get("id"))
         if sd is None:
-            names = " ⇄ ".join(x for x in ((t.get("f") or ["", ""])[1], (t.get("o") or ["", ""])[1]) if x)
-            qdialogs.info(tr("Trade ticket"), tr(f"This ticket ({names}) wasn't issued to you."))
-            return None
+            return _not_mine(t)
         g = ticket.game_of(t)
         bad = [x for x in ticket.games_in(t) if not any(c["key"] == x and c["ready"] for c in games.choices())]
         if bad:
@@ -957,6 +963,14 @@ class TradePage(QtCore.QObject):
             offers.record_sent(t)
             self.ctrl.trade_offers_changed(open_folder=True)
             return offers.get(t.get("x") or t["id"])
+        from collection import bookings
+        if (sd[2] == (t.get("f") or ["", ""]) and bookings.by_ticket(t.get("id")) is None
+                and not offers.mirrors(offers.get(t.get("x") or t["id"], g), t, me.get("id"))):
+            # review H2-8: the other side's closing ticket isn't what was on the table – an offer to answer, no booking
+            o = offers.record_received(t, sd[2], g)
+            self.toast(tr(CLOSING_DIFFERS))
+            self.ctrl.trade_offers_changed(open_folder=True)
+            return o
         return self.book_ticket(t, answer=answer)
 
     def book_ticket(self, t, answer=None, prefer=None, lists=(True, True)):
@@ -969,9 +983,7 @@ class TradePage(QtCore.QObject):
         me = userprofile.ensure(self.ctrl.settings)
         sd = ticket.side(t, me.get("id"))
         if sd is None:
-            names = " ⇄ ".join(x for x in ((t.get("f") or ["", ""])[1], (t.get("o") or ["", ""])[1]) if x)
-            qdialogs.info(tr("Trade ticket"), tr(f"This ticket ({names}) wasn't issued to you."))
-            return None
+            return _not_mine(t)
         old = bookings.by_ticket(t.get("id"))
         if old is not None:
             qdialogs.info(tr("Trade ticket"), tr(f"Ticket Nº {ticket.label(t)} ist schon eingelöst ("
@@ -1037,7 +1049,7 @@ class TradePage(QtCore.QObject):
         if answer is None:
             def build(ui, d):
                 return ui.col([
-                    ui.label(tr(f"Trade with {partner[1] or '?'} · Ticket Nº {ticket.label(t)}"), big=True),
+                    ui.label(tr(f"Trade with {textsafe.name(partner[1]) or '?'} · Ticket Nº {ticket.label(t)}"), big=True),
                     ui.note(info.replace("\n", "<br>")),
                     ui.check(tr("Remove given cards from my trade lists"), opts["have"],
                              lambda on: opts.update(have=bool(on))),
@@ -1106,7 +1118,7 @@ class TradePage(QtCore.QObject):
             if key == "session" and target:
                 self.ctrl.show_trade_session(*target)
         qdialogs.ask(tr(f"Ticket Nº {ticket.label(t)} was booked"),
-                     tr(f"Trade with {partner[1] or '?'}") + "\n\n" + text.replace("<b>", "").replace("</b>", ""),
+                     tr(f"Trade with {textsafe.name(partner[1]) or '?'}") + "\n\n" + text.replace("<b>", "").replace("</b>", ""),
                      buttons, wait=False, on_close=done)
 
     def apply_pending(self):
@@ -1288,7 +1300,11 @@ class TradePage(QtCore.QObject):
         from collection import ticket
         self.import_error = ""
         if ticket.is_ticket_file(path):
-            t = ticket.read_image(path)
+            try:
+                t = ticket.read_image(path)
+            except ValueError as e:   # too large: a line under the import button, like other file problems
+                self.import_error = str(e)
+                return None
             if t is None:
                 self.import_error = tr("This image doesn't contain a Bent°Corner trade ticket – or it was cropped. Best send the image unchanged.")
                 return None
@@ -1296,7 +1312,7 @@ class TradePage(QtCore.QObject):
         try:
             parsed = trade.read_file(path)
         except (OSError, ValueError) as e:   # a line under the import button, no box (FriendsBackend.importError)
-            self.import_error = tr(f"Couldn't read the file: {e}")
+            self.import_error = str(e) if str(e) == tr(trade.BROKEN) else tr(f"Couldn't read the file: {e}")
             return None
         as_new = False
         if parsed["kind"] == "bentcorner":

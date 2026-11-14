@@ -16,6 +16,7 @@ import os
 import pathlib
 import shutil
 import time
+import zipfile
 
 from scanner.common import BASE, DATA, MINE
 
@@ -122,8 +123,19 @@ def personal_roots():
     return [(p, name) for p, name in out if p.exists()]
 
 
-def _personal_items():
-    return personal_roots()
+def personal_files():
+    """Every file a backup holds: (path, name in the backup, path inside its root – "" for a single file like
+    settings.json), sorted. Without the trash and half-written files (.tmp/.partial). The ZIP and the checksum of the
+    automatic backup both walk this – one rule for what counts as "personal"."""
+    for p, name in personal_roots():
+        if p.is_file():
+            yield p, name, ""
+            continue
+        for f in sorted(x for x in p.rglob("*") if x.is_file()):
+            rel = f.relative_to(p).as_posix()
+            if "trash" in rel.split("/") or f.name.endswith((".tmp", ".partial")):
+                continue
+            yield f, name, rel
 
 
 def _copy_personal(dest):
@@ -139,19 +151,12 @@ def write_zip(zip_path, manifest=None, level=6):
     """Everything personal of all games as one ZIP file (for stick/cloud: one file syncs more cleanly than
     hundreds). Write under .partial first, then rename – an aborted backup is never the newest file.
     manifest: a dict written as manifest.json (time, checksum … – autobackup)."""
-    import json
     import zipfile
     zip_path = os.fspath(zip_path)
     tmp = zip_path + ".partial"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=level) as z:
-        for p, name in personal_roots():
-            if p.is_file():
-                z.write(p, name)
-                continue
-            for f in p.rglob("*"):
-                rel = f.relative_to(p)
-                if f.is_file() and "trash" not in rel.parts and not f.name.endswith((".tmp", ".partial")):
-                    z.write(f, f"{name}/{rel.as_posix()}")
+        for f, name, rel in personal_files():
+            z.write(f, f"{name}/{rel}" if rel else name)
         z.writestr("README.txt", README)
         if manifest:
             z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=1))
@@ -317,7 +322,7 @@ def backup_info(folder):
     if str(folder).lower().endswith(".zip"):
         try:
             folder = unpack_zip(folder)
-        except (OSError, ValueError, __import__("zipfile").BadZipFile):
+        except (OSError, ValueError, zipfile.BadZipFile):
             return None
     mine = folder / "my-data" if (folder / "my-data").exists() else folder / "sammlung"
     if not mine.exists() and (folder / "data").exists():  # whole old data folder
@@ -393,9 +398,23 @@ def restore_backup(folder):
     tickets (collectibles) and the settings. Old backups with German names are migrated along the way.
     Without that safety copy nothing happens (RestoreError); an error halfway puts the safety copy back and is
     raised again (review 08.11. F4). -> True, or False when folder isn't a backup."""
+    from system import autobackup
     info = backup_info(folder)
     if info is None:
         return False
+    # never next to the automatic backup (review 08.11. F10): it could pack a half-restored state
+    if not autobackup._lock.acquire(timeout=autobackup.RESTORE_WAIT):
+        drop_unpacked()
+        raise RestoreError("an automatic backup is still running")
+    try:
+        _restore(info)
+    finally:
+        autobackup._lock.release()
+    return True
+
+
+def _restore(info):
+    from system import autobackup
     safe = snapshot("before-restore")
     if safe is None and personal_roots():
         drop_unpacked()
@@ -411,7 +430,29 @@ def restore_backup(folder):
         drop_unpacked()
         raise
     drop_unpacked()
-    return True
+    autobackup.restored = True   # until the restart: no backup of the restored state (the closing one neither)
+
+
+def _linked(p):
+    """A symlink or an NTFS junction (needs no admin) – a backup folder may point anywhere with one."""
+    p = pathlib.Path(p)
+    try:
+        return p.is_symlink() or p.is_junction()
+    except OSError:
+        return True
+
+
+def _skip_links(folder, names):
+    """copytree's ignore: never follow a link or junction inside a backup (review 08.11. F6) – otherwise a backup on a
+    stick could copy e.g. the Documents folder into my-data and from there into every later backup."""
+    return [n for n in names if _linked(pathlib.Path(folder) / n)]
+
+
+def _copy_backup(src, dst):
+    """A folder of a backup to dst – without links/junctions, not even as the folder itself."""
+    if _linked(src):
+        raise ValueError("a folder in the backup is a link")   # → "couldn't be restored – previous state is back"
+    shutil.copytree(src, dst, ignore=_skip_links)
 
 
 def _apply(info, own):
@@ -420,7 +461,7 @@ def _apply(info, own):
         dest = DATA / "games" / g.name / "my-data"
         tmpg = DATA / "restore-tmp-game"
         shutil.rmtree(tmpg, ignore_errors=True)
-        shutil.copytree(g / "my-data", tmpg)
+        _copy_backup(g / "my-data", tmpg)
         if (dest / "trash").exists():
             shutil.move(str(dest / "trash"), str(tmpg / "trash"))
         shutil.rmtree(dest, ignore_errors=True)
@@ -429,7 +470,7 @@ def _apply(info, own):
     mine_target = DATA / "my-data"
     tmp = DATA / "restore-tmp"
     shutil.rmtree(tmp, ignore_errors=True)
-    shutil.copytree(info["mine"], tmp / ("my-data" if info["mine"].name == "my-data" else "sammlung"))
+    _copy_backup(info["mine"], tmp / ("my-data" if info["mine"].name == "my-data" else "sammlung"))
     rename_layout(tmp)  # sammlung.json -> collection.json etc.
     trash = mine_target / "trash"
     keep_trash = DATA / "restore-trash"
@@ -444,10 +485,10 @@ def _apply(info, own):
     if coll.is_dir():
         tmpc = DATA / "restore-tmp-collectibles"
         shutil.rmtree(tmpc, ignore_errors=True)
-        shutil.copytree(coll, tmpc)
+        _copy_backup(coll, tmpc)
         shutil.rmtree(DATA / "collectibles", ignore_errors=True)
         os.replace(tmpc, DATA / "collectibles")
-    if info["settings"] is not None:
+    if info["settings"] is not None and (own or not _linked(info["settings"])):   # a linked settings.json: never
         text = info["settings"].read_text("utf-8").replace(*PATH_FIX)
         if own:
             SETTINGS.write_text(text, "utf-8")
@@ -596,7 +637,7 @@ def restore_extra(folder):
 def personal_size():
     """Size of the personal data in bytes (for display)."""
     total = 0
-    for p, _ in _personal_items():
+    for p, _ in personal_roots():
         if p.is_file():
             total += p.stat().st_size
         elif p.exists():

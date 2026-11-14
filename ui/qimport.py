@@ -10,6 +10,7 @@ import games
 from collection import decks
 from ui import qdialogs
 from ui import qform
+from ui import textsafe
 from ui import quickimages
 from collection import trade
 from system import orbit
@@ -346,10 +347,10 @@ class ImportBackend(QtCore.QObject):
             return None
         state = p.offer_mail
         line = {"sending": tr("Sending …"),
-                "sent": tr(f"Sent to {who[1]} through the mailbox."),
-                "full": tr(f"Couldn't be delivered – {who[1]}'s mailbox is full. Try again later or send the ticket as an image."),
+                "sent": tr(f"Sent to {textsafe.name(who[1])} through the mailbox."),
+                "full": tr(f"Couldn't be delivered – {textsafe.name(who[1])}'s mailbox is full. Try again later or send the ticket as an image."),
                 "failed": tr("Couldn't be delivered.")}.get(state, "")
-        return ui.col([ui.row([ui.button(tr(f"Send to {who[1]}"), p.send_offer_mail, primary=True,
+        return ui.col([ui.row([ui.button(tr(f"Send to {textsafe.name(who[1])}"), p.send_offer_mail, primary=True,
                                          enabled=state not in ("sending", "sent")),
                                ui.note(line) if line else None, ui.stretch()]),
                        ui.note(tr(TICKET_SOON)),   # legal 07.11. (PLAN-EINFACH A: the mailbox clock)

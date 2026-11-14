@@ -9,10 +9,12 @@ until the first answer of /v1/poll, and again if the server doesn't know /v1/pol
 import logging
 import random
 import threading
+import time
 
 from PySide6 import QtCore
 
 log = logging.getLogger("booster")
+CODE_SET_WAIT = 24 * 3600   # a code setter the device list does not know yet: wait this long after t (lead 14.11.)
 
 
 class PollControl:
@@ -118,6 +120,7 @@ class PollControl:
         """What changed -> the real fetches."""
         from net import guard
         guard.learn(self.settings, res.get("guard"))   # the ID's salt (S5 = b)
+        self._code_set_check(res.get("guard"))
         e = getattr(self, "sync_engine", None)
         if (e is not None and self.sync_on() and self.sync_orbit_ok() and not res.get("closed")
                 and (int(res.get("vault_version") or 0) != int(e.meta.get("version") or 0) or res.get("deleted")
@@ -129,6 +132,65 @@ class PollControl:
             self.relay_poll()
         if hasattr(self, "_dev_poll"):   # B5: devices in/out, join requests
             self._dev_poll(res)
+
+    def _code_set_check(self, info):
+        """„A protection code was set up on {device}“ (Oliver 13.11., confirmed by Gordon; lead: the box field "by").
+        guard = {"set", "salt", "t", "by"} from the box. settings["sync_code_seen"]: 0 = this device saw no code yet, a
+        time = the code it knows. Shown ONCE – sync_status["guard_set_by"] = {"name", "n", "key"} – only when this device knew
+        „no code“ and another device of the list set the first one; library's page writes sync_code_seen = key after
+        drawing it. Silently taken over (nothing shown): the setter itself, a changed code, the first look after
+        joining/updating, a device that left after its line was up. A move keeps t (nothing new). An older box without
+        t/by: nothing at all. A setter this device's list doesn't know YET (just joined – its */devices row comes with a
+        later sync; the poll asks before the list, lead 14.11.) is waited for up to CODE_SET_WAIT after t, then taken
+        over silently."""
+        s = self.settings
+        seen = s.get("sync_code_seen")
+        if not isinstance(info, dict) or not info.get("set"):
+            if seen is None:
+                s["sync_code_seen"] = 0
+                self.settings_changed()
+            return
+        try:
+            t = int(info.get("t") or 0)
+        except (TypeError, ValueError):
+            t = 0
+        by = str(info.get("by") or "")
+        if not t or not by:
+            return
+        if seen is not None and seen != 0 and t <= int(seen):
+            return
+        row = None
+        if seen == 0 and by != self._my_rid():
+            row = next((d for d in self.sync_devices() if d.get("rid") == by and not d.get("me")), None)
+            if (row is None and not self.sync_status.get("guard_set_by")
+                    and time.time() < t + CODE_SET_WAIT):
+                return   # not in the list yet: ask again on the next poll – nothing noted (lead 14.11.)
+        if row is None:   # first look, own code, a change or a device not in the list: no line, just known now
+            s["sync_code_seen"] = t
+            self.sync_status.pop("guard_set_by", None)
+            self.settings_changed()
+            return
+        from system import nicknames
+        name = str(row.get("name") or "") or nicknames.render(row.get("nick"), nicknames.lang()) or ""
+        shown = {"name": name, "n": int(row.get("n") or 0), "key": t}   # no name: „Device {n}“ like the list
+        if self.sync_status.get("guard_set_by") != shown:
+            self.sync_status["guard_set_by"] = shown
+            self._sync_changed()
+
+    def _my_rid(self):
+        try:
+            from net import devkeys
+            k = devkeys.mine(create=False)
+            return k["dev_id"] if k else None
+        except Exception:  # noqa: BLE001
+            return None
+
+    def code_set_seen(self, key):
+        """The page drew „set up on …“: remembered, never again for this code (also after a restart)."""
+        self.settings["sync_code_seen"] = int(key or 0)
+        self.sync_status.pop("guard_set_by", None)
+        self.settings_changed()
+        self._sync_changed()
 
     def sync_event(self):
         """Something happened the other devices or friends should see now (lead 07.11.): a log ended, a friend

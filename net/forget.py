@@ -26,6 +26,7 @@ DELETED, ALREADY, FAILED, NO_ID, UNAVAILABLE = "deleted", "already", "failed", "
 MAIN_REQUIRED = "main_required"   # a protection code is set: needed (or wrong; detail = retry_after s)
 EXIT = {DELETED: 0, ALREADY: 2, FAILED: 3, NO_ID: 4, UNAVAILABLE: 3, "main_required": 3}
 CHECK_FULL, CHECK_SHARED = 10, 11   # `--forget-server --check`: version B (/v1/forget) or A (lists and binders only)
+CHECK_GUARD = 12   # ... B, but a protection code is set: the uninstaller has no code – it shows legal's line (0.9.9)
 # the server's automatic deadlines (Gordon, live code + privacy policy, 03.11.2026) – the texts name exactly these
 BOARD_DAYS = relay.BOARD_DAYS   # shared lists and binders: 6 months after they were last shared
 KEY_DAYS = 365                  # ID and key: after 365 days without use
@@ -54,6 +55,19 @@ def has_id(settings):
     return bool(st.get("seed")) and bool(st.get("registered") or st.get("posted"))
 
 
+def guarded(settings):
+    """A protection code is set on this ID – known locally, no network (the ID's salt learnt from the server, or the
+    sync engine's state). Then /v1/forget needs the code, which the uninstaller doesn't have (legal 13.11.2026)."""
+    if relay.state(settings).get("guard_salt"):
+        return True
+    try:
+        from system import datahome
+        meta = json.loads((datahome.HOME / "sync" / "meta.json").read_text("utf-8"))
+        return bool(meta.get("guard"))
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def _raw_post(settings, path, payload):
     """POST without the re-registering of relay._post -> (status, json dict) or raises OSError-like on no answer."""
     from net import vault
@@ -75,8 +89,11 @@ def _forget_local_state(settings):
 
 def available(settings):
     """Does the server offer /v1/forget? Only {"forget": true} in GET /v1/health counts (Gordon 03.11.2026);
-    a missing field, an error or no network means version A (lists and binders only)."""
-    from net import vault
+    a missing field, an error or no network means version A (lists and binders only). Outside Full Orbit nothing is
+    asked: /v1/forget is live on the box (Gordon 14.11., server-repo 3f547b9) and /v1/health is locked there."""
+    from net import boxbase, vault
+    if not boxbase.full():
+        return True
     try:
         r = vault.gated("GET", relay.url(settings) + "/v1/health", 10)
         return r.status_code == 200 and (r.json() or {}).get("forget") is True
@@ -195,7 +212,8 @@ def delete_server(settings, notify=True, full=None, guard_code=None):
     if full is None:
         full = available(settings)
     r = forget(settings, guard_code) if full else Result(UNAVAILABLE)
-    if r.status == UNAVAILABLE:
+    from net import boxbase
+    if r.status == UNAVAILABLE and boxbase.full():   # A (one request per list) only in Full Orbit (lead 14.11.)
         r = delete_shared(settings, notify=notify)
     log.info("Delete Bent°Corner: server %s %s", r.status, r.detail)
     return r
@@ -208,9 +226,22 @@ def main():
         settings = json.loads(datastore.SETTINGS.read_text("utf-8"))
     except (OSError, ValueError):
         raise SystemExit(EXIT[NO_ID])
+    from system import orbit
+    before = orbit._bound
+    orbit.bind(settings)   # the /v1 lock reads the level from it (outside Full Orbit: only /v1/forget, no health)
+    try:
+        _main(settings, datastore)
+    finally:
+        orbit.bind(before)   # a process of its own in the uninstaller; in tests nothing stays bound
+
+
+def _main(settings, datastore):
     import sys
     if "--check" in sys.argv:   # the uninstaller asks which checkbox text applies – deletes nothing (only GET /v1/health)
-        raise SystemExit(EXIT[NO_ID] if not has_id(settings) else CHECK_FULL if available(settings) else CHECK_SHARED)
+        if not has_id(settings):
+            raise SystemExit(EXIT[NO_ID])
+        full = available(settings)
+        raise SystemExit(CHECK_GUARD if full and guarded(settings) else CHECK_FULL if full else CHECK_SHARED)
     r = delete_server(settings, notify=False)
     if r.status in (DELETED, ALREADY):
         datastore.SETTINGS.write_text(json.dumps(settings, ensure_ascii=False, indent=1), "utf-8")

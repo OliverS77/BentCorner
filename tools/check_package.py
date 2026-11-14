@@ -62,6 +62,35 @@ def missing_entries(path):
     return [r for r in REQUIRED if not any(n == r or n.endswith("/" + r) for n in names)]
 
 
+def read_entry(path, name):
+    """Bytes of one entry of a starter exe, a .zip or a folder."""
+    p = pathlib.Path(path)
+    if p.is_dir():
+        return (p / name).read_bytes()
+    with (zipfile.ZipFile(p) if p.suffix.lower() == ".zip" else program_zip(p)) as z:
+        return z.read(name)
+
+
+def brand_problems(path):
+    """A Ship build (ship-sync.flag in the package) carries brand/ exactly as in the repository – never the red DEV
+    mark (tools/make_dev_brand.py, Oliver 13.11.2026): no DEV.txt, every brand file byte-identical to brand/."""
+    names = [n for n, _ in entries(path)]
+    if not any(n == "ship-sync.flag" or n.endswith("/ship-sync.flag") for n in names):
+        return []
+    repo = pathlib.Path(__file__).resolve().parents[1] / "brand"
+    out = []
+    for n in names:
+        i = n.find("brand/")
+        if i < 0 or (i and n[i - 1] != "/"):
+            continue
+        rel = n[i + len("brand/"):]
+        if rel == "DEV.txt":
+            out.append(n + " (DEV mark)")
+        elif (repo / rel).is_file() and read_entry(path, n) != (repo / rel).read_bytes():
+            out.append(n + " (differs from brand/)")
+    return out
+
+
 def slim_entries(path):
     """-> names the slim build leaves out (build_launcher.SKIP) that are in the package anyway."""
     return [n for n, _ in entries(path) if re.search(SKIP, "/" + n)]
@@ -77,6 +106,10 @@ def main():
         found = forbidden_entries(path)
         if found:
             print(f"{path}: darf nicht ins Paket:", *found, sep="\n  ")
+            bad = True
+        dev = brand_problems(path)
+        if dev:
+            print(f"{path}: Ship-Bau mit fremder/roter Marke:", *dev, sep="\n  ")
             bad = True
         gone = missing_entries(path)
         if gone:

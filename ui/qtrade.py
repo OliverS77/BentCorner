@@ -10,6 +10,7 @@ from PySide6 import QtCore
 from cards import carddb
 from cards import library
 from ui import quickimages
+from ui import textsafe
 from collection import trade
 from system import orbit
 from system import userprofile
@@ -794,7 +795,7 @@ class TradeBackend(QtCore.QObject):
             mail = o.get("mail") or {}
             undelivered = None
             if offers.undelivered(o):   # a quiet line, never a window (lead 06.11.)
-                undelivered = ui.note(tr(f"Couldn't be delivered – {o['partner'][1] or '?'}'s mailbox is full. Try again later or send the ticket as an image.")
+                undelivered = ui.note(tr(f"Couldn't be delivered – {textsafe.name(o['partner'][1]) or '?'}'s mailbox is full. Try again later or send the ticket as an image.")
                                       if mail.get("status") == 507 else tr("Couldn't be delivered."))
             rows.append(ui.group("", [ui.label(head), ui.note(sub), undelivered, ui.row(btns + [ui.stretch()])]))
         return ui.col(rows, spacing=10)
@@ -874,7 +875,7 @@ class TradeBackend(QtCore.QObject):
                                        ui.spin(int(c[4] or 0), 0, 99, lambda v, c=c: c.__setitem__(4, int(v)))])
                                for c in cards], spacing=8)
             return ui.col([
-                ui.label(tr(f"Trade with {o['partner'][1] or '?'} · Trade ID {oid.upper()}"), big=True),
+                ui.label(tr(f"Trade with {textsafe.name(o['partner'][1]) or '?'} · Trade ID {oid.upper()}"), big=True),
                 ui.label(tr("You give"), bold=True), side_rows(give) if give else ui.note(tr("nothing")),
                 ui.label(tr("You get"), bold=True), side_rows(get) if get else ui.note(tr("nothing")),
             ] + ([

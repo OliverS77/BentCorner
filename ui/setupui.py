@@ -40,7 +40,11 @@ class _MiniShell(QtCore.QObject):
 
 class FirstRunBackend(QtCore.QObject):
     """First-run setup, part 1 (before the program): 0 language · 1 storage location · 2 games. After that it
-    continues in the program window (onboarding.py) – where the card database already loads in the background."""
+    continues in the program window (onboarding.py) – where the card database already loads in the background.
+
+    Leaner setup 0.9.8 (Oliver/Gordon/lead 13.11.): the storage location is preset (datahome.DEFAULT) – [OK] or
+    [Customise] (today's choices behind it). A collection found on this PC opens it customised, nothing preselected.
+    A portable copy without a collection found skips the step: its data lives next to the program."""
     changed = QtCore.Signal()
     browseChanged = QtCore.Signal()
     finished = QtCore.Signal()
@@ -53,18 +57,38 @@ class FirstRunBackend(QtCore.QObject):
         # collection only by an explicit choice (lead 06.11.2026)
         self._found = self._look_for_existing()
         self._choice, self._other, self._error = ("" if self._found else "docs"), "", ""
+        self._custom = bool(self._found)   # found collections: the choices right away (nothing preselected)
+        if self.skips_storage():
+            self._choice = "port"
         self._page, self._lang, self._games = 0, i18n.LANG, []
         self._browser = None
         self.result_home, self.result_lang, self.result_games, self.accepted = None, self._lang, [], False
+        self.result_steps = 5
 
     # ---------- steps ----------
     @QtCore.Property(int, notify=changed)
     def page(self):
         return self._page
 
+    def skips_storage(self):
+        """A portable copy with nothing found: no storage step – the data lives next to the program (lead 13.11.)."""
+        return datahome.PORTABLE is not None and not self._found
+
+    @QtCore.Property(int, constant=True)
+    def steps(self):
+        """Steps of the whole setup (both windows): language · [storage] · games · name · Orbit."""
+        return 4 if self.skips_storage() else 5
+
+    @QtCore.Property(int, notify=changed)
+    def stepNo(self):
+        """1-based number of this page in the whole setup („Step n of m“)."""
+        return self._page + 1 - (1 if self.skips_storage() and self._page == 2 else 0)
+
     @QtCore.Slot()
     def back(self):
         self._page, self._error = max(0, self._page - 1), ""
+        if self._page == 1 and self.skips_storage():
+            self._page = 0
         self.changed.emit()
 
     @QtCore.Slot()
@@ -78,6 +102,20 @@ class FirstRunBackend(QtCore.QObject):
             self.go()
             return
         self._page += 1
+        if self._page == 1 and self.skips_storage():
+            self._page = 2
+        self.changed.emit()
+
+    # ---------- 1: the preset folder, or [Customise] ----------
+    @QtCore.Property(bool, notify=changed)
+    def customise(self):
+        return self._custom
+
+    @QtCore.Slot(bool)
+    def setCustomise(self, on):
+        self._custom, self._error = bool(on), ""
+        if not on and not self._choice.startswith("found:") and self._choice != "port":
+            self._choice = "docs"   # back to the preset
         self.changed.emit()
 
     # ---------- 0: language ----------
@@ -281,6 +319,7 @@ class FirstRunBackend(QtCore.QObject):
         order = [g for g in READY if g in self._games]
         self.result_home, self.result_lang, self.result_games = self.chosen(), self._lang, order
         self._note(f"chosen: {self.result_home} ({'existing collection' if self._keeps_collection() else 'new'})")
+        self.result_steps = self.steps
         self.accepted = True
         self.finished.emit()
 

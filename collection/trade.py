@@ -22,6 +22,7 @@ import time
 import uuid
 import zlib
 
+from collection import csvsafe   # exports: text cells never become formulas (review H2-7)
 from scanner.common import MINE
 from system import orbit
 from system.i18n import tr
@@ -435,6 +436,23 @@ def add_list(kind, name, example=False, rule=None, shared=False, game=None, top=
 
 
 SHAREABLE = ("wish", "have")   # own lists always stay private
+
+
+def scan_removes(x):
+    """Does scanning a card take it off this wishlist (collection/wishhit.py)? Per list, default on (Oliver/lead
+    14.11.) – stored only when off ("scan_keep"), so older devices that don't know the field keep the default."""
+    return not (x or {}).get("scan_keep")
+
+
+def set_scan_remove(lid, on):
+    d = _read_lists()
+    for x in d["wish"]:
+        if x["id"] == lid:
+            if on:
+                x.pop("scan_keep", None)
+            else:
+                x["scan_keep"] = True
+    _write_lists(d)
 
 
 def is_shared(x):
@@ -983,7 +1001,7 @@ def export_custom(groups, path, columns, db_rows=None, game=None, locale=()):
     columns = [c for c in columns if c in allowed]
     source = "text" in columns and game in exporttext.SOURCE
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.writer(f, delimiter=";")
+        w = csvsafe.writer(f, delimiter=";")
         w.writerow([names[c] for c in columns] + (["Quelle"] if source else []))
         for g in groups:
             r = db_rows.get(g.get("sid")) or {}
@@ -1014,7 +1032,7 @@ def export_deckbox(groups, path):
     lang = {"en": "English", "de": "German", "fr": "French", "it": "Italian", "es": "Spanish", "pt": "Portuguese",
             "ja": "Japanese", "ko": "Korean", "ru": "Russian", "zhs": "Chinese", "zht": "Traditional Chinese"}
     with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
+        w = csv.writer(f)   # Deckbox' import reads names exactly – no ' in front
         w.writerow(["Count", "Tradelist Count", "Name", "Edition", "Card Number", "Condition", "Language", "Foil"])
         for g in groups:
             from cards import conditions
@@ -1030,9 +1048,22 @@ FILE_MAX = 32 * 1024 ** 2
 UNPACKED_MAX = 64 * 1024 ** 2
 
 
+BROKEN = "This file couldn't be read. It may be damaged or come from another program."
+
+
 def read_file(path):
-    """File -> {"kind": "bentcorner"|"csv"|"text", "data": …}. Raises ValueError for unknown formats or files that are
-    too large (also once unpacked)."""
+    """File -> {"kind": "bentcorner"|"csv"|"text", "data": …}. Raises ValueError for unknown formats, damaged files
+    (any error while reading becomes that message – review H2-5: never a silent hang) or files that are too large
+    (also once unpacked)."""
+    try:
+        return _read_file(path)
+    except (ValueError, OSError):
+        raise
+    except Exception:  # noqa: BLE001 – wrong types, „inf“, deep nesting …: one clear message
+        raise ValueError(tr(BROKEN))
+
+
+def _read_file(path):
     import os
     if os.path.getsize(path) > FILE_MAX:
         raise ValueError(tr("The file is too large."))
@@ -1051,6 +1082,7 @@ def read_file(path):
             raise ValueError(tr("Not a Bent°Corner file"))
         if d.get("app") != "BentCorner" or not d.get("id"):
             raise ValueError(tr("Not a Bent°Corner file"))
+        d["c"] = _rows(d.get("c") or [])
         return {"kind": "bentcorner", "data": d}
     text = raw.decode("utf-8-sig", errors="replace")
     first = text.splitlines()[0] if text.strip() else ""
@@ -1077,6 +1109,32 @@ _LANG_NAMES = {"english": "en", "german": "de", "deutsch": "de", "french": "fr",
                "chinese simplified": "zhs", "chinese traditional": "zht", "traditional chinese": "zht",
                "jp": "ja", "japanisch": "ja", "englisch": "en", "französisch": "fr", "italienisch": "it",
                "spanisch": "es", "kr": "ko", "cn": "zhs", "cs": "zhs", "ct": "zht"}
+
+
+def lang_of(text):
+    """A language from a file: a known code or name, else "en" – it becomes part of an image path (review H2-6: never
+    „..“ or „a/b“)."""
+    from collection.collection import LANG_SHORT
+    t = str(text or "").strip().lower()
+    t = _LANG_NAMES.get(t, t)
+    return t if t in LANG_SHORT else "en"
+
+
+def _rows(c):
+    """The card rows of a .bentcorner file, checked (review H2-5): [[set, number, lang, foil, count, name, …]] with the
+    right types – a damaged file says so instead of breaking the import halfway. Extra fields stay as they are."""
+    if not isinstance(c, list):
+        raise ValueError(tr(BROKEN))
+    out = []
+    for r in c:
+        if not (isinstance(r, list) and len(r) >= 6 and all(isinstance(x, (str, int, float)) for x in r[:6])):
+            raise ValueError(tr(BROKEN))
+        try:
+            n = max(1, min(99_999, int(float(r[4] or 1))))
+        except (ValueError, OverflowError):
+            raise ValueError(tr(BROKEN))
+        out.append([str(r[0])[:12], str(r[1])[:12], lang_of(r[2]), 1 if r[3] else 0, n, str(r[5])[:200]] + r[6:])
+    return out
 
 
 def parse_csv(text):
@@ -1120,8 +1178,7 @@ def parse_csv(text):
         except (ValueError, OverflowError):   # „inf“, „1e999“ (review 08.11.)
             n = 1
         n = min(n, 99_999)   # review 08.11. H2-2: one entry per copy – never millions (bulk lands: thousands are fine)
-        lang = val("lang").lower()
-        lang = _LANG_NAMES.get(lang, lang if len(lang) <= 3 and lang else "en")
+        lang = lang_of(val("lang"))
         foil = val("foil").lower() in ("foil", "etched", "true", "yes", "ja", "1", "x")
         row = [val("set").lower(), val("number"), lang or "en", 1 if foil else 0, max(1, n), name]
         cond = conditions.from_text(val("cond"), source)

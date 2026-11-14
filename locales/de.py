@@ -730,6 +730,7 @@ TEXTS = {
     'Mirror: paint left and right the same': 'Spiegeln: links und rechts gleich malen',
     'Mirror: paint top and bottom the same': 'Spiegeln: oben und unten gleich malen',
     'Missing cards of my decks count as wishes (when trading)': 'Fehlende Karten meiner Decks zählen als Wünsche (beim Tauschen)',
+    'Remove automatically when scanning': 'Beim Scannen automatisch entfernen',
     'Missing cards of the set (exactly these prints) onto a wish or own list': 'Fehlende Karten des Sets (genau diese Drucke) auf eine Wunsch- oder eigene Liste',
     'Missing from collection': 'Fehlt in der Sammlung',
     'Missing to wishlist': 'Fehlende auf die Wunschliste',
@@ -1386,7 +1387,6 @@ TEXTS = {
     'The cards go into your collection.': 'Die Karten kommen in deine Sammlung.',
     'The checked cards of both sides as a trade ticket – to copy into WhatsApp/Discord or as PNG. Your partner opens it with “Import friend …” and gets it as a trade offer': 'Die angehakten Karten beider Seiten als Tauschticket – zum Kopieren für WhatsApp/Discord oder als PNG. Dein Gegenüber öffnet es mit „Freund importieren …“ und bekommt es als Tauschangebot',
     'The collection is still empty.': 'Die Sammlung ist noch leer.',
-    'The data is still downloading – Bent°Corner needs to stay open for that. Pass the time with Scalper Invaders. You can keep playing once everything is done, too.': 'Die Daten laden noch – Bent°Corner muss dafür offen bleiben. Vertreib dir die Zeit mit Scalper Invaders. Spielen geht auch, wenn alles fertig ist.',
     'The deck contains another printing of this card – switch to this one': 'Im Deck steckt ein anderer Druck dieser Karte – auf diesen umstellen',
     'The file is small enough for WhatsApp & co. Your friend imports it under “Trade” – send a new one later and their copy simply gets updated.': 'Die Datei ist klein genug für WhatsApp & Co. Dein Freund importiert sie unter „Tausch“ – schickst du später eine neue, wird seine Kopie einfach aktualisiert.',
     'The file your friend saved under “Orbit → Export …” – or a CSV from another app. Bent°Corner recognizes a known collection and updates it; your own stays untouched.': 'Die Datei, die dein Freund unter „Orbit → Exportieren …“ gespeichert hat – oder eine CSV aus einer anderen App. Bent°Corner erkennt eine schon bekannte Sammlung wieder und aktualisiert sie, deine eigene bleibt unberührt.',
@@ -2921,7 +2921,6 @@ TEXTS.update({  # Settings pages (ui/qsetpages.py)
     'Legal notice, privacy policy, terms, sources and licenses': 'Impressum, Datenschutz, Nutzung, Quellen und Lizenzen',
     'About Bent°Corner': 'Über Bent°Corner',
     'Who is behind it, version and a coffee': 'Wer dahintersteckt, Version und ein Kaffee',
-    'Scalper Invaders': 'Scalper Invaders',
     'Psst – a little easter egg': 'Psst – kleines Easter Egg',
     'Everyday': 'Alltag',
     'Looks': 'Aussehen',
@@ -2954,8 +2953,8 @@ TEXTS.update({  # app.py LEGAL_TEXT – prices explained, sources by data type, 
         "Bent°Corner macht keine eigenen Preise. Es zeigt die Richtwerte der zwei großen Marktplätze: <b>Cardmarket</b> (Europa, in €, der „Trend“-Preis) und <b>TCGplayer</b> (USA, in $, der „Market Price“); Foils haben einen eigenen Wert. Deshalb hat eine Karte einen oder zwei Werte – führt ein Marktplatz sie nicht, steht nur der andere da.<br><br>Woher: Magic über die täglichen Bulk-Daten von <a href='https://scryfall.com'>Scryfall</a>. Pokémon und Disney Lorcana: die Cardmarket-Preisliste (die App lädt die Datei selbst, höchstens einmal am Tag) und TCGplayer über den Bent°Corner-Preisserver (Daten von <a href='https://tcgcsv.com'>TCGCSV</a>). Yu-Gi-Oh!: beides vom Bent°Corner-Preisserver (Cardmarket über <a href='https://ygoprodeck.com'>YGOPRODeck</a>, TCGplayer über TCGCSV).<br><br>Wie oft: Die Marktplätze aktualisieren ihre Werte einmal am Tag; Bent°Corner holt sie so, wie du es in den Einstellungen festlegst (Standard: beim Start). Andere Währungen werden mit den Tageskursen der Europäischen Zentralbank umgerechnet (<a href='https://frankfurter.dev'>Frankfurter</a>).<br><br>Alle Preise sind Richtwerte und ohne Gewähr. Sie ändern sich ständig, können veraltet sein und sind keine Empfehlung zum Kaufen, Verkaufen oder Tauschen. Werte von Sammlungen, Packs und Sets sind Summen dieser Richtwerte.",
     "<b>Card data:</b> Magic – <a href='https://scryfall.com'>Scryfall</a> · Pokémon – <a href='https://tcgdex.dev'>TCGdex</a> · Yu-Gi-Oh! – <a href='https://ygoprodeck.com'>YGOPRODeck</a>{lorcana_data}{more_data}.<br><b>Card images:</b> Magic – Scryfall (the app loads them itself) · Pokémon – TCGdex, through our image mirror (supplementary images: <a href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, hosted on our server as YGOPRODeck requires{lorcana_images}{more_images}.<br><b>Prices:</b> Cardmarket and TCGplayer (see Prices) · price history for Magic: <a href='https://mtgjson.com'>MTGJSON</a> · exchange rates: European Central Bank via Frankfurter.<br><b>Symbols:</b> mana symbols are redrawn by Bent°Corner (they remain property of Wizards of the Coast); the game icons are our own pixel art – no publisher logos, no set symbols.<br><b>SCAN°:</b> the fingerprint indexes in the data packs are computed by Bent°Corner from the card images and contain no images.":
         "<b>Kartendaten:</b> Magic – <a href='https://scryfall.com'>Scryfall</a> · Pokémon – <a href='https://tcgdex.dev'>TCGdex</a> · Yu-Gi-Oh! – <a href='https://ygoprodeck.com'>YGOPRODeck</a>{lorcana_data}{more_data}.<br><b>Kartenbilder:</b> Magic – Scryfall (die App lädt sie selbst) · Pokémon – TCGdex, über unseren Bild-Spiegel (ergänzende Bilder: <a href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, auf unserem Server, wie YGOPRODeck es verlangt{lorcana_images}{more_images}.<br><b>Preise:</b> Cardmarket und TCGplayer (siehe Preise) · Preisverlauf für Magic: <a href='https://mtgjson.com'>MTGJSON</a> · Wechselkurse: Europäische Zentralbank über Frankfurter.<br><b>Symbole:</b> Manasymbole zeichnet Bent°Corner selbst nach (sie bleiben Eigentum von Wizards of the Coast); die Spiel-Symbole sind eigene Pixel-Bilder – keine Logos der Verlage, keine Set-Symbole.<br><b>SCAN°:</b> Die Fingerabdruck-Indizes in den Datenpaketen berechnet Bent°Corner aus den Kartenbildern; sie enthalten keine Bilder.",
-    "<b>The camera image never leaves your computer when you scan</b> – SCAN° (our smart card search) runs entirely on your PC: it reads the cards (fingerprinting) to find them again when you scan a card you own – nothing more. <b>No AI that could generate cards is trained with the card images.</b> While scanning, Bent°Corner only downloads images of cards to compare them (the request contains the card, never your camera image). Card pictures leave your computer only if you want them to: uploads from the Scan Studio and the scan data you send yourself.<br><br>At start, Bent°Corner reads which processor, how much memory and which graphics card are installed – only to set up SCAN° and animations. This stays on your computer. Online lookups (Scryfall, Commander Spellbook …) contain only the cards or decks you look up – no personal data. Our own server: the app checks for updates every 6 hours (version file only); images of {mirror_games} come through our image mirror (only if it can't deliver an image does the app ask the source directly), Yu-Gi-Oh! data, images and prices from our server. Prices and exchange rates only from Near Orbit on (Bent°Corner Orbit, Settings → Friends & privacy). Only if you turn them on: the exchange with friends (Full Orbit, end-to-end encrypted), anonymous usage numbers (once a week, without any ID) and uploads from the Scan Studio. Details: <a href='https://bentcorner.app/datenschutz.html'>privacy policy</a>.":
-        "<b>Das Kamerabild verlässt beim Scannen nie deinen Computer</b> – SCAN° (unsere smarte Kartensuche) läuft komplett auf deinem PC: Es liest die Karten aus (Fingerprinting), um sie beim Scannen wiederzufinden, wenn du sie besitzt – mehr nicht. <b>Mit den Kartenbildern wird keine KI trainiert, die Karten erzeugen könnte.</b> Beim Scannen lädt Bent°Corner nur Bilder von Karten zum Vergleichen (die Anfrage nennt die Karte, nie dein Kamerabild). Kartenbilder verlassen deinen Rechner nur, wenn du es willst: Uploads aus dem Scan-Studio und Scan-Daten, die du selbst sendest.<br><br>Bent°Corner liest beim Start aus, welcher Prozessor, wie viel Arbeitsspeicher und welche Grafikkarte verbaut sind – nur um SCAN° und Animationen passend einzustellen. Diese Angaben bleiben auf deinem Rechner. Online-Abfragen (Scryfall, Commander Spellbook …) enthalten nur die gesuchten Karten bzw. Decks – keine persönlichen Daten. Unser eigener Server: Die App fragt alle 6 Stunden nach Updates (nur die Versionsdatei); Bilder von {mirror_games} kommen über unseren Bild-Spiegel (nur wenn er ein Bild nicht liefern kann, fragt die App direkt bei der Quelle), Yu-Gi-Oh!-Daten, -Bilder und -Preise von unserem Server. Preise und Wechselkurse erst ab „Naher Orbit“ (Bent°Corner Orbit, Einstellungen → Freunde & Privatsphäre). Nur wenn du es einschaltest: der Austausch mit Freunden („Ganzer Orbit“, Ende-zu-Ende verschlüsselt), anonyme Nutzungszahlen (einmal pro Woche, ohne jede Kennung) und Uploads aus dem Scan-Studio. Mehr dazu: <a href='https://bentcorner.app/datenschutz.html'>Datenschutzerklärung</a>.",
+    "<b>The camera image never leaves your computer when you scan</b> – SCAN° (our smart card search) runs entirely on your PC: it reads the cards (fingerprinting) to find them again when you scan a card you own – nothing more. <b>No AI that could generate cards is trained with the card images.</b> While scanning, Bent°Corner only downloads images of cards to compare them (the request contains the card, never your camera image). Card pictures leave your computer only if you want them to: uploads from the Scan Studio and the scan data you send yourself.<br><br>At start, Bent°Corner reads which processor, how much memory and which graphics card are installed – only to set up SCAN° and animations. This stays on your computer. Online lookups (Scryfall, Commander Spellbook …) contain only the cards or decks you look up – no personal data. Our own server: the app checks for updates every 6 hours (version file only); images of {mirror_games} come through our image mirror (only if it can't deliver an image does the app ask the source directly), Yu-Gi-Oh! data, images and prices from our server. Prices and exchange rates only from Near Orbit on (Bent°Corner Orbit, Settings → Friends & privacy). Only in Full Orbit, which you turn on yourself: the exchange with friends (end-to-end encrypted), anonymous usage numbers if you also turn them on there (once a week, without any ID), and uploads from the Scan Studio. Details: <a href='https://bentcorner.app/datenschutz.html'>privacy policy</a>.":
+        "<b>Das Kamerabild verlässt beim Scannen nie deinen Computer</b> – SCAN° (unsere smarte Kartensuche) läuft komplett auf deinem PC: Es liest die Karten aus (Fingerprinting), um sie beim Scannen wiederzufinden, wenn du sie besitzt – mehr nicht. <b>Mit den Kartenbildern wird keine KI trainiert, die Karten erzeugen könnte.</b> Beim Scannen lädt Bent°Corner nur Bilder von Karten zum Vergleichen (die Anfrage nennt die Karte, nie dein Kamerabild). Kartenbilder verlassen deinen Rechner nur, wenn du es willst: Uploads aus dem Scan-Studio und Scan-Daten, die du selbst sendest.<br><br>Bent°Corner liest beim Start aus, welcher Prozessor, wie viel Arbeitsspeicher und welche Grafikkarte verbaut sind – nur um SCAN° und Animationen passend einzustellen. Diese Angaben bleiben auf deinem Rechner. Online-Abfragen (Scryfall, Commander Spellbook …) enthalten nur die gesuchten Karten bzw. Decks – keine persönlichen Daten. Unser eigener Server: Die App fragt alle 6 Stunden nach Updates (nur die Versionsdatei); Bilder von {mirror_games} kommen über unseren Bild-Spiegel (nur wenn er ein Bild nicht liefern kann, fragt die App direkt bei der Quelle), Yu-Gi-Oh!-Daten, -Bilder und -Preise von unserem Server. Preise und Wechselkurse erst ab „Naher Orbit“ (Bent°Corner Orbit, Einstellungen → Freunde & Privatsphäre). Nur im „Ganzen Orbit“, den du selbst einschaltest: der Austausch mit Freunden (Ende-zu-Ende verschlüsselt), anonyme Nutzungszahlen, wenn du sie dort zusätzlich einschaltest (einmal pro Woche, ohne jede Kennung), und Uploads aus dem Scan-Studio. Mehr dazu: <a href='https://bentcorner.app/datenschutz.html'>Datenschutzerklärung</a>.",
 })
 
 TEXTS.update({  # scanner: card search offered for a card without a hit (scan_ctl.unknown_card_check)
@@ -3781,6 +3780,21 @@ TEXTS.update({  # first start: collections already on this PC (performance 06.11
     'The test server needs its access code.': 'Der Testserver braucht seinen Zugangscode.',
     'Enter access code': 'Zugangscode eingeben',
     'The access code for the test server is missing.': 'Der Zugangscode für den Testserver fehlt.',
+    'This needs Full Orbit – nothing was sent.': 'Das geht nur im Ganzen Orbit – es wurde nichts gesendet.',
+    'Uploading only works in Full Orbit': 'Hochladen geht nur im Ganzen Orbit',
+    '(Full Orbit only)': '(nur im Ganzen Orbit)',
+    'Messages from the Bent°Corner team (news; questions about your contributions only in Full Orbit)':
+        'Nachrichten vom Bent°Corner-Team (Neuigkeiten; Rückfragen zu deinen Beiträgen nur im Ganzen Orbit)',
+    'Scan Studio uploads are now only available in Full Orbit.': 'Uploads aus dem Scan-Studio gibt es nur noch im Ganzen Orbit.',
+    'Wishlist cards while scanning: if you scan a card from your wishlist, the scan page shows it right away, and Bent°Corner takes it off the list – you can turn this off per list. New in the scan dock: a volume slider.':
+        'Wunschkarten beim Scannen: Scannst du eine Karte von deiner Wunschliste, zeigt die Scan-Seite das sofort, und Bent°Corner nimmt sie von der Liste – je Liste abschaltbar. Neu im Scan-Dock: ein Regler für die Lautstärke.',
+    'An easier start: setting up now takes five short steps, and the new installer is dark, asks for your language first and lets you choose where your collection is kept.':
+        'Einfacher starten: Die Einrichtung hat nur noch fünf kurze Schritte, und das neue Setup ist dunkel, fragt zuerst nach der Sprache und lässt dich wählen, wo deine Sammlung liegt.',
+    "Adding devices now also works without a protection code – the code stays optional. If you have set one up, you still enter it. Codes are now shown with spaces instead of dashes, so they're easier to type.":
+        'Geräte hinzufügen geht jetzt auch ohne Schutz-Code – der Code bleibt freiwillig. Hast du einen eingerichtet, gibst du ihn weiter ein. Codes stehen jetzt mit Leerzeichen statt Bindestrichen da und lassen sich leichter abtippen.',
+    'The mini game is now called “Scalper Invasion” and also runs during setup – for example while the card data is loading.':
+        'Das Minispiel heißt jetzt „Scalper Invasion“ und läuft auch in der Einrichtung – zum Beispiel, während die Kartendaten laden.',
+    'Wishlist cards while scanning – and an easier start': 'Wunschkarten beim Scannen und ein einfacherer Start',
     "Point your phone's camera at the turning sphere – or type the code below.": 'Halte die Kamera deines Handys auf die drehende Kugel – oder tippe den Code darunter ein.',
     "The test server didn't accept the access code.": 'Der Testserver hat den Zugangscode nicht angenommen.',
     'The online backup is empty.': 'Die Online-Sicherung ist leer.',
@@ -4292,8 +4306,6 @@ TEXTS.update({  # Profil: Blockierte (lead 08.11. – „Das kannst du im Profil
 TEXTS.update({  # Schutz-Code Pflicht ab dem zweiten Gerät (Oliver 08.11., legal 08.11. „Neufassung“)
     'Without a protection code you can only get back to your online backup through this device or your backup file – with the file only after 14 days.':
         'Ohne Schutz-Code kommst du nur über dieses Gerät oder deine Sicherungsdatei wieder an deine Online-Sicherung – mit der Datei erst nach 14 Tagen.',
-    "You need a protection code for another device. You'll enter it on the new device in a moment; it then applies to all your devices, and only with it can you remove devices or delete everything. Write it down – if you lose it, a replacement takes 14 days.":
-        'Für ein weiteres Gerät brauchst du einen Schutz-Code. Du gibst ihn gleich auf dem neuen Gerät ein; er gilt dann für alle deine Geräte, und nur mit ihm kannst du Geräte entfernen oder alles löschen. Schreib ihn auf – geht er verloren, dauert ein Ersatz 14 Tage.',
     'Set up protection code': 'Schutz-Code einrichten',
     'Enter the protection code of your other devices. If this device had its own before, it no longer applies afterwards.':
         'Gib den Schutz-Code deiner anderen Geräte ein. Hatte dieses Gerät vorher einen eigenen, gilt der danach nicht mehr.',
@@ -4304,8 +4316,8 @@ TEXTS.update({  # Schutz-Code Pflicht ab dem zweiten Gerät (Oliver 08.11., lega
     'Add device': 'Gerät hinzufügen',
     'A first protection code can only be set while just this one device is linked. Sign out your other devices there (“Sign out this device”), set up the code here and add them again afterwards – they then get your data back from the online backup.':
         'Einen ersten Schutz-Code kannst du nur einrichten, solange nur dieses eine Gerät verbunden ist. Melde deine anderen Geräte dort ab („Dieses Gerät abmelden“), richte hier den Code ein und füge sie danach wieder hinzu – sie holen sich deine Daten dann aus der Online-Sicherung zurück.',
-    'New: the protection code. From your second device on, you need it to add or remove devices – and with it you get your online backup back even if all your devices are gone.':
-        'Neu: der Schutz-Code. Ab dem zweiten Gerät brauchst du ihn, um Geräte hinzuzufügen oder zu entfernen – und mit ihm holst du deine Online-Sicherung zurück, auch wenn alle Geräte weg sind.',
+    'New: the protection code. It\'s optional. If you have one, you need it to add or remove devices – and with it you get your online backup back even if all your devices are gone.':
+        'Neu: der Schutz-Code. Er ist freiwillig. Hast du einen, brauchst du ihn, um Geräte hinzuzufügen oder zu entfernen – und mit ihm holst du deine Online-Sicherung zurück, auch wenn alle Geräte weg sind.',
 })
 
 TEXTS.update({  # the device test round 11.11. (lead/ports): the code only, no sphere (SPHERE off)
@@ -4345,4 +4357,57 @@ TEXTS.update({  # legal 12.11. (via lead), word for word: on setting up the prot
 
 TEXTS.update({  # removing right after adding (desk-geraete3 box run 12.11.)
     "Checking the device list …": "Geräteliste wird geprüft …",
+})
+
+TEXTS.update({  # without a protection code (Oliver 13.11., A2 taken back) – legal 13.11. 1f/1g, word for word
+    "Without a protection code, any of your devices can remove the others or set a code for all of them. If all your devices are gone, only your backup file gets you back to your online backup.":
+        "Ohne Schutz-Code kann jedes deiner Geräte die anderen entfernen oder einen Code für alle festlegen. Sind alle Geräte weg, kommst du nur noch mit deiner Sicherungsdatei an deine Online-Sicherung.",
+    "This code applies to all your linked devices – from then on you need it on each of them to add or remove devices.":
+        "Dieser Code gilt für alle verbundenen Geräte – zum Hinzufügen und Entfernen von Geräten brauchst du ihn ab dann auf jedem.",
+    "A protection code was set up on {device}.": "Auf {device} wurde ein Schutz-Code eingerichtet.",
+    "With a protection code you get your online backup back even if all your devices are broken or gone – up to 183 days after the last sync.":
+        "Mit einem Schutz-Code holst du deine Online-Sicherung zurück, auch wenn alle deine Geräte kaputt oder weg sind – bis zu 183 Tage nach dem letzten Abgleich.",
+})
+
+TEXTS.update({  # Review 0.9.7, niedrige Funde (lead 10.11.)
+    "This file couldn't be read. It may be damaged or come from another program.":
+        "Diese Datei ließ sich nicht lesen. Vielleicht ist sie beschädigt oder stammt aus einem anderen Programm.",
+    "This image is too large to be a trade ticket. Send the ticket image unchanged.":
+        "Dieses Bild ist zu groß für ein Tauschticket. Schick das Ticketbild unverändert.",
+})
+
+TEXTS.update({  # Review H2-8 am PC (lead 10.11.)
+    "This closing ticket doesn't match your last offer – it's waiting under Orbit → Trade offers.":
+        "Dieses Abschluss-Ticket passt nicht zu deinem letzten Angebot – es liegt unter Orbit → Tauschangebote.",
+})
+
+TEXTS.update({  # leaner setup 0.9.8 (lead 13.11., library) – one sentence per step; consent texts via Gordon to legal
+    "Your collection is stored here:": "Deine Sammlung wird hier gespeichert:",
+    "Customise": "Anpassen",
+    "Recommended": "Empfohlen",
+    "OK": "OK",
+    "What name should your friends see?": "Welchen Namen sollen deine Freunde sehen?",
+    "Card back": "Kartenrücken",
+    "Back to setup": "Zurück zur Einrichtung",
+    "How far should your data travel?": "Wie weit sollen deine Daten reisen?",
+    "Almost done – the data is still loading.": "Fast geschafft – die Daten laden noch.",
+    # the mini game's strip in the setup (ui/scalper.py node done=/on_go=, scanner 13.11.)
+    "Done – everything is downloaded.": "Fertig – alles ist geladen.",
+    "Keep playing": "Weiterspielen",
+    # wish card hit on the scan page + the dock's sound slider (0.9.9, scanner/wishbar.py, Oliver's texts 14.11.)
+    "Wish card hit – removed from {list}": "Wunschkarte getroffen – entfernt aus {list}",
+    "Wish card hit – removed from {n} lists": "Wunschkarte getroffen – entfernt aus {n} Listen",
+    "Wish card hit – on {list}": "Wunschkarte getroffen – auf {list}",
+    "Wish card hit – on {n} lists": "Wunschkarte getroffen – auf {n} Listen",
+    "Wish card hit – removed from 1 list, on {k} more": "Wunschkarte getroffen – entfernt aus 1 Liste, auf {k} weiteren",
+    "Wish card hit – removed from {r} lists, on {k} more": "Wunschkarte getroffen – entfernt aus {r} Listen, auf {k} weiteren",
+    "{name} is looking for this card": "{name} sucht diese Karte",
+    "{n} friends are looking for this card": "{n} Freunde suchen diese Karte",
+    "Details": "Details",
+    "Your wish lists": "Deine Wunschlisten",
+    "stays": "bleibt",
+    "Friends looking for this card": "Freunde, die diese Karte suchen",
+    "Sound": "Ton",
+    "Volume of the scan sounds – wheel: louder/quieter": "Lautstärke der Scan-Töne – Mausrad: lauter/leiser",
+    "Scan sounds are off – click: volume": "Scan-Töne sind aus – Klick: Lautstärke",
 })

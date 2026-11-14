@@ -70,8 +70,10 @@ def fetch_news(box_url):
     """Fetch news from the mailbox – only what the team key has signed. -> list (otherwise [])"""
     import base64
     import json
-    from net import netpolite
+    from net import boxbase, netpolite
     from nacl.signing import VerifyKey
+    if not boxbase.allowed(box_url.rstrip("/") + "/v1/news"):   # outside Full Orbit: only the manifest's news (/dl)
+        return []
     try:
         r = netpolite.get(box_url.rstrip("/") + "/v1/news", timeout=15)
         d = r.json() if r.status_code == 200 else {}

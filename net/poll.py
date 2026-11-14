@@ -38,6 +38,8 @@ def _http():
 
 def ask(settings):
     """The question itself (blocking: network). 404/405 = the server doesn't know /v1/poll yet (VaultError 404)."""
+    from net import boxbase
+    boxbase.check(vault._base(settings) + "/v1/poll")   # never outside Full Orbit (lead/legal 14.11.)
     code, t = vault._me(settings)
     url = vault._base(settings) + "/v1/poll"
     payload = {"code": code, "t": t, "sig": relay._signed(settings, f"poll|{code}|{t}")}

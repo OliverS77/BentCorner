@@ -32,6 +32,10 @@ STALE = 14 * 86400          # this long without a backup at a target: notice on 
 CLOUD_HINTS = ("onedrive", "dropbox", "google drive", "googledrive", "my drive", "meine ablage", "icloud", "nextcloud",
                "pcloud", "mega", "box")
 _lock = threading.Lock()
+# a backup was just restored (review 08.11. F10): no automatic backup until the restart – neither of a half-restored
+# state nor, on closing, of what came in from the backup
+restored = False
+RESTORE_WAIT = 120   # seconds the restore waits for a backup that is running right now
 
 
 def cfg(settings):
@@ -110,20 +114,15 @@ def content_sum():
     import hashlib
     from system import datastore
     h = hashlib.sha256()
-    for p, name in datastore.personal_roots():
+    for f, name, rel in datastore.personal_files():
         if name == "settings.json":
             continue
-        files = [p] if p.is_file() else sorted(f for f in p.rglob("*") if f.is_file())
-        for f in files:
-            rel = f.relative_to(p).as_posix() if f != p else ""
-            if "trash" in rel.split("/") or f.name.endswith((".tmp", ".partial")):
-                continue
-            try:
-                data = f.read_bytes()
-            except OSError:
-                continue
-            h.update(f"{name}/{rel}|{len(data)}|".encode())
-            h.update(data)
+        try:
+            data = f.read_bytes()
+        except OSError:
+            continue
+        h.update(f"{name}/{rel}|{len(data)}|".encode())
+        h.update(data)
     return h.hexdigest()
 
 
@@ -169,7 +168,7 @@ def run(settings, force=False, only_changed=True):
     from system import datastore
     c = cfg(settings)
     out = []
-    if not _lock.acquire(blocking=False):
+    if restored or not _lock.acquire(blocking=False):
         return out
     try:
         gap = EVERY.get(c["every"], EVERY["daily"])

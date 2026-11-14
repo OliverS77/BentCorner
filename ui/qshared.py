@@ -12,6 +12,7 @@ relay.share_codes), so the page can never show more or less than goes out. In QM
 from PySide6 import QtCore
 
 from system.i18n import tr
+from ui import textsafe
 
 
 def things(n_lists, n_binders):
@@ -45,7 +46,7 @@ def overview(ctrl):
     friends = []
     for code, f in sorted(ok.items(), key=lambda kv: (kv[1].get("name") or "").lower()):
         on = code in codes
-        friends.append({"code": code, "name": f.get("name") or relay.pretty(code), "on": on,
+        friends.append({"code": code, "name": textsafe.name(f.get("name") or relay.pretty(code)), "on": on,
                         "chips": [{"text": tr("Name + card back"), "on": True}]
                         + [{"text": t, "on": on} for t in shared]})
     n_on = sum(1 for f in friends if f["on"])

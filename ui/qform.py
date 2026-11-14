@@ -121,10 +121,12 @@ class UI:
     def label(self, html, *, color="", wrap=True, bold=False, big=False, px=0, tip="", rich=None, fixed=False, font=""):
         """color: color value, "gray" (muted) or "" (normal). fixed: in a row only as wide as the text.
         font: own font family (e.g. for a preview)."""
+        from ui import textsafe
         html = "" if html is None else str(html)
-        if rich is None:
-            import re
-            rich = ("<" in html and ">" in html) or bool(re.search(r"&(#\d+|[a-z]+);", html))
+        if rich is None:   # only our own tags or an entity make it rich text ("x <3 y", "<script>" stay text)
+            rich = textsafe.looks_rich(html)
+        if rich:   # the safety net: only our own tags, no remote image, no on…= (review T3/H2-3, lead 10.11.)
+            html = textsafe.rich(html)
         return {"t": "label", "html": html, "rich": bool(rich), "wrap": wrap, "tip": tip, "color": color,
                 "bold": bold, "big": big, "px": px, "fixed": fixed, "font": font}
 

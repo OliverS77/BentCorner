@@ -234,7 +234,8 @@ class CancelAtTableTest(unittest.TestCase):
         with mock.patch("net.devkeys._post") as post, mock.patch("net.devkeys._load",
                                                                   return_value={"dev_id": "d1", "sign_sk": "A" * 44}), \
                 mock.patch("net.devkeys.sign", return_value="sig"), mock.patch("net.relay._signed", return_value="s"), \
-                mock.patch("net.vault._me", return_value=("CODE", 5)):
+                mock.patch("net.relay.my_code", return_value="CODE"), \
+                mock.patch("net.vault._me", side_effect=AssertionError("no register before the leave (legal 14.11.)")):
             c.bg[0][1]()
         self.assertEqual(post.call_args[0][1], "/v1/dev/leave")
         self.assertEqual(post.call_args[0][0]["relay"]["seed"], "NEW")   # signed as the joined ID

@@ -5,6 +5,7 @@ import time
 
 from system import contacts
 from system.i18n import tr
+from ui import textsafe
 
 
 # legal's wording 07.11.2026 (the sync test's text went: the library is synced now, and with the coupling choice what you
@@ -68,7 +69,6 @@ def _ago(when):
 LIST_TITLE = "Your devices"
 ME_LINE = "{name} – this device"
 ADDED_LINE = "{name} – added on {date}"
-DEVICE_N = "Device {n}"   # only the old fallback (kind unknown) – B (lead 12.11.): „<type> <n>“
 PC_N = "PC {n}"
 PHONE_N = "Phone {n}"
 
@@ -157,9 +157,9 @@ def _day(ms):
 
 def device_name(d):
     """The name in the list: the device's own, else its nickname (Oliver/lead 12.11.: „Großer Mutiger Fuchs“ – its own
-    or the fallback from its id), else „PC N“ / „Handy N“."""
+    or the fallback from its id), else „PC N“ / „Handy N“ – shown only as plain text (textsafe, review low)."""
     from system import nicknames
-    return d.get("name") or nicknames.name_of(d) or default_name(d.get("kind"), d.get("n"))
+    return textsafe.name(d.get("name") or nicknames.name_of(d) or default_name(d.get("kind"), d.get("n")))
 
 
 def _devices(ctrl):
@@ -319,7 +319,7 @@ def _add_items(ui, b, refresh, orbit_ok, backup_on):
     mode = mem.get("mode")
     if not backup_on and mode in ("show", "setup"):
         mode = mem["mode"] = None
-    if mode == "setup":   # no protection code yet (Oliver 08.11.): set it up first, then the code shows at once
+    if mode == "setup":   # [Set up protection code] under the list (no code yet): the offer in place of the two keys
         return _setup_items(ui, b, refresh, mem)
     fetched = bool((getattr(ctrl, "pair", None) or {}).get("fetched"))
     if mode == "show" and fetched:   # picked up (lead 07.11.): the box back to its two keys – the list above shows the device
@@ -337,10 +337,6 @@ def _add_items(ui, b, refresh, orbit_ok, backup_on):
             mem["mode"] = None if mem.get("mode") == m else m   # a second click folds it again
             if mem["mode"] == "enter":   # signed out earlier, joining again: the „leaves the sync“ line is over –
                 sst.pop("left", None)    # otherwise it closes the field at once (performance' guide run 09.11.)
-            if mem["mode"] == "show" and not getattr(ctrl, "guard_on", lambda: True)():
-                mem["mode"] = "setup"   # a further device needs the protection code (Oliver 08.11.)
-                refresh()
-                return
             pr = getattr(ctrl, "pair", None) or {}
             if mem["mode"] == "show" and (pr.get("fetched") or not (pr.get("code") and ctrl.pair_left()))                     and not pr.get("busy"):
                 ctrl.pair_show()   # „Show a code“ shows one at once – the first time too (performance' guide run)
@@ -363,27 +359,63 @@ def _add_items(ui, b, refresh, orbit_ok, backup_on):
 
 
 def _setup_items(ui, b, refresh, mem):
-    """„Show a code“ without a protection code: legal's A2 for a further device, [Set up protection code] [Cancel], then
-    the known setup (generate / own – never „without code“), then the code at once (pair_show)."""
+    """[Set up protection code] from the line under the list (Oliver 13.11.: a code is voluntary, also with several
+    devices): the known offer – generate / own, never „without code“ here – then back to the two keys."""
     from ui import backupui
     ctrl = b.ctrl
 
-    def cancel():
+    def close():
         mem.clear()
         refresh()
-    st = mem.get("rescue")
-    if st is None:
-        return [ui.label(tr(backupui.ADD_NEEDS_CODE)),
-                ui.row([ui.button(tr(backupui.ADD_SET_UP), lambda: (mem.update(rescue={"second": True}), refresh()),
-                                  primary=True),
-                        ui.button(tr("Cancel"), cancel), ui.stretch()])]
+    st = mem.setdefault("rescue", {"second": True})
+    return backupui.rescue_items(ui, ctrl, st, refresh, on_back=close, on_done=close, form=getattr(b, "form", None))
 
-    def done():
+
+def no_code_items(ui, b, refresh, on):
+    """legal 13.11. (1f): with other devices and no protection code – a quiet line under the list, [Set up protection
+    code]. No pop-up, no must."""
+    ctrl = b.ctrl
+    if not on or getattr(ctrl, "guard_on", lambda: True)() or not getattr(ctrl, "sync_has_others", lambda: False)():
+        return []
+    from ui import backupui
+    mem = b.__dict__.setdefault("devices_add", {})
+
+    def setup():
         mem.clear()
-        mem["mode"] = "show"
-        ctrl.pair_show()
+        mem["mode"] = "setup"
         refresh()
-    return backupui.rescue_items(ui, ctrl, st, refresh, on_back=cancel, on_done=done, form=getattr(b, "form", None))
+    return [ui.note(tr(backupui.NO_CODE_HINT)),
+            ui.row([ui.button(tr(backupui.ADD_SET_UP), setup, enabled=mem.get("mode") != "setup"), ui.stretch()])]
+
+
+# ---------- „A protection code was set up on {device}.“ (Oliver 13.11. via Gordon; performance' guard_set_by) ----------
+CODE_SET = "A protection code was set up on {device}."   # legal 13.11. (EN + DE)
+
+
+def code_set_unseen(ctrl):
+    """Another device set the FIRST protection code and this device hasn't shown it yet: Settings at the top +
+    „Your devices“ pulse quietly, as with a join request (no new effect)."""
+    return bool((getattr(ctrl, "sync_status", None) or {}).get("guard_set_by"))
+
+
+def code_set_items(ui, b):
+    """The line once, above the list. Drawn = remembered for this run of the app (b's memory), then performance'
+    code_set_seen(key) notes it for good (qsettings._build) – after a restart it's gone."""
+    by = (getattr(b.ctrl, "sync_status", None) or {}).get("guard_set_by")
+    if isinstance(by, dict):
+        name = str(by.get("name") or "") or tr("Device {n}").format(n=by.get("n") or "?")   # performance: name empty
+        b.__dict__["code_set_line"] = (tr(CODE_SET).replace("{device}", textsafe.name(name)), by.get("key"))
+    line = b.__dict__.get("code_set_line")
+    return [ui.label(line[0], bold=True)] if line else []
+
+
+def code_set_seen(ctrl, b):
+    """„Your devices“ drawn with the line: performance stores sync_code_seen and clears guard_set_by."""
+    line = b.__dict__.get("code_set_line")
+    if line and code_set_unseen(ctrl) and hasattr(ctrl, "code_set_seen"):
+        ctrl.code_set_seen(line[1])
+        if hasattr(ctrl, "autobackup_badge"):
+            ctrl.autobackup_badge()
 
 
 def page(ui, b):
@@ -398,7 +430,8 @@ def page(ui, b):
     refresh = b.form.refresh
 
     gate = gate_items(ui, ctrl, b.__dict__.setdefault("devices_gate", {}), refresh, getattr(b, "form", None))
-    items = gate + join_wait_items(ui, ctrl) + name_items(ui, b, refresh) + list_items(ui, b, refresh, on)
+    items = gate + join_wait_items(ui, ctrl) + name_items(ui, b, refresh) + code_set_items(ui, b) \
+        + list_items(ui, b, refresh, on) + no_code_items(ui, b, refresh, on)
     if (getattr(ctrl, "pair", None) or {}).get("fetched"):   # legal A3 after a pickup (B5: the ✕ in the list above)
         items.append(ui.note(tr(A3).format(mail=contacts.MAIL)))
     if on and st.get("emptied") and not eng.meta.get("empty_not_now"):
@@ -483,8 +516,6 @@ def _couple(ui, ctrl):
                       "sync."))]
     if p.get("fetched"):   # picked up: the box goes back to its keys (_add_items); A3 stands under the list
         return out
-    if p.get("need_guard"):   # performance' safety net: no code offered without a protection code
-        return out
     left = ctrl.pair_left()
     if p.get("busy"):   # it syncs first (T2 07.11.), then the code – the joining device then sees this one's data
         out.append(ui.label(tr("This device syncs first – then the code comes …")))
@@ -524,7 +555,7 @@ def _remove_items(ui, b, refresh):
         # the list was older when ✕ was pressed (its refresh is under way): ask again on every draw – before, the
         # empty answer stayed and ✕ said „not in the list any more“ for a device just added (box run 12.11.)
         plan = rm["plan"] = ctrl.sync_remove_plan(rm["dev"])
-    name = rm.get("name") or ""
+    name = textsafe.name(rm.get("name") or "")
 
     def close():
         b.__dict__.pop("devices_rm", None)

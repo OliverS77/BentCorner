@@ -678,7 +678,12 @@ class Shell(QtCore.QObject):
         self.tipRequested.emit(text, x, y)
 
     def show_toast(self, text):
-        self.toast.emit(text)
+        """Bottom right. Shown as rich text, so: our own tags pass (textsafe.rich), everything else as plain text –
+        a missing card name from a file can't format or link the message (review H2-3)."""
+        import html
+        from ui import textsafe
+        text = str(text or "")
+        self.toast.emit(textsafe.rich(text) if textsafe.looks_rich(text) else html.escape(text).replace("\n", "<br>"))
 
     def refresh_theme(self):
         self.engine.rootContext().setContextProperty("T", quickui.palette())

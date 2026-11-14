@@ -3699,7 +3699,7 @@ TEXTS.update({  # Backlog-Runde (v0.8.18): Kartendaten je Spiel, Anfragen
     "Sprachversionen.": "This lets the scanner recognize cards in other languages (e.g. German, Japanese) and the "
                         "library show the language versions.",
 })
-TEXTS.update({  # Einrichtung Runde 2 (v0.8.20.1): Pakete, Editor, Fortune Card, Scalper Invaders
+TEXTS.update({  # Einrichtung Runde 2 (v0.8.20.1): Pakete, Editor, Fortune Card, Minispiel
     "Datenpaket": "Data pack", "Datenpaket wird geladen": "Downloading data pack",
     "Magic-Erkennung": "Magic recognition", "Pokémon-Daten": "Pokémon data",
     "Download unterbrochen – geht auf der letzten Seite weiter": "Download interrupted – continue on the last page",
@@ -3708,10 +3708,6 @@ TEXTS.update({  # Einrichtung Runde 2 (v0.8.20.1): Pakete, Editor, Fortune Card,
     "Jederzeit änderbar unter Einstellungen → Updates.": "Change it any time under Settings → Updates.",
     "Ein Download ist hängen geblieben.": "A download got stuck.",
     "Fast geschafft!": "Almost there!",
-    "Die Daten laden noch – Bent°Corner muss dafür offen bleiben. Vertreib dir die Zeit mit Scalper Invaders. Spielen "
-    "geht auch, wenn alles fertig ist.":
-        "The data is still downloading – Bent°Corner needs to stay open for that. Pass the time with Scalper "
-        "Invaders. You can keep playing once everything is done, too.",
     "Schließt du Bent°Corner doch, geht der Download beim nächsten Start an derselben Stelle weiter.":
         "If you close Bent°Corner anyway, the download picks up where it left off next time.",
     "Halte eine Karte in die Kamera – Bent°Corner erkennt sie und legt sie in deine Sammlung. Oder spiel noch eine "
@@ -3731,7 +3727,7 @@ TEXTS.update({  # Einrichtung Runde 2 (v0.8.20.1): Pakete, Editor, Fortune Card,
     "Deine Kartenrückseite ist das Schiff. Booster einsammeln, Scalper abschießen – keiner darf über die Linie. Der "
     "Bestwert bleibt gespeichert.": "Your card back is the ship. Collect boosters, shoot scalpers – don't let any "
                                     "cross the line. Your best score is saved.",
-    "Spiel": "Game", "Scalper Invaders – psst, kleines Easter Egg": "Scalper Invaders – psst, a little easter egg",
+    "Spiel": "Game",
     "Spiegeln: oben und unten gleich malen": "Mirror: paint top and bottom the same",
     "Farbe aufnehmen – dann auf die Leinwand klicken (auch: rechte Maustaste)":
         "Pick a color – then click the canvas (also: right mouse button)",

@@ -25,7 +25,7 @@ class WithBrand(unittest.TestCase):
         for name in ("icon.ico", "icon.png", "loadcard.json", "BRAND.md"):
             self.assertTrue((brand.folder() / name).is_file(), name)
         self.assertEqual(brand.load_card(), {"corner": 1, "fold": 21.0, "tilt": -7.0})
-        self.assertEqual(brand.info(), {"logo": True, "name": "Bent°Corner", "word": "BENT°CORNER",
+        self.assertEqual({k: v for k, v in brand.info().items() if k not in ("dev", "devLabel")}, {"logo": True, "name": "Bent°Corner", "word": "BENT°CORNER",
                                         "loadCard": [1, 21.0, -7.0, 1.0]})
 
     def test_nothing_points_to_the_old_places(self):
@@ -46,7 +46,7 @@ class WithoutBrand(unittest.TestCase):
     def test_info_neutral(self):
         self.assertFalse(brand.present())
         self.assertIsNone(brand.load_card())
-        self.assertEqual(brand.info(), {"logo": False, "name": "Bent°Corner", "word": "BENT°CORNER",
+        self.assertEqual({k: v for k, v in brand.info().items() if k not in ("dev", "devLabel")}, {"logo": False, "name": "Bent°Corner", "word": "BENT°CORNER",
                                         "loadCard": [0.0, 0.0, 0.0, 0.0]})
 
     def test_icons_are_a_plain_card(self):

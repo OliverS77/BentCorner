@@ -143,13 +143,17 @@ def due(settings):
     import version
     if datahome.TEST or not datahome.FROZEN or not version.is_release():
         return False
+    from net import boxbase
+    if not boxbase.full(settings):   # /v1 only in Full Orbit (lead/legal 14.11.) – not even started outside it
+        return False
     return enabled(settings) and time.time() - float(settings.get("stats_sent") or 0) >= WEEK
 
 
 def send(settings):
     """Send the parcel (no identifier, no signature). -> True if it arrived."""
-    from net import netpolite
+    from net import boxbase, netpolite
     from net import relay
+    boxbase.check(relay.url(settings) + "/v1/stats")   # anonymous, but /v1: only in Full Orbit (lead 14.11.)
     r = netpolite.post(relay.url(settings) + "/v1/stats", json=payload(settings), timeout=20)
     if r.status_code == 200:
         settings["stats_sent"] = time.time()

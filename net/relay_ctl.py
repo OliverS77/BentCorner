@@ -63,6 +63,9 @@ class RelayControl:
             self._lists_t = QtCore.QTimer(self, interval=self.LISTS_EVERY * 1000, timeout=self.relay_auto_lists)
             self.bridge.relay_done.connect(self._relay_done)
         from net import relay
+        if relay.state(self.settings).get("leaving") and relay.enabled(self.settings):
+            self.relay_toggle(False)   # leaving Full Orbit was cut off (app closed): finish it – withdraw, then off
+            return
         if relay.enabled(self.settings):
             self._relay_t.start()
             self._lists_t.start()
@@ -78,7 +81,7 @@ class RelayControl:
         or with very many changes) – that also brings a shared Library up to date. It happens immediately
         via "Share with friends" on the Trade page (share_now)."""
         from net import relay
-        if not relay.enabled(self.settings) or not relay.ok_friends(self.settings):
+        if not relay.enabled(self.settings) or not relay.ok_friends(self.settings) or relay.state(self.settings).get("leaving"):
             return
         try:
             n = self.relay_changes()
@@ -182,13 +185,26 @@ class RelayControl:
 
     def relay_toggle(self, on):
         from net import relay
+        st = relay.state(self.settings)
         was = relay.enabled(self.settings)
-        if was and not on and (relay.state(self.settings).get("posted") or {}):
-            # exchange off: take everything shared off the server immediately (friends are notified)
+        if was and not on and (st.get("posted") or {}):
+            # leaving Full Orbit: take everything shared off the server FIRST (friends are notified) – the level drops
+            # only when that is done, because outside Full Orbit the /v1 lock lets none of it out (lead 14.11.). The
+            # mark "leaving" survives a closed app: the next start finishes it (relay_setup).
+            if getattr(self, "_leaving_job", False):
+                return
+            self._leaving_job = True
+            st["leaving"] = True
+            self.settings_changed()
+            for t in (getattr(self, "_relay_t", None), getattr(self, "_lists_t", None)):
+                if t is not None:
+                    t.stop()   # nothing new is shared while it is being taken back
             s = self.settings
             self._relay_quiet = False
-            self._relay_bg("withdraw", lambda: relay.withdraw_all(s))
-        relay.state(self.settings)["on"] = bool(on)
+            self._relay_bg("leave_full", lambda: relay.withdraw_all(s))
+            return
+        st.pop("leaving", None)
+        st["on"] = bool(on)
         if on:
             relay.my_code(self.settings)   # create the key
         self.settings_changed()
@@ -569,6 +585,23 @@ class RelayControl:
         if what.startswith("unblock:"):
             return self._unblock_done(what.split(":", 1)[1], res, err)
         toast = getattr(getattr(self, "shell", None), "show_toast", None) or self.stream_toast
+        if what == "leave_full":   # everything shared is taken back (or tried): now the level drops
+            if err:
+                toast(tr(f"Taking it back didn't work: {err}"))
+            else:
+                try:
+                    self.relay_fp_file().unlink()
+                except OSError:
+                    pass
+                toast(tr("You're not sharing anything right now – taken off the server; your friends' apps are asked to delete their copy."))
+            self._leaving_job = False
+            st = relay.state(self.settings)
+            st.pop("leaving", None)
+            st["on"] = False
+            self.settings_changed()
+            self.relay_setup()
+            self._relay_ui()
+            return
         if what.startswith("poll"):
             self._relay_busy = False
             if err:

@@ -36,6 +36,38 @@ def source_path():
 
 PLACEHOLDER = {"dark": (160, 154, 154), "light": (102, 96, 96)}   # BGR (bluish grey like the loading card)
 
+# The DEV version's mark (Oliver 13.11.2026, approved by Gordon on labs/_performance/dev-app/red-sheet.png): the same
+# form, the ink in this one red; other tones keep their brightness, pulled towards red the closer they are to the ink.
+# Only work builds without the ship flag get it (tools/make_dev_brand.py, build.ps1); check_package refuses it in a
+# Ship build.
+DEV_RED = "#E5484D"
+
+
+def _bgr(hexcol):
+    h = hexcol.lstrip("#")
+    return np.array([int(h[4:6], 16), int(h[2:4], 16), int(h[0:2], 16)], np.float32)
+
+
+def dev_tint(bgra, on):
+    """BGRA image of the mark -> the red DEV mark (alpha and form unchanged)."""
+    img = bgra.astype(np.float32)
+    ink, red = _bgr(INK[on]), _bgr(DEV_RED)
+    lum = img[..., :3].mean(axis=2, keepdims=True)
+    ink_l = float(ink.mean())
+    far = 255.0 - ink_l if on == "light" else ink_l
+    t = np.clip(np.abs(lum - ink_l) / max(far, 1.0), 0, 1)
+    img[..., :3] = red * (1 - t) + img[..., :3] * t
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def dev_tint_hex(hexcol, on):
+    """The same for one colour of an SVG ("#8a8a8e" -> its red-tinted tone)."""
+    px = np.zeros((1, 1, 4), np.uint8)
+    px[0, 0, :3] = _bgr(hexcol).astype(np.uint8)
+    px[0, 0, 3] = 255
+    b, g, r = (int(x) for x in dev_tint(px, on)[0, 0, :3])
+    return f"#{r:02x}{g:02x}{b:02x}"
+
 
 def placeholder_image(size, on=None):
     """Without brand/: a plain grey card (no dog-ear, no dot) as BGRA – neutral, nobody's mark."""

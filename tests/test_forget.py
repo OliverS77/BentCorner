@@ -14,6 +14,9 @@ from nacl.signing import VerifyKey
 
 from net import forget, netpolite, relay
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 
 class Box(http.server.BaseHTTPRequestHandler):
     """Answers like Gordon's mailbox (/v1/forget, /v1/board/del, /v1/register); the test sets `mode`."""

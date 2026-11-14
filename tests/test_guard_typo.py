@@ -9,6 +9,9 @@ from unittest import mock
 
 from net import guard, pairing, sync_ctl, vault
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 TYPO = "ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ-ZZZZZ"
 
 
@@ -25,6 +28,7 @@ class Typo(unittest.TestCase):
         c._join_payload = {"seed": base64.b64encode(b"\x11" * 32).decode(), "extra": {"guard_salt": pairing.new_salt()}}
         jobs = []
         c._sync_bg = lambda step, fn: jobs.append(fn)
+        c._join_register = lambda code: sync_ctl.SyncControl._join_register(c, code)
         c.sync_status["join"] = "need_guard"
         c.settings = {"relay": {}}
         with mock.patch("collection.syncrun.available", lambda: True), \

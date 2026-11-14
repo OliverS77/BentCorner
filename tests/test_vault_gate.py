@@ -15,6 +15,9 @@ from unittest import mock
 from collection import syncrun
 from net import netpolite, relay, vault
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 GATE = "geheim-TEST-7Q"   # a made-up code – the real one never appears anywhere
 LIVE = "https://bentcorner.app/testapp/box"
 

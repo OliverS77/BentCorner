@@ -15,7 +15,7 @@ import numpy as np
 from net import pairing
 from ui import sphere
 
-CODE = "GTVP5-9R7VC"
+CODE = "GTVP5 9R7VC"   # shown with a space since lead 13.11. (the picture bytes stay the same)
 PAYLOAD = pairing.picture_bytes(CODE)
 LABS = pathlib.Path(__file__).resolve().parents[2] / "labs" / "webapp" / "stripcode"
 if not LABS.is_dir():   # a worktree: work/<name>/tests -> BentCorner/labs

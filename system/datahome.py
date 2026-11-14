@@ -125,6 +125,17 @@ INSTALLED = bool(FROZEN and (APP_DIR / "unins000.exe").exists())
 PORTABLE = TEST_ROOT / "Neben-dem-Programm" if TEST else None if INSTALLED else APP_DIR   # "next to the program"
 
 
+# folders only Bent°Corner puts into its data/ – a "data" folder without any of them isn't ours (review 08.11. F9:
+# with D:\ chosen as the data folder, "Delete Bent°Corner" must never take an unrelated D:\data along)
+OURS = ("my-data", "card-data", "card-images", "games")
+
+
+def ours(data):
+    """Is this data/ folder Bent°Corner's? (one of its own subfolders is in it)"""
+    data = pathlib.Path(data)
+    return data.is_dir() and any((data / n).is_dir() for n in OURS)
+
+
 def has_data(folder):
     folder = pathlib.Path(folder)
     return (folder / "settings.json").exists() or (folder / "data").is_dir()

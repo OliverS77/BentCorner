@@ -179,7 +179,7 @@ def to_csv(deck, rows, path, text=None):
     """A deck as our own CSV (Excel: semicolon, UTF-8 with BOM) – one row per card, the sections as in to_text().
     text: "mit Kartentext" – {"game": key, "locale": {sids}} (collection/exporttext.py); rows = {sid: card row}.
     -> number of rows"""
-    import csv
+    from collection import csvsafe   # text cells never become formulas (review H2-7)
     from collection import exporttext
     if text and not exporttext.allowed(text.get("game")):
         text = None
@@ -188,7 +188,7 @@ def to_csv(deck, rows, path, text=None):
         cards = [c for c in deck["cards"] if c.get("board", "main") == board and c["sid"] in rows]
         out += [(title, c["count"], c["sid"]) for c in sorted(cards, key=lambda c: rows[c["sid"]]["name"])]
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.writer(f, delimiter=";")
+        w = csvsafe.writer(f, delimiter=";")
         w.writerow(["Anzahl", "Bereich", "Name", "Set", "Setname", "Nummer", "Seltenheit", "Karten-ID"]
                    + (exporttext.headers(text["game"]) if text else []))
         for where, n, sid in out:

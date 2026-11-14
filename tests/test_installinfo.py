@@ -32,6 +32,14 @@ class Move(unittest.TestCase):
         self.assertFalse(self.ess.exists())
         self.assertTrue(self.home.exists())   # the data folder itself is never touched
 
+    def test_test_copy_marker_counts_as_ours(self):
+        """bc-testkopie.txt (written by an isolated test copy, datahome.apply_marker) never keeps Essentials alive – the
+        sandbox move test 14.11. would otherwise have shown no note (lead 14.11.)."""
+        (self.ess / "bc-testkopie.txt").write_text("BC_STARTER_LOCAL=x", "utf-8")
+        self.assertEqual(installinfo.tidy_essentials(), [str(self.ess)])
+        self.assertFalse(self.ess.exists())
+        self.assertIsNone(installinfo.OURS.match("bc-testkopie.txt.bak"))
+
     def test_anything_else_keeps_it(self):
         (self.ess / "my notes.txt").write_text("mine", "utf-8")
         self.assertEqual(installinfo.tidy_essentials(), [])

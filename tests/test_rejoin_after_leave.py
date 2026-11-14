@@ -22,6 +22,8 @@ def _ctl():
     jobs = []
     c._sync_bg = lambda step, fn: jobs.append((step, fn))
     c._join_apply = lambda res, salt=None: sync_ctl.SyncControl._join_apply(c, res, salt)
+    c._join_ask = lambda: sync_ctl.SyncControl._join_ask(c)
+    c._join_register = lambda code: sync_ctl.SyncControl._join_register(c, code)
     return c, jobs
 
 
@@ -38,6 +40,8 @@ class RejoinAfterLeave(unittest.TestCase):
         salt = pairing.new_salt()
         payload = {"seed": SEED, "extra": {"device": "pc", "invite": {"by": "dA", "nonce": "n"}, "guard_salt": salt}}
         sync_ctl.SyncControl._join_take_done(c, payload, None)
+        self.assertEqual(jobs.pop()[0], "join_info")
+        sync_ctl.SyncControl._join_info_done(c, {"guard": {"set": True}}, None)   # the ID has a code
         self.assertEqual(c.sync_status["join"], "need_guard", "the protection code is asked for – the field stays")
         jobs.clear()
         with mock.patch("collection.syncrun.available", lambda: True):

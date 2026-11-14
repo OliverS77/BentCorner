@@ -10,6 +10,9 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from net import relay  # noqa: E402
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 CODE = "7F3A21C90B44E1D2"
 OTHER = "0123456789ABCDEF"
 
@@ -132,10 +135,11 @@ class RelayBlockTest(unittest.TestCase):
             if url.endswith("/v1/register"):
                 return R(200, {"ok": True})
             return R(200, {"ok": True}) if "/register" in calls else R(403, {"error": "x", "unknown": True})
-        with mock.patch("net.netpolite.post", side_effect=fake_post):
+        # stopall above also ended the module's live address (tests/livebox.py) – here it is again for this call
+        with mock.patch("net.netpolite.post", side_effect=fake_post), mock.patch("net.boxbase.base", livebox._live):
             self.assertEqual(relay._post(s, "/v1/fetch", {"a": 1}), {"ok": True})
+            self.assertEqual(s["relay"]["registered"], relay.url(s))
         self.assertEqual(calls, ["/fetch", "/register", "/fetch"])
-        self.assertEqual(s["relay"]["registered"], relay.url(s))
 
 
 if __name__ == "__main__":

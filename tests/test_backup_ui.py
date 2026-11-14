@@ -94,10 +94,25 @@ class SwitchOnTest(unittest.TestCase):
         c = ctrl("full", sync_backup=True, sync_asked=1)
         c.guard_on = lambda: False
         page = backupui.settings_items(UI(), c, types.SimpleNamespace(), lambda: None)
-        self.assertIn(backupui.NEW_CODE, texts(page))
+        self.assertIn(backupui.ADD_SET_UP, texts(page))
         c.guard_on = lambda: True
         page = backupui.settings_items(UI(), c, types.SimpleNamespace(), lambda: None)
-        self.assertNotIn(backupui.NEW_CODE, texts(page))
+        self.assertNotIn(backupui.ADD_SET_UP, texts(page))
+
+    def test_set_up_key_once_never_old_code_line(self):
+        # lead 13.11.: without a code no „Create a new protection code / the old code no longer works“ – only
+        # [Set up protection code], never twice: while the one-time line shows it, only there; after „Later“ the normal one
+        c = ctrl("full", sync_backup=True, sync_asked=1)
+        c.guard_on = lambda: False
+        c.settings_changed = lambda: None
+        t = texts(backupui.settings_items(UI(), c, types.SimpleNamespace(), lambda: None))
+        self.assertEqual(t.count(backupui.ADD_SET_UP), 1)
+        self.assertIn(backupui.NOCODE_HINT, t)
+        self.assertFalse(any("old code no longer works" in x for x in t))
+        c.settings["sync_nocode_hint"] = 1                                  # after „Later“
+        t = texts(backupui.settings_items(UI(), c, types.SimpleNamespace(), lambda: None))
+        self.assertEqual(t.count(backupui.ADD_SET_UP), 1)
+        self.assertNotIn(backupui.NOCODE_HINT, t)
 
     def test_delete_asks_for_the_protection_code(self):
         # legal A4 / performance' delete_guard: the field instead of an error line, only the key sends, nothing stays
@@ -165,6 +180,8 @@ class SwitchOnTest(unittest.TestCase):
         nxt = [n for n in page if n[0] == "row" and any(b[1][0] == backupui.tr(backupui.CODE_NEXT) for b in n[1] if b[0] == "button")]
         self.assertTrue(nxt)
         self.assertEqual(len(backupui.last5(code)), 5)
+        self.assertNotIn("-", backupui.blocks(code))                 # shown without dashes (Oliver 12.11.)
+        self.assertEqual(backupui.blocks(code).split("\u2003"), code.split(" "))
         edit = [n for n in page if n[0] == "edit"][0]
         self.assertTrue(edit[2].get("nopaste"))   # typing proves it was written down
 

@@ -106,16 +106,16 @@ class BackupPageTest(unittest.TestCase):
         c.sync_status.update(gate="missing")
         t = self.page(c)
         self.assertIn(GATE, t)
-        self.assertNotIn(backupui.NEW_CODE, t)
+        self.assertNotIn(backupui.ADD_SET_UP, t)
 
     def test_never_reached_no_new_code_key(self):
         c = ctrl()[0]
         c.guard_on = lambda: False
         c.sync_status.update(reached=False)
-        self.assertNotIn(backupui.NEW_CODE, self.page(c))
+        self.assertNotIn(backupui.ADD_SET_UP, self.page(c))
         c.sync_status.update(reached=True)
         t = self.page(c)
-        self.assertIn(backupui.NEW_CODE, t)
+        self.assertIn(backupui.ADD_SET_UP, t)
         self.assertNotIn(GATE, t)
 
 

@@ -115,6 +115,20 @@ def _mark_first(node):
     group["flash"] = True
 
 
+
+def in_front(ctrl):
+    """Is the program window really on the screen – shown and not minimized (in the tray it is hidden)? QML keeps the
+    page „visible“ in both cases, and the 1-second tick and sync updates keep drawing: a note counted as seen there
+    would be gone without anyone seeing it (ports' web finding, lead 14.11.). Without a window (tests, startup): True."""
+    win = getattr(getattr(ctrl, "shell", None), "window", None)
+    if win is None:
+        return True
+    try:
+        from PySide6 import QtGui
+        return bool(win.isVisible()) and win.visibility() not in (QtGui.QWindow.Minimized, QtGui.QWindow.Hidden)
+    except Exception:  # noqa: BLE001 – a broken window object: better not to count it as seen
+        return False
+
 class SettingsBackend(QtCore.QObject):
     changed = QtCore.Signal()
 
@@ -142,12 +156,14 @@ class SettingsBackend(QtCore.QObject):
         if self._query:
             return self._search(ui)
         node = qsetpages.build(self.ctrl.settings_page, ui, self)
-        if self._active and self.ctrl.settings_page in ("backup", "devices"):   # the request's frame seen: no pulse
+        front = self._active and in_front(self.ctrl)   # really seen: not minimized/in the tray (lead 14.11.)
+        if front and self.ctrl.settings_page in ("backup", "devices"):   # the request's frame seen: no pulse
             from ui import backupui
             backupui.request_seen(self.ctrl)
-        if self._active and self.ctrl.settings_page == "devices":   # a device's join request seen (B5)
+        if front and self.ctrl.settings_page == "devices":   # a device's join request seen (B5)
             from ui import qsync
             qsync.join_request_seen(self.ctrl)
+            qsync.code_set_seen(self.ctrl, self)   # „A protection code was set up on …“ drawn: noted for good
         _flatten(node)
         if self._flash == ARRIVE:
             _mark_first(node)
@@ -232,7 +248,8 @@ class SettingsBackend(QtCore.QObject):
         # seen (PLAN-EINFACH D, lead 07.11.) – its frame stands on „Backup“ and „Your devices“
         from ui import expiryui, qsync
         asked = bool(expiryui.info(self.ctrl))   # the online backup's expiry (legal 07.11.)
-        joinreq = qsync.join_request_unseen(self.ctrl)   # B5: a device wants to join – „Your devices“ pulses
+        joinreq = qsync.join_request_unseen(self.ctrl) or qsync.code_set_unseen(self.ctrl)   # B5: a device wants to
+        # join / another device set the first protection code (13.11.) – „Your devices“ pulses until seen
         return [{"key": k, "icon": icon, "title": tr(t), "sub": tr(sub), "section": tr(SETTINGS_SECTIONS.get(k, "")),
                  "hits": self._count.get(k, 0) if self._query else -1,
                  "badge": ((warn or pulse) and k == "backup") or (ready and k == "updates")

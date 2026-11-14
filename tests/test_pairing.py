@@ -29,7 +29,8 @@ class Reference(unittest.TestCase):
         v = VECTORS
         self.assertEqual(v["version"], pairing.VERSION)
         self.assertEqual(pairing.picture_bytes(v["code"]).hex(), v["picture_hex"])
-        self.assertEqual(pairing.code_of_picture(bytes.fromhex(v["picture_hex"])), v["code"])
+        # the shared vector keeps the old dash (web/server unchanged); shown with a space since lead 13.11.
+        self.assertEqual(pairing.code_of_picture(bytes.fromhex(v["picture_hex"])), v["code"].replace("-", " "))
         self.assertEqual(pairing._slow(v["code"]).hex(), v["argon2id_hex"])
         self.assertEqual(pairing.slot(v["code"]), (v["pid"], bytes.fromhex(v["key_hex"])))
         self.assertEqual(pairing.pair_id(v["code"].lower().replace("-", " ")), v["pid"])   # typed loosely
@@ -58,8 +59,8 @@ class Reference(unittest.TestCase):
 
     def test_roundtrip_random(self):
         code = pairing.new_code()
-        self.assertRegex(code, r"^[2-9A-HJKMNP-Z]{5}-[2-9A-HJKMNP-Z]{5}$")
-        self.assertEqual(pairing.norm_code(code.lower().replace("-", " ")), code.replace("-", ""))
+        self.assertRegex(code, r"^[2-9A-HJKMNP-Z]{5} [2-9A-HJKMNP-Z]{5}$")   # a space, not a dash (lead 13.11.)
+        self.assertEqual(pairing.norm_code(code.lower().replace(" ", "-")), code.replace(" ", ""))   # old dash typed
         self.assertEqual(pairing.code_of_picture(pairing.picture_bytes(code)), code)
         seed = base64.b64encode(os.urandom(32)).decode()
         data = pairing.seal(code, pairing.payload_of(seed))
@@ -67,7 +68,7 @@ class Reference(unittest.TestCase):
 
     def test_picture_edges(self):
         top = "Z" * 10
-        self.assertEqual(pairing.code_of_picture(pairing.picture_bytes(top)), "ZZZZZ-ZZZZZ")
+        self.assertEqual(pairing.code_of_picture(pairing.picture_bytes(top)), "ZZZZZ ZZZZZ")
         self.assertEqual(pairing.picture_bytes("2" * 10), bytes([2]) + bytes(7))
         for bad in (b"", bytes([1]) + bytes(7), bytes([2]) + bytes([255]) * 7, bytes([2]) + bytes(8)):
             with self.assertRaises(pairing.PairError):

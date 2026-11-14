@@ -45,7 +45,11 @@ def set_gate(code):
     if not code:
         return
     import requests
-    from net import netpolite
+    from net import boxbase, netpolite
+    try:
+        boxbase.check(GATE_URL)   # /v1 like everything else: only in Full Orbit (lead 14.11.)
+    except boxbase.Blocked:
+        raise VaultError(boxbase.BLOCKED_STATUS, tr(boxbase.BLOCKED_TEXT)) from None
     try:
         r = requests.post(GATE_URL, json={"code": code}, timeout=20, allow_redirects=False,
                           headers={"User-Agent": netpolite.UA, netpolite.CHECK_HEADER[0]: netpolite.CHECK_HEADER[1]})
@@ -75,20 +79,15 @@ def _base(settings):
     """Where the vault, the minute question and the device registry go: the test server only from the source; a Ship
     build always the live server (contacts.SERVER = bentcorner.app, Gordon 08.11.) – never an address stored in older
     settings (the old domain points at the same box only until ~2027-01-29)."""
-    from collection import syncrun
-    test = syncrun.test_base()
-    if test:
-        return test
-    if syncrun.ship_build():
-        return contacts.SERVER.rstrip("/")
-    return relay.url(settings)
+    from net import boxbase
+    return boxbase.base(settings)   # one place for every /v1 address (Ship = live, DEV = the test instance)
 
 
 def gate_needed(settings=None):
-    """The test server wants its access code and none is typed in yet (the settings page asks for it)."""
-    from collection import syncrun
-    base = syncrun.test_base()
-    return bool(base) and _gated(base + "/v1/vault") and not _gate[0]
+    """The test server wants its access code and none is typed in yet (the settings page asks for it) – also the DEV
+    version, which only ever talks to the test instance."""
+    from net import boxbase
+    return _gated(boxbase.base(settings) + "/v1/vault") and not _gate[0]
 
 
 class GateMissing(Exception):
@@ -100,7 +99,8 @@ def gated(method, url, timeout, **kw):
     forget – Gordon 07.11.: the instance lets nothing through without the gate): ONLY there (https, GATE_HOST,
     below GATE_PATH) the token goes along as cookie bc_gate – never to the live mailbox or any other host, never into
     a log (nothing here logs; the request is sent directly, without redirects). Elsewhere: netpolite as always."""
-    from net import netpolite
+    from net import boxbase, netpolite
+    boxbase.check(url)   # outside Full Orbit only the two catch-ups (lead/legal 14.11.) – nothing sent otherwise
     if not _gated(url):
         return (netpolite.post if method == "POST" else netpolite.get)(url, timeout=timeout, **kw)
     if not _gate[0]:
@@ -113,10 +113,13 @@ def gated(method, url, timeout, **kw):
 
 
 def _send(url, payload):
+    from net import boxbase
     try:
         return gated("POST", url, 30, json=payload)
     except GateMissing:
         raise VaultError(401, tr("The access code for the test server is missing.")) from None
+    except boxbase.Blocked:
+        raise VaultError(boxbase.BLOCKED_STATUS, tr(boxbase.BLOCKED_TEXT)) from None
 
 
 class VaultError(Exception):
@@ -148,7 +151,9 @@ def _post(settings, path, payload, again=True):
     except ValueError:
         d = {}
     if not 200 <= r.status_code < 300:   # 202: a join request was taken (B5)
-        if again and d.get("unknown") and path != "/v1/register" and time.time() - _reregistered[0] > REREGISTER_GAP:
+        from net import boxbase
+        if again and d.get("unknown") and path != "/v1/register" and time.time() - _reregistered[0] > REREGISTER_GAP \
+                and boxbase.full():   # outside Full Orbit: the one catch-up and nothing after it (legal 14.11.)
             # the server no longer knows my address (the mailbox after a year without use, the test instance when
             # it was emptied): register anew, once, then this request again – like relay._post
             from collection import syncrun

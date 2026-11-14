@@ -9,6 +9,9 @@ from unittest import mock
 
 from net import pairing, vault
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 SEED = base64.b64encode(b"\x11" * 32).decode()
 
 

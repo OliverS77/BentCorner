@@ -231,7 +231,8 @@ def _cards(n):
 def ticket_line(tk):
     """One open trade in words: partner, date, what goes each way, the agreed amount (the user's, no market value)."""
     from ui.scanlook import money
-    partner = tk.get("partner") or "–"
+    from ui import textsafe
+    partner = textsafe.name(tk.get("partner")) or "–"   # display only: the stored name stays as it came
     give, take = _count(tk.get("give")), _count(tk.get("get"))
     cards = ", ".join(x for x in (give and tr(TICKET_GIVE).format(cards=_cards(give)),
                                   take and tr(TICKET_TAKE).format(cards=_cards(take))) if x)   # zero parts left out
@@ -577,7 +578,7 @@ def join_items(ui, b, refresh):
         ctrl.sync_join_code(code)
         refresh()
     out.append(ui.form([(tr("Code"), ui.edit(st.get("code", ""), go, live=lambda t: st.update(code=t), key="join_code",
-                                                placeholder="XXXXX-XXXXX", enabled=not busy, focus=True))]))
+                                                placeholder="XXXXX XXXXX", enabled=not busy, focus=True))]))
     out.append(ui.row([ui.button(tr("Next"), lambda: go(None), enabled=not busy), ui.stretch()]))
     if busy:
         out.append(ui.label(tr("Coupling … (a few seconds)")))
@@ -588,6 +589,9 @@ def join_items(ui, b, refresh):
     elif state == "wrong":
         out.append(ui.label(tr("The code doesn't fit or has expired – show a new one on your phone.")))
     elif state == "error":
-        out.append(ui.label(sstat.get("join_text") or tr("No connection – try again in a moment.")))
+        out.append(ui.label(sstat.get("join_text") or sstat.get("text") or tr("No connection – try again in a moment.")))
+        if getattr(ctrl, "_join_payload", None) is not None and hasattr(ctrl, "sync_join_retry"):
+            # performance 13.11.: the ID's state couldn't be asked (offline / an older server) – the same identity again
+            out.append(ui.row([ui.button(tr("Try again"), ctrl.sync_join_retry, primary=True), ui.stretch()]))
     out.append(ui.note(tr(JOIN_SAFE)))
     return out

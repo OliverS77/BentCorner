@@ -176,7 +176,8 @@ def main(MainWindow):   # the window class from app.py – not importable here (
         # Language packs always included (better everything there than a card not recognised); the rest of the setup
         # (profile, friends, numbers, background) follows in the program window while the database loads (onboarding.py)
         first = {"scan_mode": "ai", "first_setup": True, "language": dlg.result_lang,
-                 "game": games_on[0], "games_on": games_on, "onboarding": "profile"}
+                 "game": games_on[0], "games_on": games_on, "onboarding": "profile",
+                 "setup_steps": int(getattr(dlg, "result_steps", 5))}   # „Step n of m“ in the program window
         settings_file = home / "settings.json"
         if not settings_file.exists():
             settings_file.write_text(json.dumps(first, ensure_ascii=False), "utf-8")

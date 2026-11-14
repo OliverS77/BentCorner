@@ -250,7 +250,7 @@ def _groups(kind, s):
 # deleted). "global": not per game – the op's "c" is "*/<kind>" (one profile, not one per game).
 SCHEMA = {
     "lists": {"file": "lists.json", "explode": "wish[] / have[] / custom[] -> one entry per list", "key": "id",
-              "fields": ["kind", "name", "shared", "pos", "rule"], "derived": ["example"]},
+              "fields": ["kind", "name", "shared", "pos", "rule", "scan_keep"], "derived": ["example"]},
     "havecards": {"file": "lists.json", "explode": "have[].items {uid: n} and have[].prints {printkey: n}",
                   "key": "<list>|u|<uid>  /  <list>|p|<set|number|lang|foil>", "counted": "n",
                   "derived": ["print_names"]},
@@ -339,7 +339,8 @@ def explode(kind, doc):
         for part in ("wish", "have", "custom"):
             for i, l in enumerate(doc.get(part) or []):
                 out[l["id"]] = _clean({"kind": part, "name": l.get("name", ""), "shared": bool(l.get("shared")),
-                                       "pos": i, "rule": l.get("rule")})
+                                       "pos": i, "rule": l.get("rule"),
+                                       "scan_keep": True if l.get("scan_keep") else None})   # wishhit, 14.11.
     elif kind == "havecards":
         for l in doc.get("have") or []:
             for uid, n in (l.get("items") or {}).items():
@@ -497,7 +498,7 @@ def implode(kind, doc, view):
         new = {p: [] for p in parts}
         for key, e in sorted(want.items(), key=lambda kv: (kv[1].get("pos", 0), kv[0])):
             l = by_id.get(key) or ({"id": key, "items": {}, "prints": {}} if e.get("kind") == "have" else {"id": key})
-            for f in changed(key, ("name", "shared", "rule")):
+            for f in changed(key, ("name", "shared", "rule", "scan_keep")):
                 _put(l, f, e.get(f) if f != "shared" else bool(e.get(f)))
             new[e.get("kind") if e.get("kind") in parts else "custom"].append(l)
         for p in parts:

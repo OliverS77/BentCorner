@@ -66,6 +66,10 @@ class SyncControl:
     def sync_setup(self):
         from collection import syncrun
         if not syncrun.available():
+            # a normal build (no ship flag): no engine – but the pages and badges still read sync_status (Oliver
+            # 13.11.: a 0.9.8.0 test build threw AttributeError on start and on every Settings page)
+            self.sync_status = getattr(self, "sync_status", None) or {"ok": None, "text": "", "when": None,
+                                                                       "busy": False}
             return
         if getattr(self, "sync_engine", None) is None:
             from system import datahome
@@ -567,9 +571,11 @@ class SyncControl:
         self._sync_bg("join_take", lambda: vault.pair_take(s, code))
 
     def _join_take_done(self, res, err):
-        """The identity arrived (the server deleted it on fetching). A2 (Oliver 08.11.): before this PC becomes that ID
-        it registers with the protection code – sync_status["join"] = "need_guard", the page asks for it,
-        sync_join_guard(code). The payload stays in memory only until then (closing the app = a new pairing code)."""
+        """The identity arrived (the server deleted it on fetching). Before this PC becomes that ID it registers there
+        (dev/add with the invitation). Oliver 13.11. (A2 taken back): only if the ID HAS a protection code does the new
+        device need it – sync_status["join"] = "need_guard", the page asks for it, sync_join_guard(code); without a code
+        it registers at once. Which of the two the server says first (join_info); until then join "busy". The payload
+        stays in memory only until then (closing the app = a new pairing code)."""
         from net import pairing
         from net.vault import VaultError
         st = self.sync_status
@@ -579,7 +585,7 @@ class SyncControl:
             self._sync_changed()
             return
         self._join_payload = res
-        st.update(join="need_guard", text="")
+        st.update(join="busy", text="")
         # C (lead 12.11.): had this device its own protection code, its pairing step says whose applies from now on
         from ui import qsync
         ex = ((res or {}).get("extra") or {}) if isinstance(res, dict) else {}
@@ -587,11 +593,16 @@ class SyncControl:
         from system import nicknames
         st["join_from"] = str(ex.get("dev_name") or "") or (nicknames.render(ex.get("dev_nick"), nicknames.lang())
                                                             or "")
-        for k in ("guard", "guard_wait", "join_request"):
+        for k in ("guard", "guard_wait", "join_request", "join_error"):
             st.pop(k, None)
         self._sync_changed()
-        # the ID's state from the server (signed with the arrived seed, nothing written): its salt if the payload had
-        # none (an older showing device), and whether „code lost“ runs there (library: legal's extra line)
+        self._join_ask()
+
+    def _join_ask(self):
+        """The ID's state from the server (signed with the arrived seed, nothing written): whether it has a protection
+        code (and its salt, if the payload had none – an older showing device) and whether „code lost“ runs there
+        (library: legal's extra line)."""
+        res = self._join_payload
         tmp = {"relay": {"seed": res["seed"], "url": (self.settings.get("relay") or {}).get("url")}}
 
         def info():
@@ -599,22 +610,43 @@ class SyncControl:
             return poll.ask(tmp)
         self._sync_bg("join_info", info)
 
+    def sync_join_retry(self):
+        """[Try again] after join "error": the same arrived identity once more – first its state, then registering."""
+        if getattr(self, "_join_payload", None) is None or self.sync_status.get("join") == "busy":
+            return
+        st = self.sync_status
+        st.update(join="busy", text="")
+        st.pop("join_error", None)
+        self._sync_changed()
+        self._join_ask()
+
     def _join_info_done(self, res, err):
         payload = getattr(self, "_join_payload", None)
-        if err is not None or payload is None or not isinstance(res, dict):
-            return   # offline: the code still works with the payload's salt
+        if payload is None:
+            return   # cancelled meanwhile
+        st = self.sync_status
+        if err is not None or not isinstance(res, dict):
+            # offline / state unknown: nothing written, the payload stays – [Try again] (sync_join_retry)
+            st.update(join="error", text=problem_text(err) if err is not None else "")
+            self._sync_changed()
+            return
         extra = payload.setdefault("extra", {})
         salt = (res.get("guard") or {}).get("salt")
         if salt and not extra.get("guard_salt"):
             extra["guard_salt"] = salt
-        self.sync_status["join_request"] = bool(res.get("guard_request"))
+        st["join_request"] = bool(res.get("guard_request"))
+        if res.get("guard"):   # the ID has a protection code: the new device types it (Oliver 13.11. a)
+            st.update(join="need_guard", text="")
+            self._sync_changed()
+            return
         self._sync_changed()
+        self._join_register(None)   # no code: the invitation is enough
 
     def sync_join_drop(self):
         """[Cancel] on the joining device: the arrived identity goes from memory – nothing of it was used; a new try
         needs a new code from the other device (the server deleted this one when it was fetched)."""
         self._join_payload = None
-        for k in ("join", "guard", "guard_wait", "join_request"):
+        for k in ("join", "guard", "guard_wait", "join_request", "join_error"):
             self.sync_status.pop(k, None)
         self._sync_changed()
 
@@ -622,14 +654,22 @@ class SyncControl:
         """The protection code typed on the joining device: register with it (dev/add + the invitation + sig_main) as
         the ID that arrived – only if the server takes it does this PC become that ID. -> sync_status["join"] busy, then
         _join_apply; a wrong code: guard "wrong" (join stays "need_guard"), too many: guard "wait" (+ guard_wait)."""
+        if not code or self.sync_status.get("join") == "busy":
+            return
+        self._join_register(code)
+
+    def _join_register(self, code):
+        """dev/add with the invitation as the arrived ID – with the typed protection code (sig_main), or None when the
+        ID has none (Oliver 13.11.)."""
         from collection import syncrun
         res = getattr(self, "_join_payload", None)
-        if res is None or not code or not syncrun.available() or self.sync_status.get("join") == "busy":
+        if res is None or not syncrun.available():
             return
         st = self.sync_status
         st.update(join="busy", text="")
-        for k in ("guard", "guard_wait"):
+        for k in ("guard", "guard_wait", "join_error"):
             st.pop(k, None)
+        self._join_typed = bool(code)
         self._sync_changed()
         try:   # where this device's key is registered now – a cancel at the table points it back there (U5)
             from net import devkeys
@@ -653,8 +693,15 @@ class SyncControl:
         st = self.sync_status
         data = getattr(err, "data", None) or {}
         if isinstance(err, (VaultError, RelayError)) and (data.get("main_required") or data.get("guard_wrong")):
-            st.update(join="need_guard", guard="wait" if err.status == 429 else "wrong",
-                      guard_wait=int(data.get("retry_after") or 0))
+            st.update(join="need_guard")
+            if getattr(self, "_join_typed", False):   # a typed code was wrong / too many tries
+                st.update(guard="wait" if err.status == 429 else "wrong", guard_wait=int(data.get("retry_after") or 0))
+            # else: the ID got a code meanwhile – the page now asks for it
+            self._sync_changed()
+            return
+        if isinstance(err, (VaultError, RelayError)) and data.get("guard_required"):
+            # an older box (A2, before 13.11.): it still wants a code on the ID first – library shows legal's line
+            st.update(join="error", text="", join_error="guard_required")
             self._sync_changed()
             return
         if err is not None or not isinstance(res, dict) or res.get("reg") != "ok":
@@ -1125,11 +1172,6 @@ class SyncControl:
             self._sync_changed()
             return
         self._pair_drop_images()
-        if not self.guard_on():   # A2 (Oliver 08.11.): a new device joins with the protection code – set it first
-            self.pair = {"busy": False, "code": "", "until": 0, "fetched": False, "shown": False, "error": "",
-                         "need_guard": True}
-            self._sync_changed()
-            return
         if self.sync_status.get("busy"):   # a sync run is on: never two runs side by side (review 08.11.)
             self.pair = {"busy": False, "code": "", "until": 0, "fetched": False, "shown": False,
                          "error": tr("Your devices are syncing right now – nothing was changed. Try again in a minute.")}
@@ -1337,12 +1379,20 @@ class SyncControl:
         return bool(e is not None and e.meta.get("guard"))
 
     def guard_optional(self):
-        """„Without a protection code“ only while the ID has a single device (Oliver 08.11., A2): the server's registry
-        has at most one entry; before its first answer the own device list decides."""
+        """„Without a protection code“ – always (Oliver 13.11.: A2 taken back, adding works without a code). Kept until
+        the pages no longer ask; then it goes."""
+        return True
+
+    def guard_note_all(self):
+        """Before the FIRST code while more than one device is connected (Oliver 13.11. b): the page shows legal's
+        line that the code applies to all connected devices. The server's registry decides; before its first answer
+        the own device list."""
+        if self.guard_on():
+            return False
         rows = (getattr(self, "_dev_reg", None) or {}).get("list")
         if rows is not None:
-            return len(rows) <= 1
-        return not self.sync_has_others()
+            return len(rows) > 1
+        return bool(self.sync_has_others())
 
     def guard_strength(self, text):
         """-> {"score" 0..3, "ok", "bits"} of a code the user chose (collection/codestrength; only on the device)."""

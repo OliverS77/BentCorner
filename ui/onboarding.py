@@ -1,21 +1,22 @@
 """First-run setup, part 2 – in the program window, while the card database is already loading in the background.
 
 Part 1 (language, storage location, games) runs before the program in the small window (setupui.py, FirstRun.qml) and
-sets settings["onboarding"] = "profile". It continues here, step by step on ONE page:
+sets settings["onboarding"] = "profile". Leaner setup 0.9.8 (Oliver/Gordon/lead 13.11.): one sentence per step, the
+rest behind „▸ More“. It continues here, step by step on ONE page:
 
-    profile     Who is scanning here? (name + card back)
-    friends     Bent°Corner Orbit: Core · Near Orbit · Full Orbit (slider; Full = the exchange, with terms of use)
-    stats       Help make Bent°Corner better (anonymous numbers, yes/no equally weighted)
-    background  Keep running in the background, start with Windows, check for updates / download automatically
-    finish      Still loading (progress + time left) or "All set" – plus the Fortune Card and Scalper Invaders,
-                playable even when nothing is loading any more
+    profile     The name friends see (the card back behind „▸ Card back“)
+    friends     Bent°Corner Orbit: Core · Near Orbit · Full Orbit (slider; Full = the exchange, with terms of use) –
+                a consent; with the online backup the protection code page follows (rescue, not a step of its own)
+    finish      Still loading (progress + time left) or "All set" – plus the game (ui/scalper.py)
 
-On every page a small line at the top right shows whether something is still loading in the background (card
-database, data packs).
+Out of the setup since 0.9.8 (lead 13.11.): the anonymous numbers (off until switched on under Settings → Friends &
+privacy), keeping running in the background / start with Windows (Settings → General), updates (Settings → Updates,
+defaults as before), the backup line and the Fortune Card.
+
+While something loads, a small line at the top right says so, with „Play“: the game (ui/scalper.py) takes the page area
+(„Back to setup“ above it), the step stays.
 
 The step is stored in the settings – anyone who closes the program in between lands there again on the next start.
-Everything here can be changed later in Settings (same switches: see qsetpages.py – if something asked here is
-changed there, adjust it here too and vice versa).
 """
 import time
 
@@ -24,9 +25,11 @@ from PySide6 import QtCore, QtGui
 from system import contacts
 from system.i18n import tr
 
-STEPS = ("profile", "friends", "rescue", "stats", "background", "finish")
-# the rescue code is a page of the Orbit step (only with the online backup on) – it doesn't count as a step of its own
-NUMBER = {"profile": 4, "friends": 5, "rescue": 6, "stats": 6, "background": 7, "finish": 8}
+STEPS = ("profile", "friends", "rescue", "finish")
+# the rescue code is a page of the Orbit step (only with the online backup on) – it doesn't count as a step of its own.
+# The numbers count from the end: „Step n of m“ with m = settings["setup_steps"] (5, or 4 without the storage step)
+FROM_END = {"profile": 1, "friends": 0, "rescue": 0}
+OLD = ("stats", "background", "wait", "done")   # older setups closed in between: they land on the finish page
 LOADING = ("carddb", "pack")   # jobs the setup waits for: card database (Scryfall) and data packs
 # Card database (Magic): share of each section in the total duration – for bar and time left
 PHASES = (("Scryfall fragen", 0.02), ("Kartendaten: herunterladen", 0.45), ("Kartendaten: einlesen", 0.35),
@@ -34,7 +37,7 @@ PHASES = (("Scryfall fragen", 0.02), ("Kartendaten: herunterladen", 0.45), ("Kar
 
 
 def active(settings):
-    return settings.get("onboarding") in STEPS + ("wait", "done")   # wait/done: older states = finish
+    return settings.get("onboarding") in STEPS + OLD
 
 
 def fraction(text):
@@ -56,7 +59,7 @@ class Onboarding:
         from system import userprofile
         prof = userprofile.get(self.s) or {}
         self.st = {"name": prof.get("name") or "", "back": prof.get("back") or userprofile.DEFAULT_BACK,
-                   "details": False, "tray": False, "autostart": False, "updates": True, "update_download": False}
+                   "more": False, "backs": False, "play": False}
         self.dlg = None
         self.t0, self.f0, self.job = None, 0.0, None
         self.had_download, self.sig = False, None
@@ -69,9 +72,10 @@ class Onboarding:
     @property
     def step(self):
         s = self.s.get("onboarding") or "finish"
-        return "finish" if s in ("wait", "done") else s
+        return "finish" if s in OLD else s
 
     def go(self, step):
+        self.st["more"] = False
         self.s["onboarding"] = step
         self.ctrl.settings_changed()
         if self.dlg is not None:
@@ -87,6 +91,9 @@ class Onboarding:
         self.s.pop("onboarding", None)
         self.s.pop("setup_backup_later", None)   # (only the setup's own state – the lamp decides by itself)
         self.s["profile_asked"] = True
+        from net import anonstats
+        if not anonstats.asked(self.s):   # not asked in the setup any more (lead 13.11.): off, never a later question
+            self.s["stats_share"] = False
         self.ctrl.settings_changed()
         if self.dlg is not None:
             self.dlg.close(True)
@@ -156,16 +163,46 @@ class Onboarding:
             return ui.label("✓ " + tr("Everything downloaded"), color="gray", fixed=True)
         return None
 
+    def _play(self, on):
+        self.st["play"] = bool(on)
+        if self.dlg is not None:
+            self.dlg.refresh()
+
     # ---------- Pages ----------
     def build(self, ui, d):
         step = self.step
-        # the rescue code is a step of its own (lead 06.11.) – counted only while the online backup is chosen
-        extra = 1 if self._with_rescue() else 0
-        n = NUMBER[step] + (extra if step in ("stats", "background", "finish") else 0)
-        total = 8 + extra
-        head = ui.row([ui.label(tr(f"Step {n} of {total}"), color="gray", fixed=True), ui.stretch(), self._indicator(ui)])
-        body = getattr(self, "_" + step)(ui)
-        return ui.col([head] + body, spacing=12)
+        total = int(self.s.get("setup_steps") or 5)
+        head = [ui.label(tr(f"Step {total - FROM_END[step]} of {total}"), color="gray", fixed=True)
+                if step in FROM_END else None, ui.stretch(), self._indicator(ui)]
+        playing = self.st["play"] and step != "finish"   # the finish page has the game anyway
+        if step != "finish" and not playing and self._loading():
+            head.append(ui.button(tr("Play"), lambda: self._play(True)))   # no play triangle: not in the symbol font
+        if playing:
+            body = [ui.row([ui.button(tr("Back to setup"), lambda: self._play(False), primary=True), ui.stretch()]),
+                    self._game(ui, 290, on_go=lambda: self._play(False))]   # „let's go“: back to the step
+        else:
+            body = getattr(self, "_" + step)(ui)
+        return ui.col([ui.row([h for h in head if h is not None])] + body, spacing=12)
+
+    def _game(self, ui, fit, on_go=None):
+        """The game sized so the page never scrolls (lead 13.11.: 1280x720 the smallest target) – fit = the px
+        the rest of the page and the window need around it (MirrorNode cGame). done/on_go (scanner 13.11.): when the
+        download finishes WHILE playing, the game shows its own strip „Done – keep playing or let's go“ – the pages
+        keep their structure for that (only values change), so the game is never started anew."""
+        from ui import scalper
+        node = scalper.node(ui, self.s, self.ctrl.settings_changed, done=not self._loading(), on_go=on_go)
+        node["fit"] = fit
+        return node
+
+    def _more(self, ui, items):
+        """„▸ More“: the rest of a step folded away (one sentence per step, lead 13.11.)."""
+        out = [self._fold(ui, "more", tr("More"))]
+        return out + (items if self.st["more"] else [])
+
+    def _fold(self, ui, key, text):
+        """„▸ text“ / „▾ text“ – small, on the left (not a full-width button)."""
+        return ui.row([ui.button(("▾ " if self.st[key] else "▸ ") + text,
+                                 lambda: (self.st.update({key: not self.st[key]}), self.dlg.refresh())), ui.stretch()])
 
     def _with_rescue(self):
         """The online backup is chosen in this setup: the sync built in, Full Orbit (picked or on) and the switch on."""
@@ -187,15 +224,20 @@ class Onboarding:
             userprofile.ensure(self.s, "" if skip else self.st["name"], self.st["back"])
             self.s["profile_asked"] = True
             self.go("friends")
-        return userprofile.profile_items(ui, self.st) + [
-            self._nav(ui, ui.button(tr("Later"), lambda: next_(skip=True)),
-                      ui.button(tr("Next"), next_, primary=True), back=False)]
+        name = ui.edit(self.st["name"], lambda t: (self.st.update(name=t[:40]), next_()), key="name",
+                       live=lambda t: self.st.update(name=t[:40]), placeholder=tr("Your name or nickname"))
+        name["focus"] = True
+        items = [ui.label(tr("What name should your friends see?"), px=22, bold=True), name,
+                 self._fold(ui, "backs", tr("Card back"))]
+        if self.st["backs"]:
+            items.append(ui.pixel(self.st["back"], lambda b: self.st.update(back=b)))
+        return items + [self._nav(ui, ui.button(tr("Later"), lambda: next_(skip=True)),
+                                  ui.button(tr("Next"), next_, primary=True), back=False)]
 
     def _friends(self, ui):
         """Bent°Corner Orbit (Oliver, 2026-10-29) – replaces "Trade with friends? yes/no": one slider, three levels,
         each says exactly what leaves the device. Preselected: Near Orbit (prices on start were the default before) –
         Full Orbit is never preselected (privacy policy §5: off until you turn it on)."""
-        from net import relay
         from system import orbit
 
         def web(page):
@@ -215,14 +257,14 @@ class Onboarding:
             from ui import backupui   # online backup chosen: the rescue code first – nothing goes up before (legal)
             on = want == "full" and self.st.get("backup", True) and backupui.available(self.ctrl) \
                 and self.s.get("sync_backup") is not True
-            self.go("rescue" if on else "stats")
+            self.go("rescue" if on else "finish")
 
         def confirm(on):
             if on:
                 orbit.confirm_age(self.s)
                 self.dlg.refresh()
-        items = [ui.label(tr("Do you want to use Bent°Corner Orbit?"), px=22, bold=True),
-                 ui.label(tr("Orbit is everything around your collection: prices, marketplaces, friends and trading. The rings show how far your data travels.")),
+        # one sentence (lead 13.11.; the consent texts go via Gordon to legal) – the rest behind „▸ More“
+        items = [ui.label(tr("How far should your data travel?"), px=22, bold=True),
                  ui.space(6),
                  ui.orbit(orbit.LEVELS.index(lv), pick,   # back here after Full Orbit was set: what leaving does
                           leave=tr(orbit.LEAVE) if orbit.level(self.s) == "full" else "",
@@ -234,12 +276,10 @@ class Onboarding:
             items.append(ui.note(tr(orbit.TERMS_LINE).replace("{url}", contacts.SITE + "/nutzung.html")))
         if lv == "full" and not orbit.age_ok(self.s):
             items += [ui.check(tr(orbit.AGE), False, confirm), ui.note(tr(orbit.AGE_NOTE))]
-        items += [ui.space(6),
-                  ui.row([ui.button(tr("Read privacy policy"), lambda: web("datenschutz.html")),
-                          ui.button(tr("Terms of use"), lambda: web("nutzung.html")), ui.stretch()])]
-        if relay.enabled(self.s):
-            items.append(ui.label(tr(f"Your ID: <b>{relay.pretty(relay.my_code(self.s))}</b> – give it to friends who want to add you. You add friends in your profile."),
-                                  rich=True))
+        items += [ui.space(6)] + self._more(ui, [
+            ui.label(tr("Orbit is everything around your collection: prices, marketplaces, friends and trading. The rings show how far your data travels.")),
+            ui.row([ui.button(tr("Read privacy policy"), lambda: web("datenschutz.html")),
+                    ui.button(tr("Terms of use"), lambda: web("nutzung.html")), ui.stretch()])])
         items.append(self._nav(ui, ui.button(tr("Next"), next_, primary=True)))
         return items
 
@@ -250,64 +290,9 @@ class Onboarding:
             self.st["backup"] = False
             self.go("friends")
         return backupui.rescue_items(ui, self.ctrl, self.st.setdefault("rescue", {}), self.dlg.refresh,
-                                     on_back=back, on_done=lambda: self.go("stats"), form=getattr(self.dlg, "form", None))
-
-    def _stats(self, ui):
-        from net import anonstats
-
-        def answer(yes):
-            self.s["stats_share"] = bool(yes)
-            self.go("background")
-        items = [ui.label(tr("Help make Bent°Corner better"), px=22, bold=True),
-                 ui.label(tr("Once a week Bent°Corner sends a few numbers: which games and which parts of the app you use – not what you do with them. No cards, no name, no ID. That shows me what is really used, so I can plan updates for exactly that. So you help decide what gets better next.")),
-                 ui.note(tr("Completely voluntary, change it any time under Settings → Friends & privacy.")),
-                 ui.button(("▾ " if self.st["details"] else "▸ ") + tr("Show what gets sent"),
-                           lambda: (self.st.update(details=not self.st["details"]), self.dlg.refresh()))]
-        if self.st["details"]:
-            items.append(ui.label(anonstats.describe(anonstats.payload(self.s)).replace("\n", "<br>"), rich=True,
-                                  color="gray"))
-        items.append(self._nav(ui, ui.button(tr("No, thanks"), lambda: answer(False)),
-                               ui.button(tr("Yes, I'll help"), lambda: answer(True))))
-        return items
-
-    def _background(self, ui):
-        from ui import tray
-        st = self.st
-
-        def setv(k, v):
-            st[k] = bool(v)
-            if k == "tray" and not v:
-                st["autostart"] = False
-            if k == "updates" and not v:
-                st["update_download"] = False
-            self.dlg.refresh()
-
-        def next_():
-            self.s["tray_mode"] = st["tray"]
-            self.ctrl.tray.apply()
-            if tray.autostart_possible():
-                tray.set_autostart(st["tray"] and st["autostart"])
-            self.s["updates"], self.s["update_download"] = st["updates"], st["update_download"]
-            self.ctrl.updater_apply()
-            self.go("finish")
-        bg = [ui.check(tr("Keep running in the background (daily prices, price alerts)"), st["tray"],
-                       lambda v: setv("tray", v))]
-        if tray.autostart_possible():   # not possible (test start, without .exe): don't show the row at all
-            bg.append(ui.check(tr("Start with Windows (hidden in the system tray)"), st["autostart"],
-                               lambda v: setv("autostart", v), enabled=st["tray"]))
-        return [ui.label(tr("Should Bent°Corner keep running in the background?"), px=22, bold=True),
-                ui.label(tr("Then you get price alerts and update notices even when the window is closed. Bent°Corner sits as a small icon at the bottom right next to the clock."))] + bg + [
-                ui.note(tr("Change it any time under Settings → General.")),
-                ui.line(),
-                ui.check(tr("Check for updates and let me know"), st["updates"], lambda v: setv("updates", v)),
-                ui.check(tr("Download updates automatically"), st["update_download"],
-                         lambda v: setv("update_download", v), enabled=st["updates"],
-                         tip=tr("Off: Bent°Corner only tells you, and downloads when you click – handy when nothing should slow your connection (e.g. while gaming online).")),
-                ui.note(tr("Change it any time under Settings → Updates.")),
-                self._nav(ui, ui.button(tr("Next"), next_, primary=True))]
+                                     on_back=back, on_done=lambda: self.go("finish"), form=getattr(self.dlg, "form", None))
 
     def _finish(self, ui):
-        from ui import scalper
         err = getattr(self.ctrl, "setup_error", "")
         loading = self._loading()
         if err:
@@ -321,44 +306,21 @@ class Onboarding:
                     ui.label(err, color="gray"),
                     ui.note(tr("Usually the connection just dropped for a moment. What's already downloaded is kept.")),
                     ui.row([ui.button(tr("Try again"), retry, primary=True), ui.stretch()])]
-        elif loading:
-            f, left = self._progress()
-            info = [ui.label(tr("Almost there!"), px=22, bold=True),
-                    ui.label(tr("The data is still downloading – Bent°Corner needs to stay open for that. Pass the time with Scalper Invaders. You can keep playing once everything is done, too.")),
-                    ui.progress(int(f * 1000), 0, 1000, f"{self._what()} · " + (left or f"{int(f * 100)} %")),
-                    ui.note(tr("If you close Bent°Corner anyway, the download picks up where it left off next time."))]
         else:
-            info = [ui.label(tr("All set! 🎉"), px=22, bold=True),
-                    ui.label(tr("Hold a card up to the camera – Bent°Corner recognizes it and adds it to your collection. Or play another round: you'll find the game later under Settings → Game, too.")),
-                    ui.row([ui.button(tr("Let's go"), self.finish, primary=True), ui.stretch()])]
-        # backups (Oliver, 29.10.): no step of its own – one quiet line. Two ways (review .101): "Set up now" (Settings →
-        # Backup, pulsing) or "Later" – then the lamp on Settings simply stays on until a target is set up
-        # (or "I'm aware of the risks" there)
-        after = self.s.get("setup_then") == "backup"
-        later = self.s.get("setup_backup_later") is True
-
-        def not_now():
-            self.s["setup_backup_later"] = True
-            self.s.pop("setup_then", None)
-            self.dlg.refresh()
-
-        def backup():
-            self.s.pop("setup_backup_later", None)
-            if loading or err:   # still downloading: Settings → Backup opens right after the setup
-                self.s["setup_then"] = "backup"
-                self.dlg.refresh()
-            else:
-                self.s["setup_then"] = "backup"
-                self.finish()
-        info += [ui.space(4),
-                 ui.note(tr("Bent°Corner supports local backups – automatically, too, into a cloud folder (OneDrive, Google Drive …) or onto a USB stick.")),
-                 ui.row([ui.button(tr("Opens after the setup ✓") if after else tr("Set up now ›"), backup,
-                                   primary=not (after or later)),
-                         ui.button(tr("Later ✓") if later else tr("Later"), not_now,
-                                   tip=tr("The lamp on Settings stays on until a backup is set up")),
-                         ui.stretch()])]
-        return [ui.row([ui.col(info, spacing=10), ui.fortune()], spacing=18),
-                scalper.node(ui, self.s, self.ctrl.settings_changed)]
+            # loading and ready: the SAME structure (scanner 13.11.: a new structure restarts the game) – only texts
+            # and „hidden“ change; the game gets done=True as a value and shows its strip if it is being played
+            f, left = self._progress() if loading else (1.0, "")
+            bar = ui.progress(int(f * 1000), 0, 1000, f"{self._what()} · " + (left or f"{int(f * 100)} %"))
+            fold = self._fold(ui, "more", tr("More"))
+            note = ui.note(tr("If you close Bent°Corner anyway, the download picks up where it left off next time."))
+            go = ui.row([ui.button(tr("Let's go"), self.finish, primary=True), ui.stretch()])
+            bar["hidden"] = fold["hidden"] = not loading
+            note["hidden"] = not loading or not self.st["more"]
+            go["hidden"] = loading
+            info = [ui.label(tr("Almost done – the data is still loading.") if loading
+                             else tr("All set – hold a card up to the camera."), px=22, bold=True), bar, fold, note, go]
+        # fit constant (330): the field never jumps while playing
+        return [ui.col(info, spacing=10), self._game(ui, 330, on_go=self.finish)]
 
 
 def start(ctrl):

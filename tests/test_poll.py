@@ -107,6 +107,8 @@ def window(sync=True, friends=True, version=3, idle=False):
         setattr(w, n, types.MethodType(attr, w) if callable(attr) else attr)
     w.settings = {}
     w.sync_status = {"busy": False}
+    w.settings_changed = w._sync_changed = lambda: None   # the real window has both (code-set notice, 13.11.)
+    w.sync_devices = lambda: []
     w.sync_engine = types.SimpleNamespace(meta={"version": version, "guard": False, "guard_request": None}, pending=[])
     w.sync_on = lambda: sync
     w.sync_orbit_ok = lambda: True

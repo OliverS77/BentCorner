@@ -45,7 +45,9 @@ def load_card():
 def info():
     """For QML: logo present, and the first loading card as [corner, fold, tilt, 1] ([0, 0, 0, 0]: random)."""
     card = load_card()
-    return {"logo": present(), "name": NAME, "word": WORD,
+    import version
+    dev = version.dev_build()
+    return {"logo": present(), "name": NAME, "word": WORD, "dev": dev, "devLabel": f"DEV {version.VERSION}" if dev else "",
             "loadCard": [card["corner"], card["fold"], card["tilt"], 1.0] if card else [0.0, 0.0, 0.0, 0.0]}
 
 

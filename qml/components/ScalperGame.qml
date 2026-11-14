@@ -1,4 +1,4 @@
-// Scalper Invaders (scalper.py): your card back is the ship. Collect boosters (+1, golden +5), shoot down
+// The mini game (scalper.py – its name comes as `title` from TITLE there): your card back is the ship. Collect boosters (+1, golden +5), shoot down
 // scalpers (+1, with a „Sold out“ sign 2 hits = +2). If a scalper reaches the line above the ship: −1 of 3
 // lives; boosters that fall past are simply gone. Controls – all at once: mouse left/right · A/D · ←/→
 // move; left click · space · W · ↑ shoot (hold = autofire); P/Esc pause. Playfield 480 × 640, scaled
@@ -11,7 +11,20 @@ Item {
     property string ship: ""          // card back as an image (data: URL)
     property var sprites: ({})        // {packs: [3], gold, scalper}
     property int best: 0
+    property string title: ""         // the game's name (ui/scalper.py TITLE – the one place)
+    // first-run setup (onboarding.py): the download ended while the game is shown -> the strip "Done – keep playing or
+    // let's go" above the field (GameStrip.qml; only with canGo; already done when the game opened: no strip)
+    property bool done: false
+    property bool canGo: false
+    property string doneText: ""
+    property string keepText: ""
+    property string goText: ""
+    property bool stripOn: false
     signal newBest(int score)
+    signal go()
+    // only while a game runs (playing or paused) – start screen, game over or already done: no strip (lead 13.11.)
+    onDoneChanged: if (done && canGo && (state_ === "play" || state_ === "pause")) stripOn = true
+    function keepPlaying() { stripOn = false; area.forceActiveFocus() }
     implicitWidth: 480; implicitHeight: 640
     height: width * 640 / 480
 
@@ -222,7 +235,7 @@ Item {
             Column {
                 visible: root.state_ === "start"; anchors.centerIn: parent; spacing: 14
                 Image { anchors.horizontalCenter: parent.horizontalCenter; width: 84; height: 120; source: root.ship; smooth: false }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "SCALPER INVADERS"
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.title
                        color: "#ededed"; font.family: T.display; font.pixelSize: 40; font.bold: true }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; horizontalAlignment: Text.AlignHCenter
                        text: shell.text("Collect boosters, shoot the scalpers –\ndon't let any cross the line.")
@@ -292,5 +305,6 @@ Item {
             }
         }
     }
+    // the strip itself stands ABOVE the field (GameStrip.qml – PC = web, lead 13.11.)
     onActiveFocusChanged: if (!activeFocus) { keys = ({}); firing = false }
 }

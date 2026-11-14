@@ -30,7 +30,7 @@ Drittanbietern). Die vollständigen Lizenztexte liegen im Programmordner unter `
 | RapidOCR (rapidocr-onnxruntime) | 1.4.4 | Apache-2.0 | https://github.com/RapidAI/RapidOCR |
 | PaddleOCR-Modelle (PP-OCR, Baidu/PaddlePaddle), als ONNX über RapidOCR | – | Apache-2.0 | https://github.com/PaddlePaddle/PaddleOCR |
 | RapidFuzz | 3.14.6 | MIT | https://github.com/rapidfuzz/RapidFuzz |
-| Pillow (inkl. FreeType, HarfBuzz, lcms2, libjpeg-turbo, libpng, libtiff, libwebp, OpenJPEG, libavif, zlib, xz) | 12.3.0 | MIT-CMU (+ Lizenzen der Bibliotheken, z. B. FTL, IJG, Libpng, libtiff, BSD-3-Clause, Zlib) | https://python-pillow.github.io/ |
+| Pillow (inkl. FreeType, HarfBuzz, lcms2, libjpeg-turbo, libpng, libtiff, libwebp, OpenJPEG, libavif, zlib, xz) | 13.0.0 | MIT-CMU (+ Lizenzen der Bibliotheken, z. B. FTL, IJG, Libpng, libtiff, BSD-3-Clause, Zlib) | https://python-pillow.github.io/ |
 | Shapely | 2.1.2 | BSD-3-Clause | https://github.com/shapely/shapely |
 | GEOS (in Shapely, `geos.dll`, `geos_c.dll`) | 3.13.1 | LGPL-2.1-or-later ⁴ | https://libgeos.org/ |
 | pyclipper (mit Clipper von Angus Johnson) | 1.4.0 | MIT (Clipper: BSL-1.0) | https://github.com/fonttools/pyclipper |
@@ -41,14 +41,14 @@ Drittanbietern). Die vollständigen Lizenztexte liegen im Programmordner unter `
 | charset-normalizer | 3.5.1 | MIT | https://github.com/jawah/charset_normalizer |
 | certifi (Mozilla-Zertifikatsliste) | 2026.10.23 | MPL-2.0 ⁶ | https://github.com/certifi/python-certifi |
 | cryptography (mit OpenSSL, statisch) | 50.0.2 (OpenSSL 4.0.3) | Apache-2.0 OR BSD-3-Clause (OpenSSL: Apache-2.0) | https://github.com/pyca/cryptography |
-| PyNaCl / libsodium (Verschlüsselung) | 1.5.0 | Apache-2.0 / ISC | https://github.com/pyca/pynacl · https://libsodium.org |
+| PyNaCl / libsodium (Verschlüsselung) | 1.6.2 | Apache-2.0 / ISC | https://github.com/pyca/pynacl · https://libsodium.org |
 | cffi (nur `_cffi_backend`) | 2.1.1 | MIT-0 | https://github.com/python-cffi/cffi |
 | segno (QR-Code) | 1.6.6 | BSD-3-Clause | https://github.com/heuer/segno |
 | pygrabber | 0.2 | MIT | https://github.com/andreaschiavinato/python_grabber |
 | comtypes | 1.4.17 | MIT | https://github.com/enthought/comtypes |
 | cv2-enumerate-cameras | 1.4.0 | MIT | https://github.com/lukehugh/cv2_enumerate_cameras |
 | packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | https://github.com/pypa/packaging |
-| setuptools (mitgezogen beim Bauen, inkl. importlib_metadata, zipp, jaraco.*, more_itertools, tomli, wheel, backports.tarfile) ⁷ | 84.0.0 | MIT | https://github.com/pypa/setuptools |
+| setuptools (mitgezogen beim Bauen, inkl. importlib_metadata, zipp, jaraco.*, more_itertools, tomli, wheel, backports.tarfile) ⁷ | 84.1.0 | MIT | https://github.com/pypa/setuptools |
 | Microsoft Visual C++ Laufzeit (`vcruntime140*.dll`, `msvcp140*.dll`) | 14.40–14.51 | Microsoft Visual C++ Redistributable („Distributable Code“, unverändert weitergegeben) | https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist |
 | PyInstaller (Bootloader) | 6.22.3 | GPL-2.0-or-later WITH Bootloader-exception | https://pyinstaller.org/ |
 
@@ -151,6 +151,30 @@ Regeln der Dienste (Abstände, Pflicht-Angaben, Bildrichtlinien) stehen in `net/
   > DEALINGS IN THE SOFTWARE.
 
 Jedes Datenpaket enthält zusätzlich eine `LICENSES.txt` mit den Quellen und Lizenzen seiner Daten.
+
+### Wortliste der Schutz-Code-Prüfung – zxcvbn-ts (MIT)
+
+`assets/codewords.txt.gz` (nur im Gerät, prüft einen selbst gewählten Schutz-Code; `tools/make_code_words.py`) ist ein
+Auszug aus den Wörterbüchern von [zxcvbn-ts](https://github.com/zxcvbn-ts/zxcvbn): `@zxcvbn-ts/language-common` 4.1.3
+(Passwörter, Diceware), `@zxcvbn-ts/language-de` 4.1.1 und `@zxcvbn-ts/language-en` 4.1.1 (häufige Wörter, Vor- und
+Nachnamen).
+
+  > MIT License · Copyright (c) 2012-2016 Dan Wheeler and Dropbox, Inc. · Copyright (c) 2021 @zxcvbn-ts
+  >
+  > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  > documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+  > the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+  > to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above
+  > copyright notice and this permission notice shall be included in all copies or substantial portions of the
+  > Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+  > LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+  > SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  > OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  > DEALINGS IN THE SOFTWARE.
+
+- **commonWords:** OpenSubtitles 2024 via OPUS (Helsinki-NLP), ODC-BY – https://opus.nlpl.eu/. Die Daten gehen auf die
+  Untertitel-Beitragenden und Rechteinhaber zurück; enthalten ist eine verarbeitete Ableitung (zerlegt,
+  Häufigkeiten, normiert, gefiltert). (NOTICE.md von language-de/-en)
 
 ## Yu-Gi-Oh!
 

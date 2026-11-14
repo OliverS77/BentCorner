@@ -8,6 +8,9 @@ from unittest import mock
 
 from net import sync_ctl, vault
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 
 def ctl(meta):
     c = sync_ctl.SyncControl.__new__(sync_ctl.SyncControl)

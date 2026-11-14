@@ -48,7 +48,8 @@ class _Home(unittest.TestCase):
                   mock.patch.object(datastore, "TRASH", self.mine / "trash"),
                   mock.patch.object(common, "DATA", self.data),
                   mock.patch.object(undo, "LAST_WRITE", [0.0]),
-                  mock.patch.object(tempfile, "gettempdir", lambda: str(self.tmpdir))]
+                  mock.patch.object(tempfile, "gettempdir", lambda: str(self.tmpdir)),
+                  mock.patch.object(autobackup, "restored", False)]   # a restore in one test never blocks the next
         for p in self.p:
             p.start()
         self.s = {}

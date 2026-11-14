@@ -22,6 +22,8 @@ Export:
 Other pages jump straight to the matching entry (ctrl.show_import(key) or ctrl.go_export(key, …)).
 No widgets: ImportPage holds the state, qimport shows it as a form.
 """
+import html
+import logging
 import re
 import time
 from pathlib import Path
@@ -36,6 +38,8 @@ from ui import qdialogs
 from ui import qstate
 from collection import trade
 from system.i18n import tr
+
+log = logging.getLogger(__name__)
 
 TABS = [("deck", "◆", "Deckliste", "Link von Moxfield, Archidekt … oder eine Textliste – wird ein neues Deck"),
         ("collection", "▦", "Sammlung", "CSV oder Textliste aus ManaBox, Moxfield, Deckbox, Dragon Shield … – "
@@ -82,7 +86,12 @@ def groups():
     return out
 
 
-_NUM = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+)$")
+def wish_lines(text):
+    """A wishlist as text -> [(count, name, set code or "")] – read like a deck list (decks.parse_text: one reader for
+    every list, with its limits on line length and counts); headings and sections are not cards, "(SET) 123" only
+    tells the set."""
+    from collection import decks
+    return [(n, name, code) for n, name, code, _number, _board in decks.parse_text(text)]
 
 
 def _esc(t):
@@ -781,12 +790,18 @@ class ImportPage(QtCore.QObject):
             return
         try:
             parsed = trade.read_file(path)
-        except (OSError, ValueError) as e:
-            self.coll_info = f"<span style='color:#ff8a8a'>{tr(f"Couldn't read the file: {e}")}</span>"
+        except (OSError, ValueError) as e:   # a damaged file: its own sentence, nothing in front (review H2-5)
+            msg = str(e) if str(e) == tr(trade.BROKEN) else tr(f"Couldn't read the file: {e}")
+            self.coll_info = f"<span style='color:#ff8a8a'>{html.escape(msg)}</span>"
             return
         rows = parsed["data"].get("c", []) if parsed["kind"] == "bentcorner" else parsed["data"]
         self.coll_name = Path(path).name
-        self._read_collection(rows)
+        try:
+            self._read_collection(rows)
+        except Exception:  # noqa: BLE001 – review H2-5: a message on the page, never a silent hang
+            log.exception("import: reading the collection file")
+            self._coll, self.coll_missing, self.coll_guard = [], [], None
+            self.coll_info = f"<span style='color:#ff8a8a'>{html.escape(tr(trade.BROKEN))}</span>"
 
     def _read_collection(self, rows):
         from collection import importguard
@@ -875,23 +890,20 @@ class ImportPage(QtCore.QObject):
             parsed = trade.read_file(path)
             rows = parsed["data"].get("c", []) if parsed["kind"] == "bentcorner" else parsed["data"]
             self.wish_text = "\n".join(f"{r[4]} {r[5]}" for r in rows)
-        except (OSError, ValueError):
+        except (OSError, ValueError):   # not a list we know: the text as it is, within the same size limit
             try:
-                self.wish_text = open(path, encoding="utf-8-sig", errors="replace").read()
+                with open(path, "rb") as f:
+                    raw = f.read(trade.FILE_MAX + 1)
+                if len(raw) > trade.FILE_MAX:
+                    raise OSError(tr("The file is too large."))
+                self.wish_text = raw.decode("utf-8-sig", errors="replace")
             except OSError as e:
                 self.wish_info = f"<span style='color:#ff8a8a'>{tr(f"Couldn't read the file: {e}")}</span>"
 
     def do_wishlist(self, anyway=False):
         from collection import importguard
-        lines, sets = [], []
-        for raw in self.wish_text.splitlines():
-            m_set = re.search(r"\s*\(([A-Za-z0-9]{2,6})\)\s*[\w\-★]*\s*$", raw.strip())
-            line = raw.strip()[:m_set.start()] if m_set else raw.strip()   # strip "(SET) 123"
-            if not line or line.lower().strip("/#: ") in ("deck", "commander", "sideboard", "maybeboard"):
-                continue
-            m = _NUM.match(line)
-            lines.append((int(m.group(1)), m.group(2).strip()) if m else (1, line))
-            sets.append(m_set.group(1) if m_set else "")
+        parsed = wish_lines(self.wish_text)
+        lines, sets = [(n, name) for n, name, _ in parsed], [s for _, _, s in parsed]
         if not lines:
             return
         v = importguard.verdict([(name, s, "", "") for (_, name), s in zip(lines, sets)])

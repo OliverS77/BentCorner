@@ -7,22 +7,31 @@ Vor 1.0 = Beta.
 import pathlib
 import re
 
-# Arbeitsstände haben vier Stellen (0.8.20.0, 0.8.20.1 …): nur hier auf dem PC und auf GitHub, nie auf dem
-# Update-Server. Erst wenn der Nutzer „shippen“ sagt, wird daraus die Version mit drei Stellen (0.8.20) gebaut und
-# mit tools/publish_release.py veröffentlicht (das verweigert vierstellige). Danach geht es mit 0.8.21.0 weiter.
-VERSION = "0.9.8"
+# Arbeitsstände haben vier Stellen und zählen nach dem LETZTEN Ship (Oliver/Gordon 13.11.2026): nach 0.9.8 geht es mit
+# 0.9.8.100, 0.9.8.101 … weiter – nur hier auf dem PC und auf GitHub, nie auf dem Update-Server. Erst wenn der Nutzer
+# „shippen“ sagt, wird daraus die nächste Version mit drei Stellen (release_of: 0.9.9) gebaut und mit
+# tools/publish_release.py veröffentlicht (das verweigert vierstellige). Danach geht es mit <Ship>.100 weiter.
+# Die nächste freie Nummer für PC und Web: docs/VERSIONEN.md.
+VERSION = "0.9.9"
 
 
 # „Was ist neu?“ nach einem Update: je geshippter Version höchstens 5 kurze Punkte (mehr liest keiner) – englisch,
 # Deutsch in locales/de.py. Alles Weitere bleibt unter Einstellungen → Updates.
 HIGHLIGHTS = {
+    "0.9.9": [   # legal 14.11. via lead – verbatim; the name „Scalper Invasion“ is free (Oliver, TMview 14.11.)
+        'Wishlist cards while scanning: if you scan a card from your wishlist, the scan page shows it right away, and Bent°Corner takes it off the list – you can turn this off per list. New in the scan dock: a volume slider.',
+        'An easier start: setting up now takes five short steps, and the new installer is dark, asks for your language first and lets you choose where your collection is kept.',
+        "Adding devices now also works without a protection code – the code stays optional. If you have set one up, you still enter it. Codes are now shown with spaces instead of dashes, so they're easier to type.",
+        'The mini game is now called “Scalper Invasion” and also runs during setup – for example while the card data is loading.',
+        'Scan Studio uploads are now only available in Full Orbit.',
+    ],
     "0.9.8": [   # hotfix (Oliver/Gordon 13.11.): nicknames.json was missing in the 0.9.7 package
         "Fixes a bug that kept the online backup from starting on the PC.",
     ],
     "0.9.7": [   # Oliver 06.11. + lead/legal 07.11./08.11.: sync, devices, protection code, backup, tickets + sharing rules (legal)
         'New in Full Orbit: your collection, decks, lists, binders and more can be backed up online, end-to-end encrypted, and kept in sync between your devices – one switch, “Online backup and sync”, which you can turn off at any time.',
         'Your devices and backups are simpler: each device with its name, add one with a code, remove one with ✕; online and offline backups in two boxes.',
-        'New: the protection code. From your second device on, you need it to add or remove devices – and with it you get your online backup back even if all your devices are gone.',
+        "New: the protection code. It's optional. If you have one, you need it to add or remove devices – and with it you get your online backup back even if all your devices are gone.",
         'Friends and trading are now only in Full Orbit; what you share with whom, you choose per friend under “Shared with friends”. Saved friends are kept. If you shared your whole library before, the app asks you once whether to keep doing so.',
         'In Core the app no longer shows prices – prices are available from Near Orbit on.',
     ],
@@ -72,14 +81,31 @@ HIGHLIGHTS = {
 
 # a heading above a version's points – and versions whose points stand alone: older skipped versions' highlights are
 # not added below them (the sharing rules of 0.9.7 must not drown in old news)
-HIGHLIGHT_TITLES = {"0.9.7": 'Sync with your devices – and new rules for friends, sharing and prices'}
+HIGHLIGHT_TITLES = {"0.9.7": 'Sync with your devices – and new rules for friends, sharing and prices',
+                    "0.9.9": 'Wishlist cards while scanning – and an easier start'}
 HIGHLIGHT_ONLY = {"0.9.7"}
 
 
+# Counting work-in-progress builds (Oliver/Gordon 13.11.2026): after the LAST ship – 0.9.8.100, 0.9.8.101 … come after
+# 0.9.8 and lead to 0.9.9. Before (up to 0.9.8.0) they counted towards the NEXT ship (0.9.7.58 = before 0.9.7); those
+# old numbers stay valid in the history. New-style builds start at AFTER_SHIP_FROM so they never meet the old ones.
+AFTER_SHIP_FROM = 100
+NEW_COUNT_FROM = (0, 9, 8)
+
+
+def _after_ship(parts):
+    """A work build counted after its ship (new style)?"""
+    return len(parts) == 4 and tuple(parts[:3]) >= NEW_COUNT_FROM and parts[3] >= AFTER_SHIP_FROM
+
+
 def _vkey(v):
-    """Shipped version (three digits) includes all its work-in-progress builds: 0.9.1 = 0.9.1.∞."""
+    """Order of versions: a ship sits after its old-style work builds (0.9.7.58 < 0.9.7) and before its new-style ones
+    (0.9.8 < 0.9.8.100 < 0.9.9)."""
     parts = [int(x) for x in str(v).split(".") if x.isdigit()]
-    return tuple(parts + [10 ** 9] * (4 - len(parts)))
+    if len(parts) == 4:
+        return tuple(parts)
+    ship = parts + [0] * (3 - len(parts))
+    return (*ship, AFTER_SHIP_FROM - 1 if tuple(ship) >= NEW_COUNT_FROM else 10 ** 9)
 
 
 def highlights_since(seen, current=None):
@@ -100,12 +126,23 @@ def is_release(v=None):
 
 
 def release_of(v=None):
-    """0.8.20.3 -> 0.8.20 (die Version, als die dieser Arbeitsstand geshippt würde)."""
-    return ".".join(str(v or VERSION).split(".")[:3])
+    """Die Version, als die dieser Arbeitsstand geshippt würde: neu (nach dem letzten Ship) 0.9.8.100 -> 0.9.9, alt
+    0.8.20.3 -> 0.8.20; eine geshippte Version ist ihr eigenes Release."""
+    parts = [int(x) for x in str(v or VERSION).split(".") if x.isdigit()]
+    if _after_ship(parts):
+        return f"{parts[0]}.{parts[1]}.{parts[2] + 1}"
+    return ".".join(str(p) for p in parts[:3])
 
 
 def label():
     return f"v{VERSION}"
+
+
+def dev_build():
+    """The DEV version (Oliver/Gordon 13.11.2026): every build WITHOUT the ship flag – Oliver's app\\, test copies, the
+    source. It shows „DEV <version>“ and the red mark and talks only to the test box (net/boxbase.py)."""
+    from collection import syncrun
+    return not syncrun.ship_build()
 
 
 def write_version_info():

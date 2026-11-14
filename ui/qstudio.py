@@ -43,6 +43,8 @@ from system.i18n import tr
 
 log = logging.getLogger("booster")
 
+UPLOAD_FULL_ONLY = "Uploading only works in Full Orbit"   # Oliver via Gordon 14.11. (/v1 lock)
+
 DIR = DATA / "studio"
 BOX = DIR / "kiste"
 PART = 1024 * 1024
@@ -602,7 +604,7 @@ class StudioBackend(QtCore.QObject):
     @QtCore.Slot()
     def uploadBox(self):
         """Everything in the box as one submission: one contribution per card (own status), shared details."""
-        if not self._box_ids() or not self.ctrl.settings.get("studio_consent"):
+        if not self._box_ids() or not self.ctrl.settings.get("studio_consent") or not self.full():
             return
         import version
         s = self.ctrl.settings
@@ -684,7 +686,7 @@ class StudioBackend(QtCore.QObject):
 
     @QtCore.Slot()
     def upload_all(self):
-        if self.uploading:
+        if self.uploading or not self.full():   # outside Full Orbit what waits stays waiting
             return
         todo = [(pid, meta) for pid, meta, st in self._local() if st.get("status") in ("wartet", "fehler", "laedt")]
         if not todo:
@@ -753,9 +755,17 @@ class StudioBackend(QtCore.QObject):
         st.update(kw, status=status)
         p.write_text(json.dumps(st), "utf-8")
 
+    def full(self):
+        """Uploads (and their status) only in Full Orbit (Oliver via Gordon 14.11.2026, /v1 lock): outside it the box
+        stays as it is – a quiet note, the upload button dimmed, nothing sent."""
+        from system import orbit
+        return orbit.level(self.ctrl.settings) == "full"
+
     def refresh_mine(self):
         """Fetch the status of uploaded contributions from the server (in the background)."""
         settings = self.ctrl.settings
+        if not self.full():
+            return
         if not (settings.get("relay") or {}).get("registered") and not any(
                 st.get("uploaded") for _, _, st in self._local()):
             return   # never registered with the mailbox: there is nothing to ask
@@ -947,10 +957,12 @@ class StudioBackend(QtCore.QObject):
     def _build_box(self, ui):
         """At the bottom of the expanded box (below a divider): details for the whole submission + upload."""
         s = self.ctrl.settings
+        full = self.full()
+        only_full = None if full else ui.note(tr(UPLOAD_FULL_ONLY))
         if self._box_tab == "sent":
             failed = any(st.get("status") == "fehler" for _, _, st in self._local())
-            return ui.col([ui.slot_note(self.mine_msg),
-                           ui.row([ui.button(tr("Upload again"), self.upload_all), ui.stretch()])
+            return ui.col([ui.slot_note(self.mine_msg), only_full,
+                           ui.row([ui.button(tr("Upload again"), self.upload_all, enabled=full), ui.stretch()])
                            if failed else None], spacing=8)
 
         def credit(v):
@@ -988,8 +1000,9 @@ class StudioBackend(QtCore.QObject):
             ui.check(tr("Bent°Corner may also pass them on to other fan projects like TCGdex (optional)."),
                      bool(s.get("studio_share_fan")), flag("studio_share_fan")),
             ui.slot_note(self._limit_text(n)),
+            only_full,
             ui.row([ui.stretch(), ui.button(tr("Upload all") + f" ({n})", self.uploadBox, primary=True,
-                                            enabled=bool(n) and bool(s.get("studio_consent")))]),
+                                            enabled=bool(n) and bool(s.get("studio_consent")) and full)]),
         ], spacing=8)
 
     def _limit_text(self, n):

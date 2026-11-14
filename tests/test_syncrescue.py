@@ -23,7 +23,7 @@ SEED = base64.b64encode(b"\x05" * 32).decode()
 class Code(unittest.TestCase):
     def test_new_code_and_last5(self):
         c = syncrescue.new_code()
-        self.assertRegex(c, r"^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$")
+        self.assertRegex(c, r"^[A-Z0-9]{5}( [A-Z0-9]{5}){4}$")   # spaces, not dashes (Oliver 12.11.)
         self.assertTrue(syncrescue.last5_ok(c, c[-5:].lower()))
         self.assertTrue(syncrescue.last5_ok(c, " " + c[-5:] + " "))
         self.assertFalse(syncrescue.last5_ok(c, c[-6:-1]))

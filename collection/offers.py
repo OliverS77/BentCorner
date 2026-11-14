@@ -96,9 +96,9 @@ def record_sent(t):
     return _put(t, t.get("o") or ["", ""], "sent")
 
 
-def record_received(t, partner):
+def record_received(t, partner, game=None):
     """Read in an offer from the other side (not booked yet)."""
-    return _put(t, partner, "received")
+    return _put(t, partner, "received", game)
 
 
 def set_status(trade_id, status, game=None):
@@ -129,8 +129,34 @@ def from_mailbox(t, my_id):
         return "received"
     if o is not None and o["status"] == "accepted":
         return None
+    if not mirrors(o, t, my_id):   # H2-8: not what was on the table – an offer to answer, never „book it“
+        _put(t, sd[2], "received", g)
+        return "received"
     _put(t, sd[2], "closing", g)
     return "closing"
+
+
+def same_deal(x, y, my_id):
+    """Two tickets of one trade, seen from my side: the same cards (set, number, language, finish, count, name) given
+    and got – in any order – and the same money (as the web's sameDeal, ports 10.11.)."""
+    from collection import ticket
+    a, b = (ticket.side(x, my_id) if x else None), (ticket.side(y, my_id) if y else None)
+    if a is None or b is None:
+        return False
+
+    def cards(rows):
+        return sorted([str((1 if c[3] else 0) if i == 3 else (c[i] if i < len(c) and c[i] is not None else ""))
+                       for i in range(6)] for c in rows or [])
+    return (cards(a[0]) == cards(b[0]) and cards(a[1]) == cards(b[1])
+            and round(ticket.money_from_me(x, my_id) * 100) == round(ticket.money_from_me(y, my_id) * 100))
+
+
+def mirrors(o, t, my_id):
+    """Review H2-8: a closing ticket counts as „they accepted“ only if this trade is filed here and the ticket mirrors
+    its latest version – a closing ticket without an offer, or with other cards, counts or money, doesn't."""
+    if o is None or not o.get("versions"):
+        return False
+    return same_deal(o["versions"][-1], t, my_id)
 
 
 def set_mail(trade_id, info, game=None):

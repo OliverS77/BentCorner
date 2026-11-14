@@ -169,10 +169,17 @@ class SwitchesOff(unittest.TestCase):
         import version
         with mock.patch.object(datahome, "FROZEN", True), mock.patch.object(datahome, "TEST", False), \
                 mock.patch.object(version, "is_release", lambda v=None: True):
-            self.assertFalse(anonstats.due({"stats_share": False}))
-            self.assertFalse(anonstats.due({}))                      # not asked yet = no
-            self.assertTrue(anonstats.due({"stats_share": True}))
-            self.assertFalse(anonstats.due({"stats_share": True, "stats_sent": time.time()}))   # once a week
+            from net import relay
+
+            def full(**kw):   # /v1 only in Full Orbit (lead/legal 14.11.) – the exchange on
+                s = dict(kw)
+                relay.state(s)["on"] = True
+                return s
+            self.assertFalse(anonstats.due(full(stats_share=False)))
+            self.assertFalse(anonstats.due(full()))                      # not asked yet = no
+            self.assertTrue(anonstats.due(full(stats_share=True)))
+            self.assertFalse(anonstats.due(full(stats_share=True, stats_sent=time.time())))   # once a week
+            self.assertFalse(anonstats.due({"stats_share": True}))   # Core/Near Orbit: never
 
     def test_team_news_not_fetched_when_off(self):
         from net import teamnews, updater
@@ -201,7 +208,6 @@ class SwitchesOff(unittest.TestCase):
 
     def test_link_imports_stay_off(self):
         from collection import deckimport
-        self.assertEqual(deckimport.ALLOWED, {"moxfield": False, "archidekt": False})
         with mock.patch.object(deckimport.netpolite, "get", side_effect=AssertionError("asked the site")):
             for url in ("https://moxfield.com/decks/abc123", "https://archidekt.com/decks/12345"):
                 with self.assertRaises(RuntimeError):

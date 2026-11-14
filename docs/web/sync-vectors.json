@@ -10,7 +10,8 @@
     "name",
     "shared",
     "pos",
-    "rule"
+    "rule",
+    "scan_keep"
    ],
    "derived": [
     "example"

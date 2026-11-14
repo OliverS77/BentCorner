@@ -20,7 +20,10 @@ from system import datahome
 
 log = logging.getLogger("booster")
 ESSENTIALS = "Bent°Corner Essentials"
-OURS = re.compile(r"^(\d+\.\d+(\.\d+)*-\d{10}|BentCorner\.exe|BentCorner\.old\.exe|current\.txt|installation\.txt)$")
+# bc-testkopie.txt: the marker an isolated test copy writes next to the program (datahome.apply_marker) – ours as well
+# (lead 14.11.: otherwise a test copy's Essentials stays and the move note never shows)
+OURS = re.compile(r"^(\d+\.\d+(\.\d+)*-\d{10}|BentCorner\.exe|BentCorner\.old\.exe|current\.txt|installation\.txt"
+                  r"|bc-testkopie\.txt)$")
 NOTE_KEY = "installed_note"   # settings: the note about the move was shown
 
 

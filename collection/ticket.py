@@ -18,6 +18,7 @@ import uuid
 import zlib
 
 from collection import rscode
+from system.i18n import tr
 
 VERSION = 1
 TEXT_KEY = "BentCornerTicket"
@@ -32,7 +33,6 @@ class Layout:
 RECEIPT = Layout(720, 40, 8, 110)
 WIDE = Layout(1200, 48, 6, 40)
 LAYOUTS = (RECEIPT, WIDE)
-W, X0, M, COLS, MAX_ROWS = RECEIPT.W, RECEIPT.X0, RECEIPT.M, RECEIPT.COLS, RECEIPT.MAX_ROWS
 BOTTOM = 30          # distance from the lowest block row to the bottom edge of the image
 _HEAD, _HEAD_SYM = 4, 8
 ID_LEN = 12          # in the pixel code the start of the profile ID is enough
@@ -544,9 +544,17 @@ def _read_box(g, box, rw, rh):
     return None
 
 
+MAX_PIXELS = 40_000_000   # a ticket image is far smaller; bigger ones aren't even loaded (review 08.11. T8)
+TOO_BIG = "This image is too large to be a trade ticket. Send the ticket image unchanged."
+
+
 def read_image(path):
-    """Ticket from an image file: first the text in the PNG file, otherwise the pixel code. -> dict or None."""
+    """Ticket from an image file: first the text in the PNG file, otherwise the pixel code. -> dict or None.
+    Raises ValueError(TOO_BIG) for an image over MAX_PIXELS – checked from the file's header, before decoding."""
     from PySide6 import QtGui
+    size = QtGui.QImageReader(str(path)).size()
+    if size.isValid() and size.width() * size.height() > MAX_PIXELS:
+        raise ValueError(tr(TOO_BIG))
     img = QtGui.QImage(str(path))
     if img.isNull():
         return None

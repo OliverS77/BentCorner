@@ -324,6 +324,8 @@ def export_csv(groups, path, fmt, set_names=None, text=None):
     text: "mit Kartentext" for the Excel format only – {"game": key, "rows": {sid: card row}, "locale": {sids}}
     (collection/exporttext.py: the allowed columns per game, "Quelle" last); None = the plain export as always."""
     import csv
+
+    from collection import csvsafe   # the Excel export: text cells never become formulas (review H2-7)
     from cards import conditions
     from collection import exporttext
     set_names = set_names or {}
@@ -332,7 +334,7 @@ def export_csv(groups, path, fmt, set_names=None, text=None):
     rarity = {"common": "common", "uncommon": "uncommon", "rare": "rare", "mythic": "mythic"}
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         if fmt == "excel":  # German Excel: semicolon, comma as decimal separator
-            w = csv.writer(f, delimiter=";")
+            w = csvsafe.writer(f, delimiter=";")
             w.writerow(["Anzahl", "Name", "Set", "Setname", "Nummer", "Sprache", "Foil", "Seltenheit", "Zustand",
                         "Preis (€)", "Wert (€)", "Scryfall-ID"] + (exporttext.headers(text["game"]) if text else []))
             for g in groups:
@@ -343,7 +345,7 @@ def export_csv(groups, path, fmt, set_names=None, text=None):
                             lang_short(g["lang"]), "ja" if g["foil"] else "", g.get("rarity") or "",
                             conditions.name(g), "" if p is None else f"{p:.2f}".replace(".", ","),
                             "" if p is None else f"{p * g['count']:.2f}".replace(".", ","), g["sid"]] + extra)
-        elif fmt == "moxfield":
+        elif fmt == "moxfield":   # for Moxfield's import, not a spreadsheet: names exactly as they are
             w = csv.writer(f)
             w.writerow(["Count", "Tradelist Count", "Name", "Edition", "Condition", "Language", "Foil", "Tags",
                         "Last Modified", "Collector Number", "Alter", "Proxy", "Purchase Price"])
@@ -352,7 +354,7 @@ def export_csv(groups, path, fmt, set_names=None, text=None):
                             MOXFIELD_LANG.get(g["lang"], "English"), "foil" if g["foil"] else "", "",
                             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(g.get("last") or time.time())),
                             g["number"], "False", "False", ""])
-        else:  # ManaBox: matched unambiguously via the Scryfall ID
+        else:  # ManaBox: matched unambiguously via the Scryfall ID (an import file, names exactly as they are)
             w = csv.writer(f)
             w.writerow(["Name", "Set code", "Set name", "Collector number", "Foil", "Rarity", "Quantity",
                         "ManaBox ID", "Scryfall ID", "Purchase price", "Misprint", "Altered", "Condition",

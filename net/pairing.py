@@ -4,7 +4,7 @@ comes after Oliver's review); the web app implements the same steps and checks t
 vectors.
 
     old device (has the identity)              new device (phone)
-    code = 10 chars, shown as "XXXXX-XXXXX"
+    code = 10 chars, shown as "XXXXX XXXXX" (a space since 0.9.8, lead 13.11.; typed with dash/space as you like)
     and as the picture code (NewGuy's 2D code,
     carries the same 10 characters)     ---->  camera reads the picture – or the user types the code
     POST /v1/pair/put {pid, sealed}            POST /v1/pair/get {pid} (once – the server deletes it on fetch)
@@ -37,9 +37,10 @@ class PairError(Exception):
 
 
 def new_code():
-    """10 characters, shown as "XXXXX-XXXXX"."""
+    """10 characters, shown as "XXXXX XXXXX" (lead 13.11.: a space like the protection code; only the display –
+    the keys come from norm_code, so devices with the old dash pair as before)."""
     c = "".join(secrets.choice(ALPHABET) for _ in range(CODE_LEN))
-    return c[:5] + "-" + c[5:]
+    return c[:5] + " " + c[5:]
 
 
 def norm_code(code):
@@ -59,7 +60,7 @@ def picture_bytes(code):
 
 
 def code_of_picture(data):
-    """Bytes read from the picture code (after RS) -> "XXXXX-XXXXX". Other version or no code -> PairError."""
+    """Bytes read from the picture code (after RS) -> "XXXXX XXXXX". Other version or no code -> PairError."""
     data = bytes(data)
     if len(data) != 8 or data[0] != VERSION:
         raise PairError("not a Bent°Corner pairing code (or from a newer version)")
@@ -70,7 +71,7 @@ def code_of_picture(data):
     for _ in range(CODE_LEN):
         n, r = divmod(n, 31)
         out = ALPHABET[r] + out
-    return out[:5] + "-" + out[5:]
+    return out[:5] + " " + out[5:]
 
 
 def _slow(code):
@@ -198,7 +199,9 @@ def _check_char(chars):
 def new_rescue_code():
     c = "".join(secrets.choice(ALPHABET) for _ in range(RESCUE_LEN))
     c += _check_char(c)
-    return "-".join(c[i:i + 5] for i in range(0, 25, 5))
+    # blocks with spaces, not dashes (Oliver 12.11., after the 0.9.7 ship): „XXXXX XXXXX …“ – the same 25 characters,
+    # the same strength; norm_rescue drops spaces and dashes, so codes made earlier with dashes stay valid
+    return " ".join(c[i:i + 5] for i in range(0, 25, 5))
 
 
 def norm_rescue(code):

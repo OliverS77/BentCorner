@@ -378,6 +378,8 @@ class ScanBackend(LiveView):
     panelsChanged = QtCore.Signal()
     barChanged = QtCore.Signal()   # bottom bar: pause, camera, scan frame, quick settings
     stageChanged = QtCore.Signal()   # what the scanner is doing (line under the scan frame) or where the frame is
+    wishChanged = QtCore.Signal()    # the wish-list bar (scanner/wishbar.py): a new hit, undone
+    soundChanged = QtCore.Signal()   # the dock's sound slider
     STAGE_AFTER = 0.3   # s a stage must last before the line shows it (no flicker between frames) …
     STAGE_HOLD = 0.6    # … and s it stays at least – "counted" both immediately
 
@@ -408,6 +410,59 @@ class ScanBackend(LiveView):
     def setActive(self, on):
         super().setActive(on)
         self._panel_t.start() if on else self._panel_t.stop()
+
+    # ---------- wish-list bar (0.9.9) and the sound slider ----------
+    def _wish_tick(self):
+        bar = self.ctrl.wish_bar()
+        state = (bar.serial, bar.rev)
+        if state != getattr(self, "_wish_state", None):
+            self._wish_state = state
+            self.wishChanged.emit()
+        from scanner import scansound
+        level = scansound.level_of(self.ctrl.settings)   # also switched in Settings → Scanning
+        if level != getattr(self, "_sound_state", None):
+            self._sound_state = level
+            self.soundChanged.emit()
+
+    @QtCore.Property("QVariantMap", notify=wishChanged)
+    def wish(self):
+        """{} = no bar; else {serial, text, link, canUndo, friends, undone, dimMs} (wishbar.WishBar.view)."""
+        return self.ctrl.wish_bar().view()
+
+    @QtCore.Slot(str)
+    def wishUndo(self, list_id):
+        """Undo in the bar ("" = every list) or in Details (one list)."""
+        if self.ctrl.wish_bar().undo(list_id or None):
+            self._wish_tick()
+
+    @QtCore.Slot(str, result="QVariantList")
+    def wishPos(self, which):
+        """Where a bar ("bar" or "details") was dragged to: [x, y] as 0–1 of the page; [] = never (default place)."""
+        p = (self.ctrl.settings.get("scan_wish_pos") or {}).get(which)
+        return list(p) if isinstance(p, (list, tuple)) and len(p) == 2 else []
+
+    @QtCore.Slot(str, float, float)
+    def setWishPos(self, which, x, y):
+        pos = self.ctrl.settings.get("scan_wish_pos")
+        pos = dict(pos) if isinstance(pos, dict) else {}
+        pos[which] = [round(min(1.0, max(0.0, x)), 4), round(min(1.0, max(0.0, y)), 4)]
+        self.ctrl.settings["scan_wish_pos"] = pos
+        self.ctrl.save_settings()
+
+    @QtCore.Property(int, notify=soundChanged)
+    def soundLevel(self):
+        from scanner import scansound
+        return scansound.level_of(self.ctrl.settings)
+
+    @QtCore.Property(int, constant=True)
+    def soundLevels(self):
+        from scanner import scansound
+        return scansound.LEVELS
+
+    @QtCore.Slot(int)
+    def setSoundLevel(self, level):
+        self.ctrl.set_scan_volume(level)
+        self.soundChanged.emit()
 
     # ---------- bottom bar in the middle ----------
     @QtCore.Property(bool, notify=barChanged)
@@ -677,6 +732,7 @@ class ScanBackend(LiveView):
 
     def _panels(self):
         self._stage_tick()
+        self._wish_tick()
         st = self.ctrl.stream
         state = tuple((not w.isHidden(), w.geometry().getRect()) for w in (st.card_panel, st.stats_panel)) + \
             (tuple(sorted(self.previewStrip.items())),)

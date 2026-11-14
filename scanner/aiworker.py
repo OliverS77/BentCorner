@@ -114,16 +114,21 @@ def _accept(lst, proc):
             got["err"] = e
     th = threading.Thread(target=accept, daemon=True)
     th.start()
-    end = time.monotonic() + START_TIMEOUT
+    t0 = time.monotonic()
+    end = t0 + START_TIMEOUT
     while th.is_alive() and time.monotonic() < end:
         th.join(0.1)
         if proc.poll() is not None and th.is_alive():
             break
     if "conn" in got:
         return got["conn"]
+    err = got.get("err")   # read before the poke: its wrong key ends accept() with "digest received was wrong"
+    timed_out = th.is_alive() and proc.poll() is None
     proc.kill()
     _poke(lst)   # release the waiting accept()
-    raise RuntimeError(got.get("err") or f"no connection (process exit {proc.poll()})")
+    if timed_out:
+        raise RuntimeError(f"no connection within {time.monotonic() - t0:.0f} s (START_TIMEOUT)")
+    raise RuntimeError(err or f"no connection (process exit {proc.poll()})")
 
 
 def _poke(lst):

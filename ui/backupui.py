@@ -39,11 +39,17 @@ OFFER = ("Set up a protection code? Then no device can remove other devices, del
 OFFER_GEN, OFFER_OWN, OFFER_NONE = "Let Bent°Corner make a code", "Choose your own code", "Without protection code"
 WITHOUT_LINE = ("Without a protection code you can only get back to your online backup through this device or your backup "
                 "file – with the file only after 14 days.")   # legal 08.11. (the code is required from the second device)
-# adding a second device without a code (Oliver 08.11., legal's A2 08.11.): the setup first, never „without code“
-ADD_NEEDS_CODE = ("You need a protection code for another device. You'll enter it on the new device in a moment; it then "
-                  "applies to all your devices, and only with it can you remove devices or delete everything. Write it "
-                  "down – if you lose it, a replacement takes 14 days.")
+# without a code (Oliver 13.11., A2 taken back; legal 13.11. 1f/1g, word for word): the quiet line under the device
+# list, and the bold line before the FIRST code while more than one device is connected
 ADD_SET_UP = "Set up protection code"
+NO_CODE_HINT = ("Without a protection code, any of your devices can remove the others or set a code for all of them. If "
+                "all your devices are gone, only your backup file gets you back to your online backup.")
+# Oliver 13.11. (via Gordon): once under the switch when the backup is on without a code – legal 13.11. (183 days =
+# the box's VAULT_TTL); once, „Later“ really hides it, no badge, no nagging
+NOCODE_HINT = ("With a protection code you get your online backup back even if all your devices are broken or gone – up "
+               "to 183 days after the last sync.")
+ALL_DEVICES = ("This code applies to all your linked devices – from then on you need it on each of them to add or remove "
+               "devices.")
 OWN_LINE = ("Your own code must be hard to guess – don't use one you already use elsewhere. A generated code is safer.")
 OWN_FIELD, OWN_AGAIN, OWN_DIFF = "Your protection code", "Enter the code again", "The two entries don't match."
 WEAK = "This code is too easy to guess. Use a longer one or have it generated."
@@ -65,7 +71,6 @@ DELETE, CANCEL = "Delete", "Cancel"
 DELETED = "Online backup deleted."
 DELETE_FAILED = "No connection – nothing was deleted, sync is still on. Try again in a moment."   # the web's line
 GROUP = "Online backup"   # the group's title in Settings → Backup (legal's word „Online-Sicherung“)
-NEW_CODE, NEW_CODE_NOTE = "Create a new protection code", "The old code no longer works afterwards."
 RESTORE, RESTORE_FIELD = "Restore with protection code", "Protection code"
 WRONG, NO_NET = "The code doesn't match.", "No connection – try again later."
 AGAIN = "Try again"
@@ -102,12 +107,15 @@ def new_code():
 
 
 def blocks(code):
-    """XXXXX-XXXXX-… as it is shown: the blocks with thin spaces around the dashes (easier to copy by hand)."""
-    return " – ".join(code.split("-")) if code else "…"
+    """XXXXX XXXXX … as it is shown: the five blocks with a wide gap, no dashes (Oliver 12.11.) – easier to copy by
+    hand. Spaces or dashes in the code (older ones) both split."""
+    if not code:
+        return "…"
+    return "\u2003".join(code.replace("-", " ").split())   # an em space: one clear gap in the monospace line
 
 
 def last5(code):
-    return code.replace("-", "")[-5:].upper() if code else ""
+    return "".join(code.replace("-", " ").split())[-5:].upper() if code else ""
 
 
 def status(ctrl):
@@ -149,8 +157,10 @@ def rescue_items(ui, ctrl, st, refresh, on_back, on_done, form=None):
         on_done()
         return []
 
-    # „without code“ only while there's a single device (Oliver 08.11.; performance' guard_optional – the registry)
-    none_ok = not st.get("change") and not st.get("second") and ctrl.guard_optional()
+    # „without code“ also with several devices (Oliver 13.11.) – not when changing, not from „Set up protection code“
+    none_ok = not st.get("change") and not st.get("second")
+    # legal 1g: before the FIRST code while more than one device is connected (performance' guard_note_all)
+    all_line = not st.get("change") and getattr(ctrl, "guard_note_all", lambda: False)()
 
     def pick(m):
         def f():
@@ -165,7 +175,7 @@ def rescue_items(ui, ctrl, st, refresh, on_back, on_done, form=None):
                 st["mode"] = m
             refresh()
         return f
-    return [ui.label(tr(OFFER_TITLE), px=22, bold=True),
+    return [ui.label(tr(OFFER_TITLE), px=22, bold=True)] + ([ui.label(tr(ALL_DEVICES), bold=True)] if all_line else []) + [
             ui.note(tr(OFFER)),
             ui.row([ui.button(tr(OFFER_GEN), pick("gen")), ui.button(tr(OFFER_OWN), pick("own"))]
                    + ([ui.button(tr(OFFER_NONE), pick("none"))] if none_ok else []) + [ui.stretch()]),
@@ -774,6 +784,29 @@ def guard_items(ui, state, wait, mem, go_label, on_go, on_cancel, form=None, on_
 
 
 # ---------- Settings → Backup: the same switch, deleting asked inline ----------
+def nocode_hint_items(ui, ctrl, st, refresh, on):
+    """Oliver 13.11. (via Gordon): the online backup on without a protection code – ONCE a short line right under the
+    switch, [Set up protection code] [Later]; no must, no pop-up. Once = settings["sync_nocode_hint"], set by either key
+    (lead: „after Later or Set up never again“) – merely drawing doesn't count. Never while the server's answer is
+    unknown (it may have a code)."""
+    s = ctrl.settings
+    ss = status(ctrl)
+    if not on or s.get("sync_nocode_hint") or getattr(ctrl, "guard_on", lambda: True)() or st.get("ask_delete") \
+            or ss.get("gate") == "missing" or ss.get("reached") is False:
+        return []
+
+    def done(setup):
+        s["sync_nocode_hint"] = 1
+        if hasattr(ctrl, "settings_changed"):
+            ctrl.settings_changed()
+        if setup:
+            st["rescue"] = {"second": True}   # the known offer, without „Without protection code“
+        refresh()
+    return [ui.label(tr(NOCODE_HINT)),
+            ui.row([ui.button(tr(ADD_SET_UP), lambda: done(True), primary=True),
+                    ui.button(tr("Later"), lambda: done(False)), ui.stretch()])]
+
+
 def settings_items(ui, ctrl, b, refresh, more=()):
     """The box „Online backup“; more: folded parts at its end (What is on the server, Moving – PLAN-EINFACH C)."""
     if not built():   # without the sync built in: Settings → Backup as before
@@ -830,6 +863,8 @@ def settings_items(ui, ctrl, b, refresh, more=()):
     if card_due(ctrl):   # existing users: legal's card (also right in „What's new?“ after the update)
         items.append(card_items(ui, ctrl, st, refresh))
     items.append(ui.check(tr(SWITCH), on, flip, enabled=full))
+    hint = nocode_hint_items(ui, ctrl, st, refresh, on)
+    items += hint
     items.append(ui.note(tr(SCOPE)))   # legal 07.11. (Art. 13): what goes up, visible when switching on
     if not full:   # the same layout, the online parts dimmed – and the way to the Orbit (PLAN-EINFACH D)
         items += [ui.note(tr(ONLY_FULL)), ui.label(tr(CODE_ONLINE_ONLY), color="gray"),
@@ -871,9 +906,11 @@ def settings_items(ui, ctrl, b, refresh, more=()):
             items += notice_items(ui, ctrl, st.setdefault("notice", {}), refresh, getattr(b, "form", None))
     # never reached the server (access code missing, not synced yet): it can't know whether a code exists (T2 07.11.)
     unknown = ss.get("gate") == "missing" or ss.get("reached") is False
-    if on and not st.get("ask_delete") and not guarded and not guard and not unknown:   # while deleting is asked: only the question
-        items += [ui.row([ui.button(tr(NEW_CODE), lambda: (st.update(rescue={}), refresh())), ui.stretch()]),
-                  ui.note(tr(NEW_CODE_NOTE))]
+    # no code yet: only [Set up protection code] – no „new code / the old one no longer works“ (lead 13.11.: there is no
+    # old one); while the one-time line above shows the same key, not twice
+    if on and not st.get("ask_delete") and not guarded and not guard and not unknown and not hint:
+        items.append(ui.row([ui.button(tr(ADD_SET_UP), lambda: (st.update(rescue={"second": True}), refresh())),
+                             ui.stretch()]))
     # restoring only where this PC doesn't sync (lead 07.11.: fresh, removed, switched off) – else it gets in the way
     eng = getattr(ctrl, "sync_engine", None)
     syncing = bool(eng is not None and eng.on())

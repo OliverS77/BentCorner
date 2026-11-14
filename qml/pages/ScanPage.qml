@@ -46,6 +46,10 @@ Item {
     function originFrom(item) { var p = item.mapToItem(page, item.width / 2, item.height / 2); ox = p.x; oy = p.y }
 
     LiveView { id: camView; anchors.fill: parent; lv: page.sp }   // camera image + overlay, mouse to the previous logic
+    // wish card hit (0.9.9): a bar at the top of the image – draggable, no ✕, dims after 8 s (WishBar.qml)
+    WishBar { id: wishBar; z: 4; wish: page.sp.wish; sp: page.sp; visible: on && !page.studio
+              blockers: tiles.visible ? tiles.tiles : [] }   // its first place cuts no tile (lead 14.11.)
+    property bool soundOpen: false   // the dock's sound key: the dock grows a slider upwards (SoundColumn.qml)
 
     // frosted glass under the tiles (Oliver): Python hands over the camera image small and already blurred
     // (scanView.frostSource, ~1 ms per new frame); here it is only scaled like the camera image and shown where the
@@ -139,13 +143,14 @@ Item {
         if (w !== "stats" && stats.on) page.sp.closePanel("stats")
         if (w !== "quick" && quick.on) page.sp.toggleQuick("")
         if (w !== "keys") keysSheet.visible = false
+        if (w !== "sound") page.soundOpen = false
     }
     Connections { target: card; function onOnChanged() { if (card.on) page.oneWindow("card") } }
     Connections { target: stats; function onOnChanged() { if (stats.on) page.oneWindow("stats") } }
     Connections { target: quick; function onOnChanged() { if (quick.on) page.oneWindow("quick") } }
     Connections { target: keysSheet; function onVisibleChanged() { if (keysSheet.visible) page.oneWindow("keys") } }
     readonly property bool awake: wake.running || page.anyOpen || page.drawer || tiles.arranging || keysSheet.visible
-                                  || page.sp.frameEdit
+                                  || page.sp.frameEdit || page.soundOpen
     MouseArea {   // quick settings open: clicking outside closes (like with the stats)
         anchors.fill: parent
         visible: quick.on && !page.sp.frameEdit
@@ -764,6 +769,16 @@ Item {
                               text: shell.text("Camera")
                               tip: shell.text("Camera: device, mirroring")
                               onClicked: { page.originFrom(bQuick); page.sp.toggleQuick("cam") } }
+                    BarLine {}
+                    // every scan sound: a click lets the dock grow a slider upwards (no pop-out); wheel = louder/quieter
+                    BarItem { id: bSound; enabled: !page.studio; icon: page.sp.soundLevel > 0 ? "sound" : "soundOff"
+                              on: page.soundOpen; text: shell.text("Sound")
+                              tip: page.sp.soundLevel > 0 ? shell.text("Volume of the scan sounds – wheel: louder/quieter")
+                                                          : shell.text("Scan sounds are off – click: volume")
+                              onClicked: { page.soundOpen = !page.soundOpen; if (page.soundOpen) page.oneWindow("sound") }
+                              WheelHandler { onWheel: function (w) {
+                                  var v = Math.max(0, Math.min(page.sp.soundLevels, page.sp.soundLevel + (w.angleDelta.y > 0 ? 1 : -1)))
+                                  if (v !== page.sp.soundLevel) page.sp.setSoundLevel(v) } } }
                 }
                 Row {   // the tile drawer: every tile, lit = shown – a click hides / shows it
                     id: tilesRow
@@ -821,6 +836,23 @@ Item {
                       onClicked: keysSheet.visible = !keysSheet.visible }
         }
     }
+    MouseArea {   // sound slider open: clicking outside closes it (like the quick settings)
+        anchors.fill: parent
+        visible: page.soundOpen
+        z: 4
+        acceptedButtons: Qt.AllButtons
+        onPressed: page.soundOpen = false
+    }
+    SoundColumn {   // grows out of the dock above the sound key – seamless with the dock
+        id: soundCol
+        z: 5
+        visible: page.soundOpen && bar.visible && !page.studio
+        level: page.sp.soundLevel; levels: page.sp.soundLevels; offText: shell.text("off")
+        x: bSound.mapToItem(page, bSound.width / 2, 0).x - width / 2 + 0 * bar.x
+        y: bar.y - height + 1
+        onPick: function (v) { page.sp.setSoundLevel(v) }
+    }
+    Shortcut { sequence: "Escape"; enabled: page.visible && page.soundOpen; onActivated: page.soundOpen = false }
     // the tile drawer's first opening: once, what the tiles are – in the dock's place (it grows upwards), no pop-up
     Rectangle {
         id: tilesHint

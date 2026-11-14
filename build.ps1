@@ -114,6 +114,17 @@ if (Test-Path brand\logo) {
     $Icon = "build\icon.ico"; $Brand = @()
 }
 if ($LASTEXITCODE -ne 0) { throw "Programmsymbol nicht gebaut (ui/iconkit.py)" }
+# DEV-Version (Oliver 13.11.2026): jeder Arbeitsbau OHNE -Ship bekommt die rote Marke – eine Kopie von brand\ mit
+# ui/iconkit.DEV_RED (tools\make_dev_brand.py), als exe-Symbol und als brand\ im Programm. Ein Ship-Bau nimmt immer
+# brand\ selbst; tools\check_package.py prüft das am fertigen Paket.
+if (-not $Ship -and (Test-Path brand\logo)) {
+    $env:QT_QPA_PLATFORM = "offscreen"
+    .\.venv\Scripts\python.exe tools\make_dev_brand.py build\brand-dev
+    if ($LASTEXITCODE -ne 0) { throw "rote DEV-Marke nicht gebaut (tools\make_dev_brand.py)" }
+    Remove-Item Env:QT_QPA_PLATFORM
+    $Icon = "build\brand-dev\icon.ico"; $Brand = @("--add-data", "build\brand-dev;brand")
+}
+if ($Ship -and (Test-Path brand\logo) -and $Icon -ne "brand\icon.ico") { throw "Ship-Bau ohne das normale Symbol – nicht gebaut" }
 
 # Kennung dieses Builds (Version + Zeitstempel): Ordnername der Programmdateien in „Bent°Corner Essentials“. Die
 # kleine BentCorner.exe liegt dort an einem FESTEN Ort, ihre Dateien im Ordner mit der Kennung (--contents-directory) –

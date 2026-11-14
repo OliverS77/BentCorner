@@ -4,6 +4,7 @@ import html
 
 from PySide6 import QtCore
 
+from ui import textsafe
 from ui.qtrade import back_image, carddb, db_image_of, eur, has_image, tr, trade, value   # shared helpers of the trade page
 
 
@@ -17,7 +18,7 @@ def bare_friends(settings, have):
         pid = f.get("pid") or ""
         if f.get("status") != "ok" or not pid or pid in have:
             continue
-        name = f.get("name") or relay.pretty(code)
+        name = textsafe.name(f.get("name") or relay.pretty(code))
         out.append({"fid": pid, "id": pid, "name": name, "img": back_image(relay.shown_back(f)), "info": "",
                     "example": False, "active": False, "folder": "", "n": 0, "imported": 0, "other": False,
                     "fileOnly": False, "bare": True, "tip": name})
@@ -94,7 +95,7 @@ class FriendsBackend(QtCore.QObject):
             file_only = not d.get("example") and self._relay_code(fid) is None
             n = sum(int(c[4] or 1) for c in d.get("cards") or [] if isinstance(c, list) and len(c) > 4)
             nw = len(d.get("wants") or [])
-            name = d.get("name") or tr("Friend")
+            name = textsafe.name(d.get("name") or tr("Friend"))
             gl = " · ".join(games.SHORT.get(k, k.upper()) for k in sorted(e["games"], key=lambda k: k != cur))
             if file_only and not orbit.FILE_FRIENDS:   # the grey hint in the list; the full sentence on their profile
                 gl += " · " + tr("by file only")
@@ -363,7 +364,7 @@ class FriendsBackend(QtCore.QObject):
 
     @QtCore.Property(str, notify=changed)
     def friendName(self):
-        return self._friend().get("name") or "?"
+        return textsafe.name(self._friend().get("name") or "?")
 
     @QtCore.Property(str, notify=changed)
     def friendInfo(self):
@@ -452,7 +453,7 @@ class FriendsBackend(QtCore.QObject):
         from net import relay
         d = self._friend()
         code = self._relay_code(d.get("id") or "")
-        out = {"name": d.get("name") or "?", "back": back_image(d.get("back")), "binders": [], "shared": bool(code)}
+        out = {"name": textsafe.name(d.get("name") or "?"), "back": back_image(d.get("back")), "binders": [], "shared": bool(code)}
         if not code:
             from system import orbit
             out["line"] = (tr("Doesn't share a profile via the server – only the trade file.") if orbit.FILE_FRIENDS
@@ -486,7 +487,7 @@ class FriendsBackend(QtCore.QObject):
         code = self._relay_code(d.get("id") or "")
         if not code:
             return
-        ctrl, nm, game = self.ctrl, d.get("name") or "?", game or games.current().key
+        ctrl, nm, game = self.ctrl, textsafe.name(d.get("name") or "?"), game or games.current().key
         ctrl._relay_bg("binder_get", lambda: (relay.fetch_binder(ctrl.settings, code, game, slot), nm, game))
 
     @QtCore.Property(str, notify=changed)
@@ -614,7 +615,7 @@ class FriendsBackend(QtCore.QObject):
             return {}
         shown = self.page.plain or [self.page.foreign]
         gs = [{"game": g, "nick": games.nick_of(g), "installed": packs.game_ready(g)} for g in shown]
-        who = (self.page.friend or {}).get("name") or "?"
+        who = textsafe.name((self.page.friend or {}).get("name") or "?")
         sec, rows = self._shown_rows()
         title = {"lib": tr(f"{who}'s collection"), "has": tr("Has for trade"), "wants": tr("Wants")}[sec]
         nicks = " + ".join(g["nick"] for g in gs)

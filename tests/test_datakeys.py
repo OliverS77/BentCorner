@@ -71,14 +71,32 @@ class WhichKeysCount(Base):
         self.assertEqual(datakeys.keys(), {})
         with self.assertRaises(datakeys.DataRejected):
             datakeys.verify_data(*self.data())
-        # the real public data key lives only in tools/publish_release.py – never in the app's code
+        # the real public data key lives only in tools/datakeys_public.py (PC + web release) – never in the app's code
         root = pathlib.Path(__file__).resolve().parents[1]
         pk = "z9gwDxbizKziQGLdReDJ4UYpybPOluzuqjbj+eqn2Jg="
         for f in ("cards/datakeys.py", "cards/packs.py", "net/updater.py"):
             self.assertNotIn(pk, (root / f).read_text("utf-8"), f)
-        release = root / "tools/publish_release.py"   # private (tools/public/manifest.txt)
-        if release.exists():
-            self.assertIn(pk, release.read_text("utf-8"))
+        shared = root / "tools/datakeys_public.py"   # private like publish_release (tools/public/manifest.txt)
+        if shared.exists():
+            self.assertIn(pk, shared.read_text("utf-8"))
+
+    def test_release_reads_the_shared_list(self):
+        """After the 0.9.7 ship (lead 12.11.): publish_release has no list of its own – it names exactly the keys of
+        tools/datakeys_public.py (the same file the web's publish_web reads)."""
+        root = pathlib.Path(__file__).resolve().parents[1]
+        if not (root / "tools/publish_release.py").exists():
+            self.skipTest("private tool not here")
+        import sys
+        sys.path.insert(0, str(root / "tools"))
+        import datakeys_public
+        import publish_release
+        self.assertFalse(hasattr(publish_release, "DATA_KEYS"))
+        self.assertNotIn("z9gwDxbizKziQGLdReDJ4UYpybPOluzuqjbj", (root / "tools/publish_release.py").read_text("utf-8"))
+        self.assertEqual(publish_release.data_keys(), datakeys_public.DATA_KEYS)
+        self.assertTrue(datakeys_public.DATA_KEYS)
+        got = publish_release.data_keys()
+        got[0]["until"] = "1999-01-01"                      # a copy: the shared list stays as it is
+        self.assertNotEqual(datakeys_public.DATA_KEYS[0]["until"], "1999-01-01")
 
     def test_no_field_empty_or_unknown_id(self):
         for dk in (None, [], [self.entry(kid="other")]):

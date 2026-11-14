@@ -13,6 +13,7 @@ import time
 from PySide6 import QtCore
 
 import games
+from ui import textsafe
 from ui import qform
 from collection import trade
 from system import userprofile
@@ -64,7 +65,7 @@ def all_friends(settings):
     people, masked = {}, set()
     for code, f in relay.friends(settings).items():
         k = f.get("pid") or code
-        people[k] = {"key": k, "name": f.get("name") or "", "back": relay.shown_back(f), "pid": f.get("pid") or "",
+        people[k] = {"key": k, "name": textsafe.name(f.get("name") or ""), "back": relay.shown_back(f), "pid": f.get("pid") or "",
                      "code": code, "status": f.get("status") or "", "games": {}}
         if f.get("hide_back") or f.get("status") == "blocked":   # never their own back from a file then
             masked.add(k)
@@ -75,9 +76,9 @@ def all_friends(settings):
             if d.get("example"):
                 continue
             k = d.get("id")
-            p = people.setdefault(k, {"key": k, "name": d.get("name") or "", "back": d.get("back"), "pid": k,
+            p = people.setdefault(k, {"key": k, "name": textsafe.name(d.get("name") or ""), "back": d.get("back"), "pid": k,
                                       "code": "", "status": "", "games": {}})
-            p["name"] = p["name"] or d.get("name") or ""
+            p["name"] = p["name"] or textsafe.name(d.get("name") or "")
             if k not in masked:
                 p["back"] = p["back"] or d.get("back")
             p["games"][key] = d
@@ -505,7 +506,7 @@ class ProfileBackend(QtCore.QObject):
         out = []
         for code, f in relay.friends(self.ctrl.settings).items():
             if f.get("moved") and f.get("status") == "ok":
-                name = f.get("name") or relay.pretty(code)
+                name = textsafe.name(f.get("name") or relay.pretty(code))
                 out.append({"code": code, "name": name, "text": tr(self.MOVED).format(name=name)})
         return out
 
@@ -518,7 +519,7 @@ class ProfileBackend(QtCore.QObject):
         """[Accept] / [Decline] – two equal keys; declined says where sharing stays (old address gone or not)."""
         from net import relay
         f = relay.friends(self.ctrl.settings).get(code) or {}
-        name = f.get("name") or relay.pretty(code)
+        name = textsafe.name(f.get("name") or relay.pretty(code))
         gone = bool((f.get("moved") or {}).get("old_gone"))
         if hasattr(self.ctrl, "friend_move_answer"):
             self.ctrl.friend_move_answer(code, bool(accept))

@@ -87,6 +87,43 @@ class PortableWipe(unittest.TestCase):
         self.assertFalse((docs / "essentials-0123456789abcdef.txt").exists())
         self.assertTrue(docs.is_dir(), "the folder stays – it isn't empty")
 
+    def test_data_folder_in_localappdata_keeps_foreign_files(self):
+        """Oliver 13.11.: new installations keep their data in %LOCALAPPDATA%\\BentCorner – the same folder as the
+        starter's notes. Without BC_STARTER_LOCAL it used to go as a whole; now: the starter files and the collection
+        go, a foreign file (and with it the folder) stays."""
+        local = pathlib.Path(self.tmp.name) / "LocalAppData"
+        home = local / "BentCorner"
+        (home / "data" / "my-data").mkdir(parents=True)
+        (home / "data" / "my-data" / "collection.json").write_text("{}", "utf-8")
+        (home / "settings.json").write_text("{}", "utf-8")
+        (home / "starter.log").write_text("x", "utf-8")
+        (home / "essentials-0123456789abcdef.txt").write_text("x", "utf-8")
+        (home / "inst-0123456789abcdef").mkdir()
+        (home / "Meine Liste.txt").write_text("fremd", "utf-8")
+        env = {k: v for k, v in os.environ.items() if k != "BC_STARTER_LOCAL"}
+        env["LOCALAPPDATA"] = str(local)
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(wipe, "BASE", home):
+            p = wipe.plan({})
+            self.assertNotIn(str(home), p.delete, "never the folder as a whole")
+            self.assertEqual(wipe.wipe(p), [])
+        self.assertFalse((home / "data").exists(), "the collection goes")
+        self.assertFalse((home / "settings.json").exists())
+        self.assertFalse((home / "starter.log").exists())
+        self.assertFalse((home / "essentials-0123456789abcdef.txt").exists())
+        self.assertFalse((home / "inst-0123456789abcdef").exists())
+        self.assertTrue((home / "Meine Liste.txt").exists(), "nothing foreign goes")
+
+    def test_an_empty_localappdata_folder_goes(self):
+        local = pathlib.Path(self.tmp.name) / "LocalAppData"
+        home = local / "BentCorner"
+        home.mkdir(parents=True)
+        (home / "starter.log").write_text("x", "utf-8")
+        env = {k: v for k, v in os.environ.items() if k != "BC_STARTER_LOCAL"}
+        env["LOCALAPPDATA"] = str(local)
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(wipe.wipe(wipe.plan({})), [])
+        self.assertFalse(home.exists(), "only starter notes in it: the folder goes too")
+
     def test_a_planted_plan_file_deletes_only_what_the_program_plans_itself(self):
         foreign = pathlib.Path(self.tmp.name) / "Fremd"
         foreign.mkdir()

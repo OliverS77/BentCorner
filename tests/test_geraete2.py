@@ -249,6 +249,13 @@ class NicknameTest(unittest.TestCase):
         self.assertEqual(qsync.device_name({"dev": "a", "nick": [34, 0, 0], "name": "Küche"}), "Küche")
         self.assertEqual(qsync.device_name({"dev": "dev-abc"}), nicknames.render([31, 39, 45], "en"))
 
+    def test_shown_name_cleaned_nick_stays(self):
+        """Merge lowfix (lead 12.11.): a device's own name is shown cleaned (textsafe), a device without a name keeps
+        showing its nickname."""
+        self.assertEqual(qsync.device_name({"dev": "a", "name": "Kü\x00che\u202e\x1b"}), "Küche")
+        self.assertEqual(qsync.device_name({"dev": "a", "nick": [34, 0, 0]}), "Tall Brave Fox")
+        self.assertEqual(qsync.device_name({"dev": "a", "nick": [34, 0, 0], "name": None}), "Tall Brave Fox")
+
     def test_record_writes_and_keeps_the_nick(self):
         e = syncrun.Engine.__new__(syncrun.Engine)
         e.meta = {}

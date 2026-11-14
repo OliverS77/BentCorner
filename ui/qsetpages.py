@@ -13,6 +13,7 @@ from system import i18n
 from ui import look
 from cards import conditions
 from cards import shoplinks
+from scanner import scansound
 from system.i18n import tr
 
 
@@ -157,9 +158,11 @@ def page_scan(ui, b):
                                           tip="So lange bleibt die letzte Karte stehen, nachdem sie aus dem Rahmen "
                                               "genommen wurde")),
         (None, _check(ui, ctrl, "permanently (until the next card)", "hold_forever")),
-        (None, _check(ui, ctrl, "Sounds while scanning", "scan_sounds",
-                      tip="Ein kurzer Ton bei jeder gescannten Karte, ein anderer bei einem Hit (ab „Hit ab“) "
-                          "und ein besonderer ab 50 €" if priced else "")),
+        (None, ui.check(tr("Sounds while scanning"), scansound.level_of(ctrl.settings) > 0,   # = the dock's slider
+                        lambda on: ctrl.set_scan_volume(ctrl.settings.get("scan_volume_on", scansound.DEFAULT_LEVEL)
+                                                        if on else 0),
+                        tip=tr("Ein kurzer Ton bei jeder gescannten Karte, ein anderer bei einem Hit (ab „Hit ab“) "
+                               "und ein besonderer ab 50 €" if priced else ""))),
     ])])
     # two columns that stack independently (no gaps): left preview + camera + recognition, right hits and cards
     return ui.col([
@@ -993,15 +996,22 @@ def page_privacy(ui, b):
                             relay.enabled(s) and (ctrl.relay_send_lists(quiet=True) if v else ctrl.relay_share_library_off())),
                  tip=tr("Friends see your whole collection of the open game. Lists are shared one by one – new lists always start private."),
                  enabled=full),
-        ui.check(tr("Messages from the Bent°Corner team (news, questions about your contributions)"),
+        # usable in every level: the news come with the updates (/dl) – only the questions about your contributions
+        # come through the mailbox, i.e. only in Full Orbit (lead 14.11., after the /v1 lock)
+        ui.check(tr("Messages from the Bent°Corner team (news, questions about your contributions)") if full else
+                 tr("Messages from the Bent°Corner team (news; questions about your contributions only in Full Orbit)"),
                  s.get("team_messages", True) is not False,
                  lambda v: (s.update(team_messages=bool(v)), ctrl.settings_changed()),
-                 tip=tr("Read only – you can't reply. They are genuine only with the team's signature."), enabled=full),
+                 tip=tr("Read only – you can't reply. They are genuine only with the team's signature.")),
     ] + ([] if full else [ui.note(tr("Only in Full Orbit – the exchange with friends runs through the Bent°Corner mailbox."))]))
     numbers = ui.group(tr("Numbers"), [
-        ui.check(tr("Send anonymous numbers (once a week, without identifier)"), s.get("stats_share") is True,
+        # only in Full Orbit (Oliver via Gordon, legal 14.11.): outside dimmed with the addition, showing the stored
+        # choice – back in Full Orbit an earlier yes counts again (nothing is reset here)
+        ui.check(tr("Send anonymous numbers (once a week, without identifier)")
+                 + ("" if full else " " + tr("(Full Orbit only)")), s.get("stats_share") is True,
                  lambda v: (s.update(stats_share=bool(v)), ctrl.settings_changed()),
-                 tip=tr("Which games, and on how many days you use which parts of the app, plus rough amounts – no ID, no name, no cards.")),
+                 tip=tr("Which games, and on how many days you use which parts of the app, plus rough amounts – no ID, no name, no cards."),
+                 enabled=full),
     ])
     return ui.col([orbit_group, friends, _scan_data_group(ui, ctrl), numbers,
                    ui.note(tr("Online requests (Scryfall, TCGdex, Commander Spellbook …) only contain the cards or decks you look up – no personal data. There is no tracking."))],
@@ -1323,7 +1333,7 @@ def coffee_sticker(ui):
 
 
 def page_game(ui, b):
-    """Easter egg: Scalper Invaders – the same game as in the first-run setup (scalper.py, ScalperGame.qml)."""
+    """Easter egg: the mini game (scalper.TITLE) – the same game as in the first-run setup (scalper.py, ScalperGame.qml)."""
     from ui import scalper
     ctrl = b.ctrl
     return ui.col([ui.note(tr("Your card back is the ship. Collect boosters, shoot scalpers – don't let any cross the line. Your best score is saved.")),

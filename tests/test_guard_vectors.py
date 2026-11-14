@@ -11,6 +11,9 @@ from unittest import mock
 
 from net import guard, pairing, relay  # noqa: F401
 
+from tests import livebox  # noqa: E402
+setUpModule, tearDownModule = livebox.module()   # the live box, as a Ship build (DEV split 13.11.)
+
 VEC = json.loads((pathlib.Path(__file__).resolve().parents[1] / "docs" / "web" / "guard-vectors.json")
                  .read_text("utf-8"))
 
