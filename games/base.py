@@ -66,6 +66,8 @@ class Game:
     market_fix = None         # () -> marketplace corrections from the data pack (Pokémon: cm_fix.json)
     heal_prints = False       # prints may leave the database: references move to the English print (printmove)
     price_lookup = None       # (card ID) -> (eur, eur_foil) or None: price of a single card while scanning (Pokémon)
+    cardmarket_prices = True  # its euros are Cardmarket's at all? False (Yu-Gi-Oh!, legal 16.11.2026): "Cardmarket"
+    #                           appears nowhere for it – the euro is "Price in €" (converted from TCGplayer, ≈)
     variants_of = None        # (sid) -> finishes of a print from the source data (Pokémon: normal, holo, reverse …)
     image_url = None          # (set, number, lang, version) -> image address of a print in a language
     rarity_short = None       # (rarity name) -> short form for a chip ("Ultra Rare" -> "UR", Yu-Gi-Oh!)
@@ -195,8 +197,15 @@ class Game:
         return []
 
     def price_estimated(self, sid):
-        """Euro price only converted (e.g. from TCGplayer, as Cardmarket is missing)? Then "≈" is shown in front."""
-        return False
+        """Euro price only converted (e.g. from TCGplayer, as Cardmarket is missing)? Then "≈" is shown in front
+        (legal 14.11.2026: every converted € price, real Cardmarket € without a sign). From the table price_est of the
+        card database – written by the price job and the data pack (Yu-Gi-Oh!, Pokémon)."""
+        return sid in price_est_map()
+
+    def price_rate_day(self, sid):
+        """Day of the exchange rate a converted euro price was made with ("YYYY-MM-DD") – None if the price isn't
+        converted (or the day isn't known: an older database)."""
+        return price_est_map().get(sid)
 
     def format_name(self, key):
         return dict(self.formats).get(key, key or "")
@@ -310,6 +319,9 @@ class Game:
 
     # ---------- Scanner ----------
     text_recognition = False         # full text recognition (name + collector line -> card database) – Magic only
+    # no clear fingerprint/image match: read the name in the background and take a fingerprint candidate (top 5) only
+    # if the name fits exactly that one, in two reads (aiscan.LiveScanner._name_pick; real photos 14.11.2026)
+    name_confirm = False
     # same artwork in several prints: count the image match's pick right away, read the collector line afterwards in
     # the background (app._print_check) – Magic settles the print before counting (aiscan.resolve_print)
     print_check_after_count = True
@@ -557,3 +569,50 @@ def daily_prices(ext, cm_url, tcg_file, foil_keys=("Foil",), progress=lambda tex
     write_prices(prices)
     write_hist(hist, day)
     return n_cm, n_tcg
+
+# ---- converted euro prices (price_est) ----
+
+PRICE_EST = "CREATE TABLE IF NOT EXISTS price_est (sid TEXT PRIMARY KEY, rate_day TEXT)"
+_est_cache = {}   # card database path -> {sid: rate_day or None}
+
+
+def ensure_price_est(con):
+    """The table of converted euro prices in an open card database; an older one (without rate_day) gets the column."""
+    con.execute(PRICE_EST)
+    if "rate_day" not in {r[1] for r in con.execute("PRAGMA table_info(price_est)")}:
+        con.execute("ALTER TABLE price_est ADD COLUMN rate_day TEXT")
+
+
+def price_est_changed():
+    """price_est was rewritten (price job, new card database): read it again on the next question."""
+    _est_cache.clear()
+
+
+def price_est_map(game=None):
+    """{sid: rate_day} of the open game's card database – or of another game's (game=key, read only; a mixed trade,
+    another game's binder – lead 14.11.2026). {} without the table. Another game's database is read again when its
+    file changed (its price job runs while that game is open – price_est_changed() only reaches the open one)."""
+    import sqlite3
+    from cards import carddb
+    path = carddb.path_of(game)
+    try:
+        sig = path.stat().st_mtime_ns if game and path != carddb.DB_PATH else None
+    except OSError:
+        sig = None
+    key = (str(path), sig)
+    if key not in _est_cache:
+        for k in [k for k in _est_cache if k[0] == str(path)]:
+            del _est_cache[k]   # an older state of the same file
+        out = {}
+        try:
+            if path.exists():
+                with carddb.connection(game if game and path != carddb.DB_PATH else None) as con:
+                    cols = {r[1] for r in con.execute("PRAGMA table_info(price_est)")}
+                    if cols:
+                        sql = "SELECT sid, rate_day FROM price_est" if "rate_day" in cols else \
+                            "SELECT sid, NULL FROM price_est"
+                        out = dict(con.execute(sql))
+        except sqlite3.Error:
+            out = {}
+        _est_cache[key] = out
+    return _est_cache[key]

@@ -328,6 +328,14 @@ Item {
             Column {
                 visible: shell.pricesOn
                 anchors.verticalCenter: parent.verticalCenter
+                HoverHandler {   // „≈": the legal text (legal 14.11.2026)
+                    onHoveredChanged: {
+                        var tip = hovered ? (foot.st.valueTip || "") : ""
+                        if (tip === "") { shell.tip("", 0, 0); return }
+                        var p = parent.mapToItem(null, parent.width / 2, parent.height)
+                        shell.tip(tip, p.x, p.y)
+                    }
+                }
                 Text { text: shell.text("Value") + "  " + (foot.st.value || "–"); color: T.text
                        font.family: T.font; font.pixelSize: 13; font.bold: true }
                 Text { text: shell.text("owned") + "  " + (foot.st.haveValue || "–")

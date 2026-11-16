@@ -23,11 +23,13 @@ MANA = _mtg.GAME.color_hex   # Magic's mana colors (shared decks are Commander d
 INK, MUTED, DIM = "#eeeeee", "#8e8e8e", "#5e5e5e"
 
 
-def eur(v):
+def eur(v, est=False):
+    """A deck's value on the share picture: display currency (lead 14.11.), „≈" when converted (legal 14.11.)."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
         return ""
-    return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    from cards import currency
+    return currency.fmt(v, est)
 
 
 def _font(px, bold=True, display=True):
@@ -188,7 +190,7 @@ def _single(it, art_for, prof):
     _profile(p, W, prof)
     # left: key figures
     kpis = [(tr("Cards"), f"{it.get('count', 0)}" + (f" / {it['size']}" if it.get("size") else "")),
-            (tr("Value"), eur(it.get("price") or 0)),
+            (tr("Value"), eur(it.get("price") or 0, it.get("price_est"))),
             (tr("Ø mana value"), f"{it.get('avg_mv') or 0:.2f}".replace(".", ","))]
     if it.get("owned_pct") is not None:
         kpis.append((tr("I own"), f"{it['owned_pct']} %"))

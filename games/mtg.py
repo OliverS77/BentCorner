@@ -21,6 +21,45 @@ def date_stamp_in(text):
     return _DATE_STAMP.search((text or "").upper()) is not None
 
 
+def scryfall_euros(con, history=False):
+    """Magic's euro prices come from Scryfall (prices.eur/eur_foil, in the card database from its bulk data) – no
+    longer from MTGJSON's Cardmarket values (Oliver/legal 16.11.2026: Scryfall is a Cardmarket partner). A print
+    without any Scryfall euro gets its TCGplayer price converted (≈, table price_est with the rate's day) – recomputed
+    with every price job, so a new rate counts and a print that gets a real euro (new card database) loses the mark.
+    history=True (the price history is on): also today's point of the own euro curve (pricehist.write_own) from the
+    REAL Scryfall euros – only from Near Orbit on. con: open card database. -> {sid: (eur, eur_foil)} of every print"""
+    from cards import currency
+    from .base import ensure_price_est, price_est_changed
+    ensure_price_est(con)
+    est = {r[0] for r in con.execute("SELECT sid FROM price_est")}
+    day = currency.rate_day()
+
+    def conv(v):
+        e = currency.from_usd(v) if v else None
+        return round(e, 2) if e else None
+    out, upd, marks = {}, [], []
+    for sid, eur, eur_foil, usd, usd_foil in con.execute("SELECT id, eur, eur_foil, usd, usd_foil FROM cards").fetchall():
+        if sid in est or (eur is None and eur_foil is None):
+            e, f = conv(usd), conv(usd_foil)
+            if e is not None or f is not None:
+                marks.append((sid, day))
+            if (e, f) != (eur, eur_foil):
+                upd.append((e, f, sid))
+            eur, eur_foil = e, f
+        out[sid] = (eur, eur_foil)
+    con.executemany("UPDATE cards SET eur = ?, eur_foil = ? WHERE id = ?", upd)
+    con.execute("DELETE FROM price_est")
+    con.executemany("INSERT OR REPLACE INTO price_est (sid, rate_day) VALUES (?, ?)", marks)
+    con.commit()
+    price_est_changed()
+    from system import orbit
+    if history and orbit.prices_fetch_ok():
+        from cards import pricehist
+        conv = {sid for sid, _ in marks}
+        pricehist.write_own({sid: v for sid, v in out.items() if sid not in conv})
+    return out
+
+
 class Magic(Game):
     key = "mtg"
     subdir = ""   # models/ and data/fp_build/ directly, not in a subfolder (from before there were other games)
@@ -63,6 +102,7 @@ class Magic(Game):
 
     online_details = True            # rulings and all prints from Scryfall; without a card database: web search
     text_recognition = True          # name + collector line read and looked up (ocrscan) – besides the AI
+    name_confirm = True
     print_check_after_count = False  # the print is settled before counting (aiscan.resolve_print, otherwise ask)
     stamp_check = True               # … except prerelease promos: same art + collector line, only the date stamp differs
 

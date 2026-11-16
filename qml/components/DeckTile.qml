@@ -99,29 +99,20 @@ Item {
                 clip: true
                 layer.enabled: GraphicsInfo.api !== GraphicsInfo.Software
                 layer.effect: MultiEffect { maskEnabled: true; maskSource: bodyMask }
-                Item {   // upper part of the title card (illustration)
+                Item {   // upper part: the title card – the WHOLE card, never cut or zoomed (artist/© line, legal 15.11.)
                     id: art
                     width: body.width; height: body.height * 0.62
                     clip: true
-                    readonly property real sw: 0.84   // image crop (relative to the card width)
-                    readonly property real sh: 0.45 * 88 / 63
-                    readonly property real k: Math.max(width / sw, height / sh)   // card width in px
                     Image {
                         source: t.d.art || ""
                         asynchronous: true; smooth: true; mipmap: true
                         sourceSize.width: 480
-                        width: art.k; height: art.k * 88 / 63
-                        x: -art.k * 0.08 - (art.k * art.sw - art.width) / 2
-                        y: -art.k * 88 / 63 * 0.11 - (art.k * art.sh - art.height) / 2
+                        anchors.fill: parent; anchors.topMargin: 10; anchors.bottomMargin: 10
+                        fillMode: Image.PreserveAspectFit
                     }
                     Rectangle { anchors.fill: parent; visible: !t.d.art; gradient: Gradient {
                         GradientStop { position: 0; color: T.accent_deep } GradientStop { position: 1; color: T.surface2 } } }
-                    Rectangle {   // soft fade downwards
-                        anchors.bottom: parent.bottom; width: parent.width; height: 60
-                        gradient: Gradient { GradientStop { position: 0; color: "transparent" }
-                                             GradientStop { position: 1; color: body.color } }
-                    }
-                    ArtistTag { name: t.d.art ? (t.d.artist || "") : ""; anchors.bottomMargin: 14 }
+
                 }
                 Text {
                     x: 14; y: art.height + 6; width: parent.width - 28; height: 24

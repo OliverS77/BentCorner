@@ -11,13 +11,14 @@ from PySide6 import QtCore
 from PySide6.QtCore import Qt
 
 from cards import carddb
+from cards import currency
 from ui import quickimages
 from ui import look
 from collection.collection import lang_short
 from system.i18n import tr
 from cards import library
 from scanner.common import BASE, lang_img
-from ui.librarycore import SORT_NATURAL, THUMBS, chip_texts, detail_width, display, eur, sets_text
+from ui.librarycore import SORT_NATURAL, THUMBS, chip_texts, detail_width, display, eur, price_tip, sets_text
 
 SORTS = [("relevance", "Beste Treffer"), ("count", "Anzahl"), ("name", "Name"), ("price", "Preis"), ("set", "Set"),
          ("new", "Neueste"),
@@ -88,7 +89,7 @@ class CardGridModel(QtCore.QAbstractListModel):
              "decks", "cond", "pending", "picked", "tile")
     # what a tile shows, in one call (role "tile"): every role read from QML is a call into Python that needs the GIL –
     # with the camera running each one can wait several ms (tester log: 250–300 ms per rebuild with 11 roles a tile)
-    TILE = ("name", "price", "setLine", "chips", "cond", "img", "pending", "dim", "nameColor", "decks")
+    TILE = ("name", "price", "priceTip", "setLine", "chips", "cond", "img", "pending", "dim", "nameColor", "decks")
     imageReady = QtCore.Signal(str)   # slow image server: the preload queue has fetched an image (any thread)
 
     def __init__(self, backend):
@@ -159,7 +160,9 @@ class CardGridModel(QtCore.QAbstractListModel):
         if key == "name":
             return r["name"]
         if key == "price":
-            return eur(r["price"]) if r.get("price") is not None else ""
+            return eur(r["price"], currency.estimated(r.get("sid"), r.get("game"))) if r.get("price") is not None else ""
+        if key == "priceTip":   # the legal text on the „≈" (legal 14.11.2026)
+            return price_tip(r.get("sid"), r.get("game"))[1] if r.get("price") is not None and eur(r["price"]) else ""
         if key == "setLine":
             return sets_text(r, b.disp)
         if key == "chips":

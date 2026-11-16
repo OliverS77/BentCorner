@@ -14,8 +14,22 @@ from ui import quickimages
 from system.i18n import tr
 from cards import library
 from system import orbit
-from ui.librarycore import FOLDS, THUMBS, eur
+from ui.librarycore import FOLDS, THUMBS, eur, price_tip
 from ui.searchbox import merged_order
+
+
+def price_note(game=None):
+    """The note under the prices for the game (key, default: the open one)."""
+    import games
+    key = game or games.current().key
+    if key == "mtg":
+        return tr("Prices are estimates from daily market data (Cardmarket via Scryfall, TCGplayer via MTGJSON) – "
+                  "no guarantee. The shop has the final price.")
+    if key == "yugioh":
+        return tr("Prices are estimates from daily market data (TCGplayer; euros converted) – no guarantee. The shop "
+                  "has the final price.")
+    return tr("Prices are estimates from daily market data (Cardmarket, TCGplayer) – no guarantee. The shop has the "
+              "final price.")
 
 _counter = itertools.count(1)
 
@@ -631,12 +645,14 @@ class DetailBackend(QtCore.QObject):
                                        or library.image_url(pr["set"], pr["number"], "en", "small"),
                                        THUMBS / f"{sid}_en_s.jpg")
             price = pr.get("eur") if pr.get("eur") not in (None, "") else pr.get("eur_foil")
+            est, tip = price_tip(sid)
             try:
-                price = eur(float(price)) if price not in (None, "") else ""
+                price = eur(float(price), est) if price not in (None, "") else ""
             except (TypeError, ValueError):
                 price = ""
             out.append({"id": sid, "set": (pr.get("set") or "").upper(), "number": pr.get("number") or "",
-                        "img": url, "price": price, "mark": marks.get(sid, ""), "date": pr.get("date") or ""})
+                        "img": url, "price": price, "priceTip": tip if price else "", "mark": marks.get(sid, ""),
+                        "date": pr.get("date") or ""})
         return out
 
     @QtCore.Property(int, notify=changed)
@@ -670,8 +686,10 @@ class DetailBackend(QtCore.QObject):
                           "pts": [[QtCore.QDateTime(QtCore.QDate(d.year, d.month, d.day), QtCore.QTime(12, 0))
                                    .toMSecsSinceEpoch(), float(v), float(o)] for d, v, o in pts]})
         has = {k: any(c.data.get(s + k) for s in "ct") for k in "nf"}
+        from cards import currency   # the TCGplayer lines are dollars converted: „≈" + the legal text (legal 14.11.)
         return {"lines": lines, "days": c.days, "finish": c.finish, "both": all(has.values()),
-                "ranges": [{"days": d, "text": tr(t)} for d, t in c.RANGES]}
+                "ranges": [{"days": d, "text": tr(t)} for d, t in c.RANGES],
+                "approxTip": currency.approx_tip(currency.rate_day())}
 
     @QtCore.Property("QVariantList", notify=changed)
     def shops(self):
@@ -684,6 +702,31 @@ class DetailBackend(QtCore.QObject):
                                             if k in ("purchase_uris", "set_name")})
         return [m for m in shoplinks.market_links(card, self.ctrl.settings, foil=self.p.is_foil())
                 if m["key"] not in ("cardmarket", "tcgplayer")]
+
+    @QtCore.Property(str, notify=changed)
+    def imageNote(self):
+        """The images of the open game are switched off (games/offswitch.py): the reason under the placeholder."""
+        import games
+        from games import offswitch
+        key = games.current().key
+        return offswitch.image_reason(key) if self.p.row is not None and offswitch.images_locked(key) else ""
+
+    @QtCore.Property(str, notify=changed)
+    def priceNote(self):
+        """The small note under the prices (legal 02.11.) – it names where the prices come from, per game (legal
+        16.11.2026): Magic's euros via Scryfall, Yu-Gi-Oh! without any Cardmarket value."""
+        return price_note()
+
+    @QtCore.Property(str, notify=changed)
+    def approxNote(self):
+        """The price legend's line on „≈" (legal 14.11.2026) – only when this card's euros are converted from dollars
+        (and prices are shown at all)."""
+        from cards import currency
+        from system import orbit
+        if self.p.row is None or not orbit.prices_shown():
+            return ""
+        est, tip = price_tip(self.p.row.get("sid"))
+        return "≈ = " + tip if est else ""
 
     @QtCore.Property(str, notify=changed)
     def shopNote(self):

@@ -360,7 +360,7 @@ class ImportBackend(QtCore.QObject):
         p = self.page
         mail = self._offer_mail(ui)
         return self._card(ui, [
-            ui.note(tr("In Orbit, tick cards with a friend and click “Offer as image …” – the image then shows up here.")) if p.offer_img is None else None,
+            ui.note(tr("Under Lists & Orbit, tick cards with a friend and click “Offer as image …” – the image then shows up here.")) if p.offer_img is None else None,
             mail,
             self._image(ui, p.offer_img),
             ui.note(tr("The ticket contains your names, profile IDs and the cards. Share it only with your trade partner, "
@@ -488,7 +488,7 @@ class ImportBackend(QtCore.QObject):
 
     def _p_friend(self, ui):
         return self._card(ui, [
-            ui.note(tr("The file your friend saved under “Orbit → Export …” – or a CSV from another app. Bent°Corner recognizes a known collection and updates it; your own stays untouched.")),
+            ui.note(tr("The file your friend saved under “Lists & Orbit → Export …” – or a CSV from another app. Bent°Corner recognizes a known collection and updates it; your own stays untouched.")),
             ui.row([ui.button(tr("Choose file …"), self.page.do_friend), ui.stretch()]),
         ])
 

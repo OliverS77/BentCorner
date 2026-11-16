@@ -258,7 +258,7 @@ Item {
                   onClicked: lib.setShared(listTools.bar.kind, listTools.bar.lid, true) }
             Btn { height: 30; compact: true; navIcon: "bell"; text: shell.text("Price alert")
                   active: !!listTools.bar && listTools.bar.alarm
-                  tip: shell.text("Opens the list's price alert under Orbit → Price alerts"); onClicked: lib.listAlarm() }
+                  tip: shell.text("Opens the list's price alert under Lists & Orbit → Price alerts"); onClicked: lib.listAlarm() }
         }
         Row {   // row 2, right: the selected card on this list (the pin sits in the lists column – review .101)
             anchors.right: parent.right; y: 42; height: 30
@@ -310,8 +310,16 @@ Item {
                 Row {
                     anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -3
                     spacing: 8
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: lib.sel.info
-                           color: T.hi; font.family: T.font; font.pixelSize: 15; font.bold: true }
+                    Text { id: selInfo; anchors.verticalCenter: parent.verticalCenter; text: lib.sel.info
+                           color: T.hi; font.family: T.font; font.pixelSize: 15; font.bold: true
+                           HoverHandler {   // „≈": the legal text (legal 14.11.2026)
+                               onHoveredChanged: {
+                                   var tip = hovered ? lib.sel.infoTip : ""
+                                   if (tip === "") { shell.tip("", 0, 0); return }
+                                   var p = selInfo.mapToItem(null, selInfo.width / 2, selInfo.height)
+                                   shell.tip(tip, p.x, p.y)
+                               }
+                           } }
                     Rectangle { width: 1; height: 22; color: T.line; anchors.verticalCenter: parent.verticalCenter }
                     Row { spacing: 8; enabled: lib.sel.count > 0; opacity: enabled ? 1 : 0.45   // nothing chosen yet: greyed
                     Btn { id: sbList; height: 32; compact: true; text: shell.text("To list") + "  ▾"
@@ -798,6 +806,7 @@ Item {
             readonly property var tv: model.tile || ({})
             name: tv.name || ""
             price: tv.price || ""
+            priceTip: tv.priceTip || ""
             setLine: tv.setLine || ""
             chips: tv.chips || []
             cond: tv.cond || ""
@@ -1252,8 +1261,14 @@ Item {
             textFormat: Text.StyledText
             color: T.muted; font.family: T.font; font.pixelSize: 13
             linkColor: T.text   // total value (underlined): click expands the value history
-            onLinkActivated: function (link) { if (link === "value") lib.toggleValue() }
-            HoverHandler { cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor }
+            onLinkActivated: function (link) { if (link.indexOf("value") === 0) lib.toggleValue() }
+            onLinkHovered: function (link) {   // „≈": the legal text (converted from the TCGplayer US price …)
+                var tip = link !== "" ? shell.approxTip(link) : ""
+                if (tip === "") { shell.tip("", 0, 0); return }
+                var p = mapToItem(null, width / 2, height)
+                shell.tip(tip, p.x, p.y)
+            }
+            HoverHandler { cursorShape: parent.hoveredLink.indexOf("value") === 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
         }
         PriceVeil {   // Orbit's Core: the short line next to the counts (where the value stood)
             full: false; visible: !shell.pricesOn && lib.isMain

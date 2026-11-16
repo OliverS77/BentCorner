@@ -27,7 +27,7 @@ from system.i18n import tr
 
 STEPS = ("profile", "friends", "rescue", "finish")
 # the rescue code is a page of the Orbit step (only with the online backup on) – it doesn't count as a step of its own.
-# The numbers count from the end: „Step n of m“ with m = settings["setup_steps"] (5, or 4 without the storage step)
+# The numbers count from the end: „Step n of m“ with m = settings["setup_steps"] (5; 4 without the storage step; 3 for the installer's copy)
 FROM_END = {"profile": 1, "friends": 0, "rescue": 0}
 OLD = ("stats", "background", "wait", "done")   # older setups closed in between: they land on the finish page
 LOADING = ("carddb", "pack")   # jobs the setup waits for: card database (Scryfall) and data packs

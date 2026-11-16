@@ -94,6 +94,49 @@ def _config_dir():
 
 
 POINTER = _config_dir() / ("datenordner-test.json" if TEST else "datenordner.json")
+# Setup 0.9.9 (lead 13.11./14.11.2026): the Inno installer writes the language and the storage location it asked for
+# – {"v": 1, "lang": "de", "home": "…"} – only on a NEW installation (no datenordner.json yet). The app reads it on its
+# first start (ui/setupui.py) and deletes it once the setup is done; an existing user deletes it unread (startup.py).
+INSTALLER = _config_dir() / ("installer-test.json" if TEST else "installer.json")
+
+
+def read_installer():
+    """installer.json -> {"lang": code or None, "home": absolute Path or None}, or None (no file / unreadable).
+    Only the language and the path are taken – nothing else. UTF-8 (also with a BOM); an old installer's ANSI file
+    (Inno SaveStringToFile) still reads through the Windows code page."""
+    try:
+        raw = INSTALLER.read_bytes()
+    except OSError:
+        return None
+    for enc in ("utf-8-sig", "mbcs" if sys.platform == "win32" else "cp1252", "cp1252"):
+        try:
+            d = json.loads(raw.decode(enc))
+            break
+        except (UnicodeDecodeError, ValueError, LookupError):
+            continue
+    else:
+        return None
+    if not isinstance(d, dict):
+        return None
+    import locales
+    lang = d.get("lang") if d.get("lang") in {c for c, _ in locales.all_languages()} else None
+    home = d.get("home")
+    home = pathlib.Path(home) if isinstance(home, str) and home.strip() and os.path.isabs(home) else None
+    return {"lang": lang, "home": home}
+
+
+def installer_ours():
+    """Is installer.json this copy's business? The installed program (an installer only ever writes it for itself) or
+    a first-start test (installer-test.json); never a portable copy, never a source start (the real file)."""
+    return TEST or (FROZEN and PORTABLE is None)
+
+
+def drop_installer():
+    """Delete installer.json (after the setup, or unread for an existing user). Never raises."""
+    try:
+        INSTALLER.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def documents():

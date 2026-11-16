@@ -70,6 +70,13 @@ class UpkeepControl:
         """A game switched off (or on again) in the update manifest: gone from the game picker, an open one is left
         for Magic, and everyone gets the notice once – also those who never had the game open. Data stays."""
         from games import offswitch
+        img_off, img_back = offswitch.apply_images(manifest.get("images_off"))
+        if img_off or img_back:   # images of a game off/on again: the views show placeholders/images again
+            shell = getattr(self, "shell", None)
+            if shell is not None:
+                shell.gamesChanged.emit()
+            for key in img_back:
+                self.stream_toast(tr(f"{games.name_of(key)}: images are back."))
         went_off, back = offswitch.apply(manifest.get("games_off"))
         if not went_off and not back:
             return
@@ -208,6 +215,11 @@ class UpkeepControl:
         """Due (or force)? Then back up quietly in the background – save the current state first."""
         from system import autobackup
         from system import undo
+        if not force and hasattr(self, "mtg_db_due_check"):   # the same minute timer: a planned Magic refresh
+            try:
+                self.mtg_db_due_check()
+            except Exception:  # noqa: BLE001 – never stop the backup because of it
+                __import__("logging").getLogger("booster").exception("Magic refresh check")
         if getattr(self, "_ab_busy", False):
             return False
         if not force and not autobackup.due(self.settings, undo.LAST_WRITE[0]):

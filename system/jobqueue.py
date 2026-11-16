@@ -14,6 +14,9 @@ from system.i18n import tr
 from ui.scanlook import mix
 
 log = logging.getLogger("booster")   # the same logger as app.py
+MTG_REFRESH_MIN = 100   # this many cards of a new Magic index missing in the card database: refresh it (Scryfall)
+MTG_REFRESH_SPREAD = 3600   # s – at a random moment within the first hour (Gordon 14.11.: new sets quickly; the bulk
+                            # file comes from data.scryfall.io, a CDN; api.scryfall.com/bulk-data asked once per job)
 JOB_TEXT = {}   # label per job kind – filled by app.py after the language is set (the texts are translated there)
 
 
@@ -71,6 +74,54 @@ class JobQueue:
         self.data_info.setStyleSheet("")
         self.data_info.setText("  ·  ".join(parts))
 
+    def mtg_db_schedule(self, missing):
+        """A new Magic index knows cards the user's card database doesn't (new sets): refresh the database from
+        Scryfall at a random moment within the next hour – a background job, in the log, no message."""
+        import random
+        due = time.time() + random.uniform(60, MTG_REFRESH_SPREAD)
+        self.settings["mtg_db_due"] = due
+        self.settings_changed()
+        log.info("Magic index: %d cards not in the card database – refresh from Scryfall planned at %s", missing,
+                 time.strftime("%H:%M", time.localtime(due)))
+
+    def mtg_db_due_check(self):
+        """Called every minute (upkeep timer): the planned refresh is due -> enqueue it once. carddb.download fetches
+        Scryfall's file only if its updated_at is new (at most once per updated_at and device)."""
+        due = self.settings.get("mtg_db_due")
+        if not due or time.time() < float(due):
+            return False
+        busy = [j for j in self.jobs + ([self.current] if self.current else []) if j.get("kind") == "carddb"]
+        if busy:
+            return False
+        self.settings.pop("mtg_db_due", None)
+        self.settings_changed()
+        log.info("Magic card database: planned refresh from Scryfall starts")
+        self.enqueue("carddb", "db-mtg", name=tr("Magic card data (Scryfall)"), label="DB", **{"for": "mtg"})
+        return True
+
+    def _mtg_after_pack(self, mdb, progress):
+        """Background (pack job): new languages via a copy (carddb.rebuild_langs – a write in between, e.g. prices,
+        makes the copy stale: build again, at most 3 times; the database busy: try the swap for ~1 minute, otherwise
+        at the next start). -> how many cards of the new index the database doesn't know (auto refresh, app side)"""
+        from cards import packs
+        res = None
+        for _ in range(3):
+            res = carddb.rebuild_langs(mdb, progress)
+            if res != "stale":
+                break
+        for _ in range(12):
+            if res != "busy":
+                break
+            time.sleep(5)
+            res = carddb.swap_langs(mdb)
+        log.info("Magic languages from the new pack: %s", res)
+        npz = packs.file_of("mtg", "fingerprints-all.npz")
+        try:
+            return carddb.index_missing(npz, mdb) if npz else 0
+        except Exception:  # noqa: BLE001 – only a hint for the refresh
+            log.exception("Comparing the Magic index with the card database")
+            return 0
+
     def _carddb_pending(self):
         return any(j["kind"] == "carddb" for j in self.jobs + ([self.current] if self.current else []))
 
@@ -107,6 +158,8 @@ class JobQueue:
         if kind == "prices" and not error and not job.get("cancelled"):
             self.settings[f"price_ok_{job.get('game') or 'mtg'}"] = time.time()
             self.settings_changed()
+        if kind == "pack" and not error and job.get("mtg_missing", 0) >= MTG_REFRESH_MIN:
+            self.mtg_db_schedule(job["mtg_missing"])
         pending = getattr(self, "_pending_switch", None)
         if pending is not None:   # game switch was waiting for this job to end (cancel)
             self._pending_switch = None
@@ -321,11 +374,13 @@ class JobQueue:
                     job["missing"] = True
                     msg = tr(f"{job.get('name') or code}: card data will follow with the next update.")
                 else:
-                    if code == "mtg":   # attach languages to an existing Magic database
+                    if code == "mtg":   # languages into a copy of the Magic database, swapped when it is free
                         from scanner.common import DATA
                         mdb = games.folders("mtg", DATA)["ref"] / "cards.sqlite"
                         if mdb.exists():
-                            carddb.import_langs(mdb, progress)
+                            job["mtg_missing"] = self._mtg_after_pack(mdb, progress)
+                    elif code != games.current().key:   # another game's new database: take it over now, here in
+                        carddb.prepare_game(code)       # the background – not later at the switch (UI thread)
                     msg = tr(f"{job.get('name') or code}: downloaded.")
             elif kind == "prices" and games.current().price_source == "daily":   # their own daily prices
                 currency.refresh()
@@ -335,7 +390,12 @@ class JobQueue:
                 currency.refresh()  # dollar rate for TCGplayer
                 prices = pricehist.today_prices(progress, history=bool(self.settings["price_history"]))
                 progress(tr("Enter prices …"), 0, 0)
-                n = self.apply_prices(prices)
+                hist_on = bool(self.settings["price_history"])
+                n = self.apply_prices(prices, hist_on)
+                if not prices and carddb.exists():   # MTGJSON had nothing new: Scryfall's euros still get their ≈
+                    from games import mtg            # fill and today's own curve point (a new card database)
+                    with carddb.connection() as con:
+                        mtg.scryfall_euros(con, hist_on)
                 msg = tr(f"Prices updated: {len(prices)} cards (MTGJSON), {n} of them changed in loaded sets.")
             elif kind == "pricehist":
                 currency.refresh()  # dollar rate for TCGplayer

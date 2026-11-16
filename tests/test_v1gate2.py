@@ -114,7 +114,8 @@ class Texts(unittest.TestCase):
         self.assertEqual(len(version.HIGHLIGHTS["0.9.9"]), 5)   # „Was ist neu?“ shows at most 5
         self.assertEqual(self.lookup("Scan Studio uploads are now only available in Full Orbit."),
                          "Uploads aus dem Scan-Studio gibt es nur noch im Ganzen Orbit.")
-        self.assertEqual(version.release_of(version.VERSION), "0.9.9")
+        # (until the 0.9.9 ship this also checked that VERSION was a work build of 0.9.9 – after the ship the work
+        # builds count towards 0.9.10, so that line is gone)
 
 
 if __name__ == "__main__":

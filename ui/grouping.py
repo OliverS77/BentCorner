@@ -135,14 +135,33 @@ def worth(rows):
     return sum(float(r.get("price") or 0) * int(r.get("count") or 0) for r in rows)
 
 
+def worth_mark(rows):
+    """(converted?, newest rate day) of a branch's value – „≈" when one priced copy's euros come from dollars."""
+    from cards import currency
+    est, day = False, None
+    for r in rows:
+        if not r.get("price") or not r.get("count") or not currency.estimated(r.get("sid")):
+            continue
+        est = True
+        d = currency.rate_day_of(r.get("sid"))
+        if d and (day is None or d > day):
+            day = d
+    return est, day
+
+
+def _node(rows):
+    est, day = worth_mark(rows)
+    return {"cards": cards(rows), "value": worth(rows), "est": est, "day": day}
+
+
 def children(rows, key, by="natural"):
     """Branches of the cards `rows` by `key`: [{"v", "label", "cards", "value", "rows"}] – natural order, or the
     biggest first (by="count" | "value", when the library is sorted that way)."""
     rows_of = {}
     for r in rows:
         rows_of.setdefault(value(r, key), []).append(r)
-    out = [{"v": v, "label": branch_label(key, v, rows_of[v]), "cards": cards(rows_of[v]), "value": worth(rows_of[v]),
-            "rows": rows_of[v]} for v in _natural(key, list(rows_of), rows_of)]
+    out = [dict(_node(rows_of[v]), v=v, label=branch_label(key, v, rows_of[v]), rows=rows_of[v])
+           for v in _natural(key, list(rows_of), rows_of)]
     if by == "count":
         out.sort(key=lambda b: -b["cards"])
     elif by == "value":
@@ -166,7 +185,7 @@ def tree(rows, chain, path, more=(), by="natural"):
     more: levels that show all their branches (otherwise the 9 biggest + "+ n more").
     -> {"root": {cards, value}, "cols": [{"key", "label", "nodes": [{v, label, cards, value, on, share}], "hidden"}],
         "next": [{"key", "label", "branches"}] (suggestions "branch on by …" at the end of the path), "path": [...]}"""
-    out = {"root": {"cards": cards(rows), "value": worth(rows)}, "cols": [], "next": [], "path": []}
+    out = {"root": _node(rows), "cols": [], "next": [], "path": []}
     here = rows
     for d, key in enumerate(chain):
         kids = children(here, key, by)
@@ -189,7 +208,7 @@ def tree(rows, chain, path, more=(), by="natural"):
             n = len({value(r, k) for r in here})
             if n > 1:
                 out["next"].append({"key": k, "label": name, "branches": n})
-    out["here"] = {"cards": cards(here), "value": worth(here)}
+    out["here"] = _node(here)
     return out
 
 
@@ -264,7 +283,11 @@ def tree_sql(count, distinct, chain, path, more=(), by="natural"):
     search and filters). Same result as tree() – the numbers are prints, not copies."""
     chain = _sql_chain(chain)
     total = count("'all'", [], [])
-    root = {"cards": sum(r[1] for r in total), "value": sum(r[2] or 0 for r in total)}
+    def mark(rs):
+        days = [r[6] for r in rs if len(r) > 6 and r[5]]
+        return any(len(r) > 5 and r[5] for r in rs), max((d for d in days if d), default=None)
+    est, day = mark(total)
+    root = {"cards": sum(r[1] for r in total), "value": sum(r[2] or 0 for r in total), "est": est, "day": day}
     out = {"root": root, "cols": [], "next": [], "path": [], "here": dict(root)}
     where = []
     for d, key in enumerate(chain):
@@ -272,10 +295,10 @@ def tree_sql(count, distinct, chain, path, more=(), by="natural"):
         res = count(e, a, where)
         if not res:
             break
-        rows_of = {str(v): [{"db": {"set_name": sn, "released": rel}}] for v, _n, _w, sn, rel in res}
-        nums = {str(v): (n, w or 0) for v, n, w, _sn, _rel in res}
-        kids = [{"v": v, "label": branch_label(key, v, rows_of[v]), "cards": nums[v][0], "value": nums[v][1]}
-                for v in _natural(key, list(rows_of), rows_of)]
+        rows_of = {str(r[0]): [{"db": {"set_name": r[3], "released": r[4]}}] for r in res}
+        nums = {str(r[0]): (r[1], r[2] or 0) + mark([r]) for r in res}
+        kids = [{"v": v, "label": branch_label(key, v, rows_of[v]), "cards": nums[v][0], "value": nums[v][1],
+                 "est": nums[v][2], "day": nums[v][3]} for v in _natural(key, list(rows_of), rows_of)]
         if by == "count":
             kids.sort(key=lambda b: -b["cards"])
         elif by == "value":
@@ -287,7 +310,7 @@ def tree_sql(count, distinct, chain, path, more=(), by="natural"):
         if pick is None:
             break
         out["path"].append(pick)
-        out["here"] = {"cards": nums[pick][0], "value": nums[pick][1]}
+        out["here"] = {"cards": nums[pick][0], "value": nums[pick][1], "est": nums[pick][2], "day": nums[pick][3]}
         where = where + [(f"{e} = ?", a + [pick])]
     if len(out["path"]) == len(chain):
         used = set(chain)
@@ -308,4 +331,5 @@ def _column(key, kids, pick, show_all):
         hidden = len(kids) - len(shown)
     return {"key": key, "label": label_of_key(key), "hidden": hidden, "all": len(kids),
             "nodes": [{"v": b["v"], "label": b["label"], "cards": b["cards"], "value": b["value"],
+                       "est": b.get("est", False), "day": b.get("day"),
                        "on": b["v"] == pick, "share": b["cards"] / total} for b in shown]}

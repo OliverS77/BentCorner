@@ -14,6 +14,7 @@ from ui import qform
 from ui import quickimages
 from ui import qmenu
 from system.i18n import tr
+from cards import currency
 from ui.qlibrary import back_image, read_chips
 
 
@@ -521,7 +522,8 @@ class DeckEditorBackend(QtCore.QObject):
             var = variants.get(r["name"]) or []
             price = r.get("eur") if r.get("eur") is not None else r.get("eur_foil")
             hold = hold_all.get(r["name"]) or []
-            out.append({"i": i, "sid": r["id"], "name": r["name"], "price": eur(price) if price is not None else "–",
+            out.append({"i": i, "sid": r["id"], "name": r["name"],
+                        "price": eur(price, currency.estimated(r["id"])) if price is not None else "–",
                         "img": self._img(r), "inDeck": ed.deck_count(r["name"]), "why": r.get("_why") or "",
                         "chips": chip_texts({"variants": var, "count": sum(v[0] for v in var)}, disp, "mine")
                         if var else [],
@@ -801,7 +803,8 @@ class DeckEditorBackend(QtCore.QObject):
         pin = self.ed.pinned(sid)
         return [{"id": p["id"], "set": (p.get("set_code") or "").upper(), "number": p.get("number") or "",
                  "sname": p.get("set_name") or "",
-                 "img": db_image(p), "price": eur(p.get("eur") if p.get("eur") is not None else p.get("eur_foil")),
+                 "img": db_image(p), "price": eur(p.get("eur") if p.get("eur") is not None else p.get("eur_foil"),
+                                                  currency.estimated(p.get("id"))),
                  "mark": "main" if pin and p["id"] == sid else "", "date": ""} for p in rows[:400]]
 
     @QtCore.Slot(int, str)

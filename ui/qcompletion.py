@@ -1,9 +1,15 @@
 """Set progress in Qt Quick (qml/components/CompletionPanel.qml) – data like completion.CompletionPanel."""
 
+from cards import currency
 from PySide6 import QtCore
 
 from cards import completion
 from system.i18n import tr
+
+
+def _tip():
+    """The price legend's „≈" on a set's title (legal 14.11.2026) – with today's exchange rate day."""
+    return currency.approx_tip(currency.rate_day())
 
 
 class CompletionBackend(QtCore.QObject):
@@ -46,7 +52,8 @@ class CompletionBackend(QtCore.QObject):
             rows.append({"id": (fam_code or "") + "/" + node["code"], "label": label + ("  ✓" if done else ""),
                          "level": level, "have": node["have"], "total": node["total"],
                          "pct": round(node["have"] / max(1, node["total"]) * 100), "done": done,
-                         "missing": completion.eur(node["missing_value"]) if node["missing_value"] else "–",
+                         "missing": completion.eur(node["missing_value"], node.get("missing_est"))
+                         if node["missing_value"] else "–",
                          "expandable": fam_code is None and "sets" in node and len(node["sets"]) > 1,
                          "expanded": node["code"] in self._open_fams})
         for f in getattr(self, "_fams", []):
@@ -130,8 +137,9 @@ class CompletionBackend(QtCore.QObject):
         if n is None:
             return ""
         return (f"<b style='font-size:14px'>{n['name']}</b><br><span style='color:#8e8e8e'>"
-                + tr(f"{len(n['missing'])} cards missing · {completion.eur(n['missing_value'])}") + " "
-                + tr(f"(complete set: {completion.eur(n.get('total_value') or 0)})") + "</span>")
+                + tr(f"{len(n['missing'])} cards missing · {completion.eur(n['missing_value'], n.get('missing_est'))}") + " "
+                + tr(f"(complete set: {completion.eur(n.get('total_value') or 0, n.get('total_est'))})")
+                + (f"<br>≈ = {_tip()}" if n.get("total_est") and completion.eur(0) else "") + "</span>")
 
     @QtCore.Property("QVariantList", notify=changed)
     def missing(self):
@@ -143,7 +151,8 @@ class CompletionBackend(QtCore.QObject):
         for m in n["missing"][:3000]:
             price = m["eur"] if m["eur"] is not None else m["eur_foil"]
             tag = f"{m['_set'].upper()} " if multi else ""
-            out.append(f"{tag}#{m['number']}  {m['name']}" + (f"  ·  {completion.eur(price)}" if price else ""))
+            est = bool(price) and currency.estimated(m.get("id"))   # „≈" (legal 14.11.2026)
+            out.append(f"{tag}#{m['number']}  {m['name']}" + (f"  ·  {completion.eur(price, est)}" if price else ""))
         return out or [tr("Complete! 🎉")]
 
     @QtCore.Property(int, notify=changed)

@@ -81,7 +81,7 @@ def overview(ctrl):
     slots = tr(f"Almost full: you share {used} of at most {relay.MAX_SLOTS} things (lists per game and binders).") \
         if used >= relay.MAX_SLOTS - 2 else ""
     empty = "" if friends else (tr("No friends yet – add a friend by ID in the friends menu.") if full
-                                else tr("Friends only exist in Full Orbit – until then everything stays on this computer."))
+                                else tr("Friends only exist in Full Orbit – until then you share nothing."))
     return {"full": full, "friends": friends, "items": items, "card": card or {}, "also": also, "slots": slots,
             "empty": empty, "profile": tr("Name and card back – part of the friendship, every friend sees them"),
             "others": tr("You switch lists of other games while that game is open.")}   # (lead 06.11.)

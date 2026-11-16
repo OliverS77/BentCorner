@@ -472,12 +472,17 @@ end;
 
 { After the installed files are gone: the rest of the program folder too – but never a collection. The program never
   keeps its data here (system/datahome.py), this is the second safeguard: settings.json or data\ in the folder -> the
-  folder stays as it is. }
+  folder stays as it is.
+  Before that (lead 14.11.2026, after the 0.9.9 ship): installer.json is the setup's hand-over file for the first start
+  – if it is still there, it goes. Only this one file, and %APPDATA%\BentCorner only if it is empty afterwards
+  (RemoveDir never deletes anything inside – datenordner.json or a data folder chosen there stay). }
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  App: String;
+  App, Notes: String;
 begin
   if CurUninstallStep <> usPostUninstall then Exit;
+  Notes := ExpandConstant('{userappdata}\BentCorner');
+  if FileExists(Notes + '\installer.json') and DeleteFile(Notes + '\installer.json') then RemoveDir(Notes);
   App := ExpandConstant('{app}');
   if FileExists(App + '\settings.json') or DirExists(App + '\data') then Exit;
   DelTree(App, True, True, True);

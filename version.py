@@ -12,12 +12,18 @@ import re
 # „shippen“ sagt, wird daraus die nächste Version mit drei Stellen (release_of: 0.9.9) gebaut und mit
 # tools/publish_release.py veröffentlicht (das verweigert vierstellige). Danach geht es mit <Ship>.100 weiter.
 # Die nächste freie Nummer für PC und Web: docs/VERSIONEN.md.
-VERSION = "0.9.9"
+VERSION = "0.9.10"
 
 
 # „Was ist neu?“ nach einem Update: je geshippter Version höchstens 5 kurze Punkte (mehr liest keiner) – englisch,
 # Deutsch in locales/de.py. Alles Weitere bleibt unter Einstellungen → Updates.
 HIGHLIGHTS = {
+    "0.9.10": [   # lead 16.11. from the patch-notes collection; legal 16.11. (point 4 in legal's wording)
+        'Magic euro prices now come from Scryfall, with our own euro curve from Near Orbit on. Pokémon prices come only from the daily price file, Yu-Gi-Oh! euro prices are converted (≈).',
+        'In Core, Bent°Corner no longer fetches prices or exchange rates while scanning. Commander Spellbook and EDHTop16 are only available from Near Orbit on, with their own switch.',
+        'Deck and list tiles show the whole card with the artist and © line.',
+        'If we switch off a game or its images, Bent°Corner no longer loads them. Once switched back on, everything is there again.',
+    ],
     "0.9.9": [   # legal 14.11. via lead – verbatim; the name „Scalper Invasion“ is free (Oliver, TMview 14.11.)
         'Wishlist cards while scanning: if you scan a card from your wishlist, the scan page shows it right away, and Bent°Corner takes it off the list – you can turn this off per list. New in the scan dock: a volume slider.',
         'An easier start: setting up now takes five short steps, and the new installer is dark, asks for your language first and lets you choose where your collection is kept.',
@@ -82,7 +88,8 @@ HIGHLIGHTS = {
 # a heading above a version's points – and versions whose points stand alone: older skipped versions' highlights are
 # not added below them (the sharing rules of 0.9.7 must not drown in old news)
 HIGHLIGHT_TITLES = {"0.9.7": 'Sync with your devices – and new rules for friends, sharing and prices',
-                    "0.9.9": 'Wishlist cards while scanning – and an easier start'}
+                    "0.9.9": 'Wishlist cards while scanning – and an easier start',
+                    "0.9.10": 'Fewer requests, cleaner price sources'}
 HIGHLIGHT_ONLY = {"0.9.7"}
 
 

@@ -19,6 +19,7 @@ class ScanView(QtCore.QObject):
     Both are shown by Qt Quick (qscan.LiveView): size comes via resize(), mouse via press/move/…"""
 
     def __init__(self, ctrl, stream):
+        self.msg_box = None   # scan page: the free gap between the tiles for the camera message (ScanPage.qml msgBox)
         super().__init__(ctrl)
         self.ctrl, self.stream = ctrl, stream
         self._w, self._h = 1600, 900
@@ -143,7 +144,11 @@ class ScanView(QtCore.QObject):
                 self._paint_phone_qr(p, c)
             else:
                 box = c.adjusted(20, 20, -20, -20)
-                if self.stream:   # scan page: a narrow column in the middle – the tiles sit at the sides
+                if self.stream and self.msg_box is not None:   # scan page: inside the free gap between the tiles
+                    b = self.msg_box
+                    w = min(b.width(), 460.0)
+                    box = QRectF(b.center().x() - w / 2, b.top(), w, b.height())
+                elif self.stream:   # no gap known: a narrow column in the middle – the tiles sit at the sides
                     w = min(box.width(), 460.0)
                     box = QRectF(c.center().x() - w / 2, box.top(), w, box.height())
                 p.drawText(box, Qt.AlignCenter | Qt.TextWordWrap, self.ctrl.camera.message)

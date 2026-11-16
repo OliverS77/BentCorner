@@ -62,7 +62,7 @@ class Base(unittest.TestCase):
              {"pokemon": {"files": [{"name": "cards.sqlite", "size": 10, "sha256": "x"}]}}}
         m.update(extra or {})
         raw = json.dumps(m).encode()
-        sig = base64.b64encode((key or self.dk).sign(datakeys.PREFIX + raw).signature).decode()
+        sig = base64.b64encode((key or self.dk).sign(datakeys.PREFIX2 + raw).signature).decode()   # packs-data2
         return raw, sig
 
 
@@ -149,7 +149,7 @@ class DataKeyOnlyForCardData(Base):
 
     def test_program_model_ocr_signed_with_the_data_key_refused(self):
         raw = json.dumps({"v": 1, "latest": "9.9.9", "platforms": {"windows": {"file": "x.exe"}}}).encode()
-        for signed in (raw, datakeys.PREFIX + raw):
+        for signed in (raw, datakeys.PREFIX + raw, datakeys.PREFIX2 + raw):
             sig = base64.b64encode(self.dk.sign(signed).signature).decode()
             self.assertFalse(updater.verify(raw, sig))
             r = mock.Mock(status_code=200, content=raw)
@@ -252,7 +252,7 @@ class DataKeyOnlyForCardData(Base):
         self.assertEqual(set(out), {"key_id", "seq", "t", "packs"})
         merged = datakeys.merge({}, out)
         self.assertEqual(set(merged), {"pokemon"})
-        self.assertEqual(set(merged["pokemon"]), {"files", "t", "src"})
+        self.assertEqual(set(merged["pokemon"]), {"files", "t", "src", "rel_names"})
 
 
 class WhichEntryWins(unittest.TestCase):

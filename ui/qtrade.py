@@ -8,6 +8,7 @@ columns in the "Swap" tab (tradelib.Browser) are passed on by BrowserBackend.
 from PySide6 import QtCore
 
 from cards import carddb
+from cards import currency
 from cards import library
 from ui import quickimages
 from ui import textsafe
@@ -119,8 +120,10 @@ class BrowserBackend(QtCore.QObject):
             tags = list(r.get("tags") or [])
             if r.get("pinned_name"):
                 tags.append(tr("exactly this version") if r.get("pinned_match") else tr("other version"))
+            est = bool(r.get("price")) and tradelib.row_est(r)
             out.append({"i": i, "name": r["name"], "setLine": extra, "count": int(r.get("count") or 1),
-                        "price": value(None if r.get("price") is None else r["price"] * int(r.get("count") or 1)),
+                        "price": value(None if r.get("price") is None else r["price"] * int(r.get("count") or 1), est),
+                        "priceTip": tradelib.rows_tip([r]) if est else "",
                         "img": db_image_of(r.get("db"), r.get("game")), "checked": bool(r.get("checked")),
                         "tags": " · ".join(tags), "chips": [f"{int(r.get('count') or 1)}×"]
                         + _fin_chip(r)})
@@ -157,6 +160,10 @@ class BrowserBackend(QtCore.QObject):
     @QtCore.Property(str, notify=changed)
     def info(self):
         return self.b.info
+
+    @QtCore.Property(str, notify=changed)
+    def infoTip(self):
+        return getattr(self.b, "info_tip", "")
 
     @QtCore.Property(str, notify=changed)
     def emptyText(self):
@@ -401,11 +408,12 @@ class TradeBackend(QtCore.QObject):
             entries = trade.list_entries(kind, lid, items)
             n = sum(e["count"] for e in entries)
             value, art, artist = self.lists_b._list_value_art(kind, entries)
+            est, day = self.lists_b._list_value_est(kind, entries) if value else (False, None)
             main = lid in (trade.MAIN_WISH, trade.MAIN_HAVE)
             friends = sum(1 for e in entries if hold.get(e["name"])) if hold else 0
             out.append({"lid": lid, "name": tr(x["name"]) if main else x["name"], "count": n,
                         "shared": trade.is_shared(x), "shareable": kind in trade.SHAREABLE, "auto": bool(x.get("rule")),
-                        "info": tr(f"{n} cards") + (f" · {tradelib.value(value)}" if value and tradelib.value(value) else "")
+                        "info": tr(f"{n} cards") + (f" · {tradelib.value(value, est)}" if value and tradelib.value(value) else "")
                         + (" · " + tr("automatic") if x.get("rule") else ""),
                         "art": art, "artist": artist, "example": bool(x.get("example")), "main": main,
                         "alarm": alarms.find_list(self.ctrl.settings, lid) is not None,
@@ -459,7 +467,9 @@ class TradeBackend(QtCore.QObject):
         if alarms.opts_text(o):
             where += f" · {alarms.opts_text(o)}"
         return {"key": alarms.card_key(a), "section": a["kind"], "icon": "bell", "name": a["name"], "where": where,
-                "now": alarms.eur(p), "nowVal": p if p is not None else -1.0, "rule": rule, "hit": hit,
+                "now": alarms.eur(p, p is not None and alarms.price_est(
+                    a, o["psid"] or a.get("sid") or alarms.cheapest_ids({a["name"]}).get(a["name"]), p)),
+                "nowVal": p if p is not None else -1.0, "rule": rule, "hit": hit,
                 "imgs": [i for i in imgs if i], "draft": False}
 
     # ---------- Card from another game (or without a printing): simple card on the right, no switching ----------
@@ -488,7 +498,8 @@ class TradeBackend(QtCore.QObject):
                          "img": db_image_of(r, game) if r and has_image(r, game) else "",
                          "line": (f"{str(r.get('set_name') or r.get('set_code') or '').strip()} · #{r.get('number')}" if r else
                                   tr("No printing with an image found")),
-                         "price": value(price) if price is not None else "–",
+                         "price": value(price, currency.estimated((r or {}).get("id"), game))
+                         if price is not None else "–",
                          "other": game != games.current().key}
         self.detailChanged.emit()
 
@@ -620,7 +631,8 @@ class TradeBackend(QtCore.QObject):
         cur = (str(w.get("set") or "").lower(), str(w.get("number") or ""))
         return [{"id": r["id"], "set": (r.get("set_code") or "").upper(), "number": r.get("number") or "",
                  "sname": r.get("set_name") or "",
-                 "img": db_image(r), "price": value(r.get("eur") if r.get("eur") is not None else r.get("eur_foil")),
+                 "img": db_image(r), "price": value(r.get("eur") if r.get("eur") is not None else r.get("eur_foil"),
+                                                    currency.estimated(r.get("id"))),
                  "mark": "main" if (r.get("set_code"), str(r.get("number"))) == cur else "", "date": ""}
                 for r in rows[:400]]
 
@@ -688,6 +700,11 @@ class TradeBackend(QtCore.QObject):
     @QtCore.Property(str, notify=sumChanged)
     def tradeSum(self):
         return self.page.trade_sum
+
+    @QtCore.Property(str, notify=sumChanged)
+    def tradeSumTip(self):
+        """The legal text on the „≈" of the trade sum (legal 14.11.2026) – "" without a converted price."""
+        return getattr(self.page, "trade_sum_tip", "")
 
     @QtCore.Property(bool, notify=sumChanged)
     def priced(self):
@@ -885,7 +902,7 @@ class TradeBackend(QtCore.QObject):
                                   decimals=2, suffix=" €"))]),
                 ui.note(tr("Money in the trade: + you pay extra, − you get money")),
             ] if priced else core_money()) + [
-                ui.row([ui.button(tr("Add cards (Orbit) …"),
+                ui.row([ui.button(tr("Add cards (Lists & Orbit) …"),
                                   lambda: (d.close(None), self.page.edit_offer_in_trade(oid))),
                         ui.stretch(), ui.button(tr("Cancel"), lambda: d.close(None)),
                         ui.button(tr("Share as ticket"), lambda: d.close("share"), active=True)]),

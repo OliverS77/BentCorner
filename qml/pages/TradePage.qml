@@ -272,21 +272,17 @@ Item {
                                     width: parent.width; height: parent.height * 0.58
                                     clip: true
                                     Rectangle { anchors.fill: parent; color: Qt.darker(T.surface, 1.3) }
+                                    // the WHOLE card, never cut or zoomed – its artist/© line stays (legal 15.11., Scryfall's
+                                    // image rules, all games alike); the card itself carries the artist, so no tag over it
                                     Image {
                                         visible: (tc.modelData.art || "") !== ""
                                         source: tc.modelData.art || ""
-                                        width: parent.width * 1.35; height: width * 88 / 63
-                                        x: (parent.width - width) / 2; y: -height * 0.12
-                                        fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true
+                                        anchors.fill: parent; anchors.topMargin: 8; anchors.bottomMargin: 8
+                                        fillMode: Image.PreserveAspectFit; asynchronous: true; smooth: true; mipmap: true
                                         sourceSize.width: 488
                                     }
                                     NavIcon { visible: (tc.modelData.art || "") === ""; anchors.centerIn: parent; s: 1.6
                                               key: me.cur.icon; color: T.line2 }
-                                    ArtistTag { name: (tc.modelData.art || "") !== "" ? (tc.modelData.artist || "") : ""
-                                                anchors.bottomMargin: 10; z: 2 }
-                                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 40
-                                                gradient: Gradient { GradientStop { position: 0; color: "transparent" }
-                                                                     GradientStop { position: 1; color: tch.hovered ? T.surface2 : T.surface } } }
                                 }
                                 Column {
                                     x: 14; y: artBox.height + 4; width: parent.width - 28; spacing: 3
@@ -1194,7 +1190,15 @@ Item {
                         Rectangle { width: parent.width; height: 1; color: T.line }   // divider instead of a frame
                         Text { x: 14; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 28
                                text: tp.tradeSum; textFormat: Text.StyledText; elide: Text.ElideRight
-                               color: T.text; font.family: T.font; font.pixelSize: 14 }
+                               color: T.text; font.family: T.font; font.pixelSize: 14
+                               HoverHandler {   // „≈": the legal text (legal 14.11.2026)
+                                   onHoveredChanged: {
+                                       var tip = hovered ? tp.tradeSumTip : ""
+                                       if (tip === "") { shell.tip("", 0, 0); return }
+                                       var p = parent.mapToItem(null, parent.width / 2, parent.height)
+                                       shell.tip(tip, p.x, p.y)
+                                   }
+                               } }
                     }
                     Btn {
                         id: cash

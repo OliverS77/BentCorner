@@ -21,8 +21,12 @@ _pool = ThreadPoolExecutor(6, thread_name_prefix="qbilder")
 
 def register(key, local=None, url=None, cache=None, fallback=None):
     import games
-    if games.current().images_off:   # game unlocked only locally: no image from the net (placeholder with the name)
+    from games import offswitch
+    g = games.current()
+    if g.images_off:   # game unlocked only locally: no image from the net (placeholder with the name)
         url = None
+    if offswitch.images_locked(g.key):   # its images switched off (legal 16.11.2026): not even the local copies
+        local = url = cache = fallback = None
     with _lock:
         _sources[key] = (local, url, cache, fallback)
     return "image://cards/" + key

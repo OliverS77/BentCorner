@@ -141,8 +141,12 @@ def mark_missing(key):
 
 
 def _images_off():
+    """No image from the net or the disk for the open game: unlocked only locally, or its images/the game switched
+    off (games/offswitch.py)."""
     import games
-    return games.current().images_off
+    from games import offswitch
+    g = games.current()
+    return g.images_off or offswitch.images_locked(g.key)
 
 
 def offline():

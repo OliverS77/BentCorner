@@ -252,7 +252,7 @@ Window {
 
             // ---------- bottom: Back / Next ----------
             Btn {
-                visible: setup.page > 0
+                visible: setup.canBack
                 anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 28
                 height: 42; width: 130; text: shell.text("Back")
                 onClicked: setup.back()

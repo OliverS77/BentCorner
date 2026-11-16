@@ -634,7 +634,7 @@ class RelayControl:
                     what_ = tr("a binder") if str(ev.get("slot")).startswith("binder-") else tr("their lists")
                     toast(tr(f"{who} no longer shares {what_} in {games.nick_of(ev.get('game') or '')} with you – that's why it disappeared on your side."))
                 if ev["kind"] == "ticket" and ev.get("filed"):
-                    toast(tr(f"Trade offer from {who} received – Orbit → Trade offers") if ev["filed"] == "received"
+                    toast(tr(f"Trade offer from {who} received – Lists & Orbit → Trade offers") if ev["filed"] == "received"
                           else tr(f"{who} accepted – book it under Trade offers"))
                 if ev["kind"] == "ticket_gone" and ev.get("filed"):
                     toast(tr(f"{who} declined.") if ev.get("why") == "declined" else tr(f"{who} withdrew the offer."))

@@ -394,6 +394,11 @@ def _loupe_of(card, differ):
     return cv2.resize(part, None, fx=k, fy=k, interpolation=cv2.INTER_CUBIC)
 
 
+def _like(s):
+    """s as a literal inside a LIKE pattern (escape: backslash)."""
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _stamp_twins(a, b):
     """Two prints the collector line can't tell apart: the same number apart from a stamp letter (46 / 46s, 46p) –
     the promo in "p" + the set or in the set itself. Magic only (Oliver): the other games mark their special editions
@@ -625,7 +630,7 @@ class LiveScanner:
         res["from_prior"] = False
         return res
 
-    def _try(self, frame, boxed, index, prefer_sets, center=None, focus=()):
+    def _try_one(self, frame, boxed, index, prefer_sets, center=None, focus=()):
         boxed = [(im, box) for im, box in boxed if im.size]
         out = {"status": "none", "entry": None, "cands": [], "img": boxed[0][0] if boxed else None, "how": "",
                "sim": 0.0, "strength": 0, "box": None}
@@ -642,6 +647,7 @@ class LiveScanner:
                     pool[entry["id"]] = (sim, entry, wi)
         if not pool:
             return out
+        self._lists = lists   # for _name_pick (every window's top 8)
         quick_lists = lists
         if focus:   # filtered scan: the chosen sets' prints ranked on their own – taken only where the card is from
             rows = index.rows_of_sets(focus)   # there (the full search above is the check, never a guess into them)
@@ -818,6 +824,119 @@ class LiveScanner:
                 else:
                     out["loupe"] = img
         return out
+
+    def _try(self, frame, boxed, index, prefer_sets, center=None, focus=()):
+        """One frame (_try_one). Nothing found in a search of the whole frame: the name read may still confirm a
+        fingerprint candidate (_name_pick)."""
+        self._lists = None
+        out = self._try_one(frame, boxed, index, prefer_sets, center=center, focus=focus)
+        if out["status"] == "none" and center is not None and self._lists and games.current().name_confirm \
+                and "at the edge" not in (out.get("how") or ""):
+            hit = self._name_pick(frame, boxed, center, self._lists)
+            if hit is not None:
+                return dict(out, **hit)
+        return out
+
+    NAME_TOP = 5         # fingerprint candidates (distinct names, best window first) the name read may confirm
+    NAME_SURE = 0.85     # the read name fits one of them at least this well (any printed language) …
+    NAME_OTHER = 0.60    # … and every other candidate below this (Dark Magician / Dark Magician Girl: 0.81)
+    NAME_AGREE = 3.0     # two reads within this many seconds must name the same card (two frames, never one read)
+
+    def _name_pick(self, frame, boxed, center, lists):
+        """Real camera images (sleeve, hand, binder, warm light): the right card is often among the fingerprint's
+        first five but too weak for a count (real photos 14.11.2026: 9 of 18, 3 on rank 1). Read the name in the
+        background (~0.3–1 s, the scanner keeps running) and take the candidate whose printed name – in any language –
+        fits it, and no other. Two reads must agree. -> fields for the frame's result or None.
+        The print: the collector line of the same read if it names one print of this name, one print only, otherwise
+        the print question (prints of this name, the fingerprint's pick first) – never a guessed print."""
+        import threading
+        now = time.time()
+        cands = []
+        for found in sorted(lists, key=lambda f: -(f[0][1] if f else 0)):
+            for entry, sim in found:
+                if all(entry["name"] != e["name"] for e, _ in cands):
+                    cands.append((entry, sim))
+        cands = sorted(cands, key=lambda t: -t[1])[:self.NAME_TOP]
+        names = {e["name"] for e, _ in cands}
+        reads = [r for r in getattr(self, "_name_reads", []) if now - r[0] < self.NAME_AGREE]
+        self._name_reads = reads
+        job = getattr(self, "_name_job", None)
+        if job is None or not job.is_alive():
+            if now - getattr(self, "_name_t", 0.0) >= self.TEXT_GAP:
+                self._name_t = now
+                full, box = frame.copy(), boxed[0][1]
+                card = boxed[0][0].copy() if _is_warped(box) else None
+
+                def work():
+                    try:
+                        got = self._read_name(full, center, card, cands)
+                    except Exception:  # noqa: BLE001 – no text recognition: nothing read
+                        got = None
+                    self._name_reads = getattr(self, "_name_reads", []) + [(time.time(), got)]
+                self._name_job = threading.Thread(target=work, daemon=True)
+                self._name_job.start()
+        picks = [r[1] for r in reads[-2:]]
+        if len(picks) < 2 or picks[0] is None or picks[1] is None or picks[0][0]["name"] != picks[1][0]["name"] \
+                or picks[1][0]["name"] not in names:
+            return {"how": "Reading the name …"} if reads or getattr(self, "_name_job", None) is not None else None
+        entry, printed = picks[1]
+        rank = next(i for i, (e, _) in enumerate(cands, 1) if e["name"] == entry["name"])
+        how = f"SCAN° fingerprint (rank {rank}) + name read"
+        rows = self._prints_of(entry["name"])
+        if not rows:   # the prints are unknown (no card database): never a guessed print
+            return None
+        if printed is not None:
+            hit = [r for r in rows if (r["set_code"], str(r["number"]).lower()) == printed]
+            if len(hit) == 1 and not any(r is not hit[0] and _stamp_twins(r, hit[0]) for r in rows):
+                return {"status": "ok", "entry": _row_entry(hit[0], entry), "strength": WEAK + 1,
+                        "how": how + " + collector line"}
+            if len(hit) == 1:   # a print and its stamped promo: the line can't tell them apart (bench 15.11.)
+                rows = hit + [r for r in rows if r is not hit[0] and _stamp_twins(r, hit[0])]
+        if len(rows) == 1:   # the fingerprint's own entry keeps the face (a double-faced card's back: …_1)
+            own = str(entry.get("id") or "").rpartition("_")[0] == rows[0]["id"]
+            return {"status": "ok", "entry": entry if own else _row_entry(rows[0], entry), "strength": WEAK + 1,
+                    "how": how}
+        rows = sorted(rows, key=lambda r: carddb.print_likeliness(r, pick=entry.get("id")))
+        return {"status": "ask", "entry": entry, "cands": [(r, 1) for r in rows], "pick": entry.get("id"),
+                "strength": WEAK + 1, "how": how + " · print unclear"}
+
+    def _read_name(self, frame, center, card, cands):
+        """Name read on the card (straightened if found, also turned around, the scan frame, the whole area) ->
+        (candidate entry, (set, number) read or None) when exactly one candidate's printed name fits, else None."""
+        from scanner import langcheck, ocrscan
+        if not ocrscan.available():
+            return None
+        x, y, w, h = center
+        tries = [card] if card is not None else []
+        if not tries:
+            for c in ocrscan.find_card(frame, center):
+                tries += [c, cv2.rotate(c, cv2.ROTATE_180)]
+        tries.append(cv2.resize(frame[y:y + h, x:x + w], (ocrscan.W, ocrscan.H), interpolation=cv2.INTER_AREA))
+        reads = [ocrscan.read(im) for im in tries]
+        reads = [r for r in reads if len(r.get("name") or "") >= 4]
+        if not reads:
+            r = ocrscan.read_region(frame, center)
+            reads = [r] if len(r.get("name") or "") >= 4 else []
+        printed = {}
+        for e, _sim in cands:
+            printed[e["name"]] = set(langcheck.printed_names(e).values()) | {e["name"], e["name"].split(" // ")[0]}
+        for r in reads:
+            scores = sorted(((max(ocrscan._similar(r["name"], n) for n in printed[e["name"]]), i)
+                             for i, (e, _s) in enumerate(cands)), reverse=True)
+            if scores and scores[0][0] >= self.NAME_SURE and (len(scores) < 2 or scores[1][0] < self.NAME_OTHER):
+                where = (r["set"], str(r["number"]).lower()) if r.get("set") and r.get("number") else None
+                return cands[scores[0][1]][0], where
+        return None
+
+    @staticmethod
+    def _prints_of(name):
+        try:
+            with carddb.connection() as con:
+                return [dict(r) for r in con.execute(   # also a double-faced card's front or back alone
+                    "SELECT * FROM cards WHERE name = ? OR name LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\'",
+                    (name, _like(name) + " // %", "% // " + _like(name)))]
+        except Exception:  # noqa: BLE001 – no card database
+            return []
 
     @staticmethod
     def _clear_fingerprint(lists, boxed, center):

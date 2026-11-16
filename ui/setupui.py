@@ -60,10 +60,56 @@ class FirstRunBackend(QtCore.QObject):
         self._custom = bool(self._found)   # found collections: the choices right away (nothing preselected)
         if self.skips_storage():
             self._choice = "port"
-        self._page, self._lang, self._games = 0, i18n.LANG, []
+        self._lang, self._games = i18n.LANG, []
+        self._inst_home, self._skip = None, set()
+        self._take_installer()
+        self._page = min({0, 1, 2} - self._skip)
         self._browser = None
         self.result_home, self.result_lang, self.result_games, self.accepted = None, self._lang, [], False
-        self.result_steps = 5
+        self.result_steps = self.steps
+
+    def _take_installer(self):
+        """Setup 0.9.9: an installed copy's first start takes the installer's language and folder (installer.json)
+        and opens at the games – „Step 1 of 3“. A folder that can't be used (gone drive, no rights, inside the program
+        folder) or a collection found on this PC: the storage step as before (a collection is never passed over
+        silently; the installer's folder stands under [Customise] as „another folder“). Portable: never read."""
+        if self.skips_storage():
+            self._skip.add(1)
+        if datahome.PORTABLE is not None or not datahome.installer_ours():   # portable / a source start: never
+            return
+        inst = datahome.read_installer()
+        if not inst:
+            return
+        from system import i18n
+        if inst["lang"]:
+            self._lang = inst["lang"]
+            i18n.set_language(self._lang)
+            self._skip.add(0)
+        home = inst["home"]
+        ok = home is not None and self._usable(home)
+        self._note(f"installer.json: lang={inst['lang']} home={home} ({'ok' if ok else 'not usable'})")
+        if not ok:
+            return
+        if self._found:
+            self._other = _clean(home)   # offered under [Customise], nothing preselected
+            return
+        self._inst_home, self._choice = home, "inst"
+        self._skip.add(1)
+
+    @staticmethod
+    def _usable(p):
+        """The installer's folder: not in the program folder, creatable and writable (the same check as the storage
+        step – there it says why; here it only decides whether that step is needed)."""
+        if datahome.in_program(p):
+            return False
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            test = p / ".bentcorner-test"
+            test.write_text("ok", "utf-8")
+            test.unlink()
+            return True
+        except OSError:
+            return False
 
     # ---------- steps ----------
     @QtCore.Property(int, notify=changed)
@@ -76,19 +122,26 @@ class FirstRunBackend(QtCore.QObject):
 
     @QtCore.Property(int, constant=True)
     def steps(self):
-        """Steps of the whole setup (both windows): language · [storage] · games · name · Orbit."""
-        return 4 if self.skips_storage() else 5
+        """Steps of the whole setup (both windows): [language] · [storage] · games · name · Orbit – the installer's
+        copy 3, portable 4, otherwise 5."""
+        return 5 - len(self._skip)
 
     @QtCore.Property(int, notify=changed)
     def stepNo(self):
         """1-based number of this page in the whole setup („Step n of m“)."""
-        return self._page + 1 - (1 if self.skips_storage() and self._page == 2 else 0)
+        return self._page + 1 - sum(1 for s in self._skip if s < self._page)
+
+    @QtCore.Property(bool, notify=changed)
+    def canBack(self):
+        """[Back] only when there is a page before this one (not on the installer's first page: games)."""
+        return any(p < self._page and p not in self._skip for p in (0, 1))
 
     @QtCore.Slot()
     def back(self):
-        self._page, self._error = max(0, self._page - 1), ""
-        if self._page == 1 and self.skips_storage():
-            self._page = 0
+        before = [p for p in (0, 1) if p < self._page and p not in self._skip]
+        if not before:
+            return
+        self._page, self._error = before[-1], ""
         self.changed.emit()
 
     @QtCore.Slot()
@@ -102,7 +155,7 @@ class FirstRunBackend(QtCore.QObject):
             self.go()
             return
         self._page += 1
-        if self._page == 1 and self.skips_storage():
+        if self._page == 1 and 1 in self._skip:
             self._page = 2
         self.changed.emit()
 
@@ -236,6 +289,8 @@ class FirstRunBackend(QtCore.QObject):
             return pathlib.Path(self._other) if self._other else None
         if self._choice == "port":
             return datahome.PORTABLE
+        if self._choice == "inst":
+            return self._inst_home
         return datahome.DEFAULT if self._choice == "docs" else None
 
     def _keeps_collection(self):

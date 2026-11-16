@@ -414,7 +414,8 @@ class ImportPage(QtCore.QObject):
             n_combos = len(a.get("combos") or [])
             try:
                 cm, main = combos.deck_lists(d, rows)
-                found = combos.cached_find(cm, main) if cm else None  # only from the cache, without internet
+                from system import orbit   # Core / switch off: not even a cached count (legal 16.11.2026)
+                found = combos.cached_find(cm, main) if cm and orbit.spellbook_on(self.ctrl.settings) else None
                 if found and found.get("included") is not None:
                     n_combos = len(found["included"])
             except Exception:  # noqa: BLE001

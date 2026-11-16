@@ -17,7 +17,7 @@ import time
 import zlib
 
 
-from scanner.common import REF
+from scanner.common import GAME, REF
 from net import netpolite
 
 DB = REF / "price-history.sqlite"
@@ -26,6 +26,66 @@ SERIES = (("cn", "cardmarket", "normal"), ("cf", "cardmarket", "foil"),
           ("tn", "tcgplayer", "normal"), ("tf", "tcgplayer", "foil"))
 _EPOCH = datetime.date(1970, 1, 1)
 WINDOW = 90   # days – no longer than the source itself (MTGJSON: 90 days)
+# Magic: the Cardmarket series (cn/cf, from MTGJSON) are not handed out until Cardmarket agrees (Oliver/legal
+# 16.11.2026, E1b) – chart, alert editor, alerts. Still imported and stored, so True brings them back. TCGplayer
+# stays. Other games write their own cn from our price server: unaffected.
+CM_HISTORY_MTG = False
+
+
+# Instead, Magic writes its OWN euro curve (Oliver 16.11.2026, legal's conditions): one point a day from the Scryfall
+# euros the app loads anyway (card database from Scryfall's bulk data – no request of its own), only from Near Orbit
+# on, starting on the first day it records (never filled up from MTGJSON). Table eur_own of this file – an MTGJSON
+# import never touches it; the file stays on the device (card-data: no backup, no sync, no sharing). Handed out as
+# the Cardmarket series cn/cf, labelled "Cardmarket trend via Scryfall, no guarantee".
+OWN = "eur_own"
+OWN_KEYS = {"sn": "cn", "sf": "cf"}   # stored key -> the series it is handed out as
+
+
+NO_CM_HISTORY = ("yugioh",)   # no Cardmarket value at all (E1c) – older local cn points are not handed out
+
+
+def _shown(game=None):
+    """Series keys handed out for the game of this process."""
+    if ((game or GAME) == "mtg" and not CM_HISTORY_MTG) or (game or GAME) in NO_CM_HISTORY:
+        return [key for key, shop, _ in SERIES if shop != "cardmarket"]
+    return [key for key, *_ in SERIES]
+
+
+def own_curve(game=None):
+    """Does this game hand out the own euro curve (eur_own) as its Cardmarket series?"""
+    return (game or GAME) == "mtg" and not CM_HISTORY_MTG
+
+
+def write_own(euros, day=None):
+    """Own euro curve: one point a day per print – euros {sid: (eur, eur_foil)}, only REAL euros (no converted ones).
+    A second call on the same day does nothing. -> number of prints written"""
+    day = day if day is not None else today()
+    con = _connect()
+    try:
+        con.execute(f"CREATE TABLE IF NOT EXISTS {OWN} (sid TEXT PRIMARY KEY, data BLOB) WITHOUT ROWID")
+        if dict(con.execute("SELECT k, v FROM meta")).get("own_day") == str(day):
+            return 0
+        old = {sid: _unpack(data) for sid, data in con.execute(f"SELECT sid, data FROM {OWN}")}
+        rows = []
+        for sid, (eur, eur_foil) in euros.items():
+            if eur is None and eur_foil is None:
+                continue
+            rec = old.get(sid) or {}
+            out = {"e": day}
+            for key in OWN_KEYS:
+                pts = {d: p for d, p in rec.get(key) or []}
+                v = eur if key == "sn" else eur_foil
+                if v is not None:
+                    pts[day] = round(float(v), 2)
+                if pts:
+                    out[key] = _window(_changes(sorted(pts.items())), day)
+            rows.append((sid, _pack(out)))
+        con.executemany(f"INSERT OR REPLACE INTO {OWN} VALUES (?, ?)", rows)
+        con.execute("INSERT OR REPLACE INTO meta VALUES ('own_day', ?)", (str(day),))
+        con.commit()
+        return len(rows)
+    finally:
+        con.close()
 
 
 def day_of(s):
@@ -42,6 +102,44 @@ def today():
 
 def exists():
     return DB.exists()
+
+
+BACKUP_KEEP_DAYS = 60   # one-time cleanups keep a backup of the price history this long (lead 14.11.2026)
+# backup file -> meta key its cleanup wrote (the day it ran). shutil.copy2 kept the ORIGINAL's file date, so the
+# file date alone isn't the day of the backup; it is only the fallback.
+BACKUP_MADE = {"price-history.before-cm-fix.sqlite": "ygo_cm_per_card_cleared",
+               "price-history.before-cn-conv-fix.sqlite": "ygo_cn_converted_cleared"}
+
+
+def drop_old_backups(days=BACKUP_KEEP_DAYS):
+    """Delete the price history's one-time backups (price-history.before-*.sqlite next to it) older than `days`.
+    -> names removed"""
+    made = {}
+    if DB.exists():
+        try:
+            con = sqlite3.connect(DB.as_uri() + "?mode=ro", uri=True)
+            try:
+                made = dict(con.execute("SELECT k, v FROM meta"))
+            finally:
+                con.close()
+        except sqlite3.Error:
+            made = {}
+    removed = []
+    for p in sorted(DB.parent.glob("price-history.before-*.sqlite")):
+        try:
+            day = int(float(made[BACKUP_MADE[p.name]]))
+        except (KeyError, TypeError, ValueError):
+            try:
+                day = int(p.stat().st_mtime // 86400)
+            except OSError:
+                continue
+        if today() - day >= days:
+            try:
+                p.unlink()
+                removed.append(p.name)
+            except OSError:
+                pass
+    return removed
 
 
 def _connect():
@@ -386,24 +484,11 @@ def hint(settings, eta=None):
     return {"text": tr("No price history for this printing yet."), "canLoad": False, "until": 0}
 
 
-def series(sid):
-    """History of one card: {"cn": [(date, price)…], …} at daily resolution up to the last day, or None."""
-    if not exists():
-        return None
-    try:
-        con = sqlite3.connect(DB, timeout=5)
-        try:
-            row = con.execute("SELECT data FROM hist WHERE sid = ?", (sid,)).fetchone()
-        finally:
-            con.close()
-    except sqlite3.Error:
-        return None
-    if not row:
-        return None
-    d = _unpack(row[0])
+def _expand(d, keys, rename=None):
+    """A stored record -> {key: [(date, price)…]} at daily resolution up to its last day, inside the window."""
     end = d.get("e", 0)
     out = {}
-    for key, *_ in SERIES:
+    for key in keys:
         pts = _window(d.get(key) or [], end)
         if not pts:
             continue
@@ -411,8 +496,26 @@ def series(sid):
         for i, (day, price) in enumerate(pts):
             nxt = pts[i + 1][0] if i + 1 < len(pts) else end + 1
             full += [(date_of(x), price) for x in range(day, max(day + 1, nxt))]
-        out[key] = full
-    return out or None
+        out[(rename or {}).get(key, key)] = full
+    return out
+
+
+def _read(con, table, sids):
+    raw = {}
+    try:
+        for i in range(0, len(sids), 500):
+            part = sids[i:i + 500]
+            for sid, data in con.execute(f"SELECT sid, data FROM {table} WHERE sid IN ({','.join('?' * len(part))})",
+                                         part):
+                raw[sid] = data
+    except sqlite3.OperationalError:   # no such table yet (eur_own before its first day)
+        return {}
+    return raw
+
+
+def series(sid):
+    """History of one card: {"cn": [(date, price)…], …} at daily resolution up to the last day, or None."""
+    return series_many([sid]).get(sid) if sid else None
 
 
 def series_many(sids):
@@ -420,33 +523,21 @@ def series_many(sids):
     sids = list(dict.fromkeys(sids))
     if not sids or not exists():
         return {}
-    raw = {}
+    own = own_curve()
     try:
         con = sqlite3.connect(DB, timeout=5)
         try:
-            for i in range(0, len(sids), 500):
-                part = sids[i:i + 500]
-                for sid, data in con.execute(f"SELECT sid, data FROM hist WHERE sid IN ({','.join('?' * len(part))})",
-                                             part):
-                    raw[sid] = data
+            raw = _read(con, "hist", sids)
+            mine = _read(con, OWN, sids) if own else {}
         finally:
             con.close()
     except sqlite3.Error:
         return {}
     out = {}
-    for sid, blob in raw.items():
-        d = _unpack(blob)
-        end = d.get("e", 0)
-        res = {}
-        for key, *_ in SERIES:
-            pts = _window(d.get(key) or [], end)
-            if not pts:
-                continue
-            full = []
-            for i, (day, price) in enumerate(pts):
-                nxt = pts[i + 1][0] if i + 1 < len(pts) else end + 1
-                full += [(date_of(x), price) for x in range(day, max(day + 1, nxt))]
-            res[key] = full
+    for sid in dict.fromkeys(list(raw) + list(mine)):
+        res = _expand(_unpack(raw[sid]), _shown()) if sid in raw else {}
+        if sid in mine:
+            res.update(_expand(_unpack(mine[sid]), OWN_KEYS, OWN_KEYS))
         if res:
             out[sid] = res
     return out

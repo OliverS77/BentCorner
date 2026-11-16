@@ -197,7 +197,8 @@ def page_collection(ui, b):
         _set(ctrl, "currency", code)
         currency.set_current(code)
         ctrl.currency_changed()
-        if code != "EUR":
+        from system import orbit
+        if code != "EUR" and orbit.prices_on(ctrl.settings):   # exchange rates only from Near Orbit on (legal R3)
             from ui.librarycore import run_async
             run_async(ctrl, currency.refresh, lambda res, err: ctrl.currency_changed())
 
@@ -282,7 +283,7 @@ def _prices_group(ui, ctrl):
                               tip=tr("Cardmarket's official daily price guide (one file, ~16 MB) and TCGplayer via TCGCSV (one daily file from the Bent°Corner server). Once a day at most. The price history grows by one point every day.")), ui.stretch()]),
             ui.note(tr("This setting applies to all games.")),
             ui.line(),
-            ui.row([ui.note(tr("You set price alerts in Orbit – on lists and on single cards.")),
+            ui.row([ui.note(tr("You set price alerts under Lists & Orbit – on lists and on single cards.")),
                     ui.button(tr("Price alerts …"), ctrl.show_alarms)]),
         ])
     return ui.group(tr("Prices"), [
@@ -293,7 +294,7 @@ def _prices_group(ui, ctrl):
         ui.line(),
     ] + _price_history(ui, ctrl) + [
         ui.line(),
-        ui.row([ui.note(tr("You set price alerts in Orbit – on lists and on single cards.")),
+        ui.row([ui.note(tr("You set price alerts under Lists & Orbit – on lists and on single cards.")),
                 ui.button(tr("Price alerts …"), ctrl.show_alarms)]),
     ])
 
@@ -988,6 +989,10 @@ def page_privacy(ui, b):
         orbit_items.append(ui.note(tr(orbit.TERMS_LINE).replace("{url}", SITE + "/nutzung.html")))
     if ask_age:
         orbit_items += [ui.check(tr(orbit.AGE), False, confirm), ui.note(tr(orbit.AGE_NOTE))]
+    if orbit.level(s) != "core":   # Commander Spellbook + EDHTop16: from Near Orbit on, own switch (legal 16.11.2026)
+        orbit_items.append(ui.check(tr("Combos and tournament data (Commander Spellbook, EDHTop16)"), s.get("spellbook", True) is not False,
+                                    lambda v: (s.update(spellbook=bool(v)), ctrl.settings_changed()),
+                                    tip=tr("When you open or edit a Commander deck, its card list (names and counts) goes to commanderspellbook.com to find combos and estimate the bracket, and the commander's name to edhtop16.com for tournament numbers. Off: combos only from a small list in the app, no tournament numbers.")))
     orbit_group = ui.group(tr("Bent°Corner Orbit"), orbit_items)
     friends = ui.group(tr("Friends"), [
         ui.check(tr("Share library with friends – your friends see your whole library (all cards and counts)"),
@@ -1014,7 +1019,7 @@ def page_privacy(ui, b):
                  enabled=full),
     ])
     return ui.col([orbit_group, friends, _scan_data_group(ui, ctrl), numbers,
-                   ui.note(tr("Online requests (Scryfall, TCGdex, Commander Spellbook …) only contain the cards or decks you look up – no personal data. There is no tracking."))],
+                   ui.note(tr("Online lookups (Scryfall …) contain only the cards you look up – no identifier. Commander Spellbook and EDHTop16 only from Near Orbit on and with their switch on: to Spellbook the card list of the Commander deck you open or edit (or the link you load), to EDHTop16 only the commander's name. There is no tracking."))],
                   spacing=12)
 
 

@@ -152,5 +152,112 @@ class ExportTest(unittest.TestCase):
             self.assertEqual(row[head.index("Preis")], "" if lv == "core" else "12,50", lv)
 
 
+class NetGateTest(unittest.TestCase):
+    """Orbit's Core fetches no price and no exchange rate (legal 15.11., R2/R3). Network mocked, never real."""
+
+    def tearDown(self):
+        orbit.bind(None)
+
+    def test_fetch_gate(self):   # prices_on of the bound settings, read live; unbound fails closed
+        orbit.bind(None)
+        self.assertFalse(orbit.prices_fetch_ok())
+        s = settings("core")
+        orbit.bind(s)
+        self.assertFalse(orbit.prices_fetch_ok())
+        s["orbit"] = "near"   # level change at runtime (set_level changes the same dict)
+        self.assertTrue(orbit.prices_fetch_ok())
+        s["orbit"] = "core"
+        self.assertFalse(orbit.prices_fetch_ok())
+        s["relay"] = {"on": True}   # Full Orbit
+        self.assertTrue(orbit.prices_fetch_ok())
+
+    def _price_later(self, lv):
+        from unittest import mock
+        from scanner.core import Session
+        orbit.bind(settings(lv))
+        look = mock.Mock(return_value=(1.0, 2.0))
+        threads = []
+
+        class Thread:
+            def __init__(self, target, daemon=None):
+                threads.append(target)
+
+            def start(self):
+                pass
+
+        with mock.patch("games.current", return_value=mock.Mock(price_lookup=look)), \
+                mock.patch("scanner.core.threading.Thread", Thread):
+            Session._price_later(mock.MagicMock(), {"id": "sv1-1_0", "foil": False})
+        for t in threads:
+            t()
+        return look
+
+    def test_scan_price_later(self):
+        self.assertFalse(self._price_later("core").called)
+        self.assertTrue(self._price_later("near").called)
+        self.assertTrue(self._price_later("full").called)
+
+    def _lookup(self, lv):
+        import contextlib
+        from unittest import mock
+        from games import pokemon
+        orbit.bind(settings(lv))
+        con = mock.Mock()
+        con.execute.return_value.fetchone.return_value = None   # not in the card database (or without a price)
+
+        @contextlib.contextmanager
+        def connection(*a, **k):
+            yield con
+
+        rest = mock.Mock(return_value={"pricing": {"cardmarket": {"trend": 3.5, "trend-holo": None}}})
+        with mock.patch("cards.carddb.connection", connection), mock.patch.object(pokemon, "_rest", rest):
+            res = pokemon.Pokemon.price_lookup(mock.Mock(), "sv1-1_0")
+        return res, rest
+
+    def test_pokemon_lookup(self):   # E1a (16.11.): no TCGdex price request in any level, only the card database
+        for lv in ("core", "near", "full"):
+            res, rest = self._lookup(lv)
+            self.assertIsNone(res, lv)
+            rest.assert_not_called()
+
+    def _currency(self, lv, code):
+        import collections
+        from unittest import mock
+        from ui import qsetpages
+        s = collections.defaultdict(str, settings(lv))
+        s["currency"] = "EUR"
+        ctrl = mock.MagicMock()
+        ctrl.settings = s
+        picked = []
+
+        def choice(ui, options, current, fn, **k):
+            if options is not None and fn.__name__ == "set_currency":
+                picked.append(fn)
+            return mock.MagicMock()
+
+        ran = []
+        with mock.patch.object(qsetpages, "_choice", choice), mock.patch.object(qsetpages, "_set"), \
+                mock.patch.object(qsetpages.currency, "set_current"), \
+                mock.patch("ui.librarycore.run_async", lambda parent, fn, cb: ran.append(fn)):
+            qsetpages.page_collection(mock.MagicMock(), mock.MagicMock(ctrl=ctrl))
+            self.assertEqual(len(picked), 1)
+            picked[0](code)
+        return [f for f in ran if f is qsetpages.currency.refresh]
+
+    def test_currency_switch(self):
+        self.assertEqual(self._currency("core", "USD"), [])
+        self.assertEqual(len(self._currency("near", "USD")), 1)
+        self.assertEqual(len(self._currency("full", "USD")), 1)
+        self.assertEqual(self._currency("near", "EUR"), [])   # euros need no rate fetch
+
+    def test_friends_text(self):   # R4: the new wording, with its German line
+        from locales import de
+        src = pathlib.Path(__file__).resolve().parents[1] / "ui" / "qshared.py"
+        key = "Friends only exist in Full Orbit – until then you share nothing."
+        self.assertIn(key, src.read_text("utf-8"))
+        self.assertEqual(de.TEXTS[key], "Freunde gibt es erst im Ganzen Orbit – bis dahin teilst du nichts.")
+        self.assertNotIn("until then everything stays on this computer", src.read_text("utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,8 +2,13 @@
 release. The data key lives only on the VPS – so everything it signs is treated as foreign: whoever takes over the
 server may change card data of the games below, never anything else.
 
-    /dl/packs/packs-data.json       {"v": 1, "key_id", "seq", "t", "packs": {<game>: {"files": [...]}}}  (packs.json format)
-    /dl/packs/packs-data.json.sig   Ed25519 (Base64) over PREFIX + the bytes of packs-data.json
+    /dl/packs/packs-data2.json      {"v": 1, "key_id", "seq", "t", "packs": {<game>: {"files": [...]}}}  (packs.json format)
+    /dl/packs/packs-data2.json.sig  Ed25519 (Base64) over PREFIX2 + the bytes of packs-data2.json
+
+Since 0.9.9.10x (lead/Gordon 14.11.2026) the data files lie on the server under names with their checksum ("path",
+e.g. cards.1a2b3c4d.sqlite – see hashed_name); the files with fixed names belong to the release data (packs.json)
+and are never touched by the data key. 0.9.7–0.9.9 read the older packs-data.json (PREFIX, v1) and know no "path":
+for them that file is never published, and the own prefix v2 keeps data2 content from passing as v1.
 
 Which data keys count is said only by the signed release manifest (manifest.json, release key): "data_keys":
 [{"id", "pk", "until": "YYYY-MM-DD"}]. No field, an empty list, an unknown id or a passed "until" -> no data key.
@@ -25,7 +30,9 @@ import time
 
 log = logging.getLogger(__name__)
 
-PREFIX = b"bc-carddata-v1\n"
+PREFIX = b"bc-carddata-v1\n"    # packs-data.json of 0.9.7–0.9.9 – never published (no "path" there)
+PREFIX2 = b"bc-carddata-v2\n"   # packs-data2.json: data files under hashed names ("path")
+DATA_NAME = "packs-data2.json"
 MAX_SEQ_JUMP = 10_000
 FUTURE_S = 24 * 3600       # clock skew allowed for "t"
 MB = 1 << 20
@@ -33,13 +40,14 @@ MB = 1 << 20
 # the only files a data key may deliver – Scryfall bulk (Magic: languages, set names, index), TCGdex (Pokémon),
 # YGOPRODeck (Yu-Gi-Oh!). Lorcana and every other game: never, also once they are released.
 DATA_FILES = {
-    "mtg": ("langs.tsv.gz", "setnames.json", "fingerprints-all.npz", "LICENSES.txt"),
+    "mtg": ("langs.tsv.gz", "setnames.json", "fingerprints-all.npz", "fingerprints-add.npz", "LICENSES.txt"),
     "pokemon": ("cards.sqlite", "cm_fix.json", "setnames.json", "fingerprints-all.npz", "LICENSES.txt"),
-    "yugioh": ("cards.sqlite", "ygo-locale.sqlite", "fingerprints-all.npz", "LICENSES.txt"),
+    "yugioh": ("cards.sqlite", "ygo-locale.sqlite", "fingerprints-all.npz", "fingerprints-add.npz", "LICENSES.txt"),
 }
 # largest size per file (any signature): the biggest real files are ~80 MB (11/2026)
 LIMIT_BY_SUFFIX = {".sqlite": 400 * MB, ".npz": 400 * MB, ".gz": 200 * MB, ".json": 20 * MB, ".txt": 1 * MB,
                    ".npy": 4 * MB}
+LIMIT_BY_NAME = {"fingerprints-add.npz": 32 * MB}   # docs/FP-ADD-FORMAT.md §2
 # the tables a card database must have (probe before it is put in place)
 NEEDS_TABLES = {"cards.sqlite": {"cards", "meta"}, "ygo-locale.sqlite": {"prints", "meta"}}
 
@@ -49,8 +57,36 @@ class DataRejected(Exception):
 
 
 def limit_of(name):
+    if name in LIMIT_BY_NAME:
+        return LIMIT_BY_NAME[name]
     suffix = pathlib.PurePosixPath(name).suffix.lower()
     return LIMIT_BY_SUFFIX.get(suffix, 50 * MB)
+
+
+def hashed_name(name, sha256):
+    """Server name of a data file with its checksum: the first 8 hex digits of its sha256 after the stem –
+    cards.sqlite -> cards.1a2b3c4d.sqlite, langs.tsv.gz -> langs.1a2b3c4d.tsv.gz. Its packed twin: + ".gz"."""
+    stem, dot, rest = name.partition(".")
+    return f"{stem}.{sha256[:8]}{dot}{rest}" if dot else f"{name}.{sha256[:8]}"
+
+
+def _hexsha(v):
+    return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v)
+
+
+def _check_path(key, name, f):
+    """"path" (optional): exactly hashed_name(name, sha256) – no folder, nothing but another download name for a file
+    that is allowed anyway; its .gz then must have path + ".gz". Never unlocks any other file."""
+    path, gz = f.get("path"), f.get("gz")
+    gzpath = gz.get("path") if isinstance(gz, dict) else None
+    if path is None:
+        if gzpath is not None:
+            raise DataRejected(f"{key}/{name}: gz path without path")
+        return
+    if not isinstance(path, str) or not _hexsha(f.get("sha256")) or path != hashed_name(name, f["sha256"]):
+        raise DataRejected(f"{key}/{name}: path")
+    if gz is not None and gzpath != path + ".gz":
+        raise DataRejected(f"{key}/{name}: gz path")
 
 
 def release_names(key):
@@ -75,6 +111,7 @@ def check_files(key, files, names):
             raise DataRejected(f"{key}/{name}: size") from None
         if size < 0 or size > limit_of(name):
             raise DataRejected(f"{key}/{name}: too large")
+        _check_path(key, name, f)
         gz = f.get("gz")
         if gz is not None:
             if not isinstance(gz, dict) or gz.get("name") != name + ".gz":
@@ -190,9 +227,10 @@ def _seen(path):
         return {}
 
 
-def verify_data(raw, sig_text, now=None, allowed=None, seq_file=None):
-    """packs-data.json -> {"key_id", "seq", "t", "packs"} if a data key the release manifest allows signed it and
-    everything in it is on the hard list. Raises DataRejected otherwise. Remembers the seq (per key_id)."""
+def verify_data(raw, sig_text, now=None, allowed=None, seq_file=None, prefix=PREFIX2):
+    """packs-data2.json -> {"key_id", "seq", "t", "packs"} if a data key the release manifest allows signed it (over
+    `prefix` + the bytes – v2; a v1 signature never passes here, nor a v2 one in 0.9.7–0.9.9) and everything in it is
+    on the hard list. Raises DataRejected otherwise. Remembers the seq (per key_id)."""
     from nacl.exceptions import BadSignatureError
     from nacl.signing import VerifyKey
     now = time.time() if now is None else now
@@ -210,7 +248,7 @@ def verify_data(raw, sig_text, now=None, allowed=None, seq_file=None):
     if not pk:
         raise DataRejected("unknown or revoked data key")
     try:
-        VerifyKey(base64.b64decode(pk)).verify(PREFIX + raw, base64.b64decode(sig_text.strip()))
+        VerifyKey(base64.b64decode(pk)).verify(prefix + raw, base64.b64decode(sig_text.strip()))
     except (BadSignatureError, ValueError, TypeError):
         raise DataRejected("signature") from None
     seq, t = m.get("seq"), m.get("t")
@@ -262,7 +300,10 @@ def release_time(entry):
 
 
 def merge(release_packs, data):
-    """packs.json's games, a game replaced by the data manifest's entry only when that is newer. -> new dict"""
+    """packs.json's games; a game's files replaced by the data manifest's entry only when that is newer. Files the data
+    entry doesn't name stay as packs.json lists them (e.g. cardback.npy, which no data key may deliver; a data entry
+    with only the new index) – their names in "rel_names", checked against the release list (download/outdated).
+    -> new dict"""
     out = dict(release_packs or {})
     if not data:
         return out
@@ -272,8 +313,10 @@ def merge(release_packs, data):
         rel = out.get(game)
         if rel and data["t"] <= release_time(rel):
             continue
-        out[game] = {**{k: v for k, v in (rel or {}).items() if k in ("name",)}, "files": entry["files"],
-                     "t": data["t"], "src": "data"}
+        named = {f.get("name") for f in entry["files"]}
+        kept = [f for f in (rel or {}).get("files") or [] if isinstance(f, dict) and f.get("name") not in named]
+        out[game] = {**{k: v for k, v in (rel or {}).items() if k in ("name",)}, "files": entry["files"] + kept,
+                     "t": data["t"], "src": "data", "rel_names": [f.get("name") for f in kept]}
     return out
 
 
@@ -340,6 +383,17 @@ def _probe_numpy(name, path):
     for a in arrays.values():
         if a.dtype.kind not in "fiuUSb":
             raise DataRejected("numpy dtype")
+    if name == "fingerprints-add.npz":   # docs/FP-ADD-FORMAT.md §2: ids, vecs n × 384 float16, meta with base/count
+        ids, vecs, meta = arrays.get("ids"), arrays.get("vecs"), arrays.get("meta")
+        if ids is None or vecs is None or meta is None or ids.ndim != 1 or ids.dtype.kind != "U" or vecs.ndim != 2 \
+                or vecs.dtype != np.float16 or vecs.shape != (ids.shape[0], 384):
+            raise DataRejected("numpy shape")
+        try:
+            m = json.loads(str(meta))
+        except ValueError:
+            raise DataRejected("add meta") from None
+        if not isinstance(m, dict) or not _hexsha(m.get("base")) or m.get("count") != ids.shape[0]:
+            raise DataRejected("add meta")
     if name == "fingerprints-all.npz":
         ids, vecs = arrays.get("ids"), arrays.get("vecs")
         if ids is None or vecs is None or ids.ndim != 1 or ids.dtype.kind != "U" or vecs.ndim != 2 \

@@ -23,10 +23,43 @@ def eur(v):
     return "–" if v is None else f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def value(v):
+def card_eur(v, est=False):
+    """A CARD value in the display currency (lead 14.11.: no fixed "€" for card values), „≈" when converted from
+    dollars (legal 14.11.2026). eur() stays for money between friends – a typed amount is euros, never converted."""
+    from cards import currency
+    return "–" if v is None else currency.fmt(v, est)
+
+
+def value(v, est=False):
     """A CARD value (market price) – "" in Orbit's Core (legal 06.11.); eur() stays for money between friends."""
     from system import orbit
-    return eur(v) if orbit.prices_shown() else ""
+    return card_eur(v, est) if orbit.prices_shown() else ""
+
+
+def row_sid(r):
+    """The print of a trade row (its card database row's id) – for the „≈" mark."""
+    return ((r or {}).get("db") or {}).get("id") or (r or {}).get("sid")
+
+
+def row_est(r):
+    """Is a trade row's price converted from dollars? (a row may carry "est" itself – e.g. the offer picture; a row
+    of another game carries "game": that game's card database is asked)"""
+    if "est" in (r or {}):
+        return bool(r["est"])
+    from cards import currency
+    return currency.estimated(row_sid(r), (r or {}).get("game"))
+
+
+def rows_est(rows):
+    """A sum of trade rows gets „≈" when one priced row is converted (legal 14.11.)."""
+    return any(r.get("price") and row_est(r) for r in rows)
+
+
+def rows_tip(rows):
+    """The legal text for the „≈" of a sum of trade rows – "" without a converted price."""
+    from cards import currency
+    days = [currency.rate_day_of(row_sid(r), r.get("game")) or "" for r in rows if r.get("price") and row_est(r)]
+    return currency.approx_tip(max(days) or None) if days else ""
 
 
 PAY_NOTE = "Payment happens between you – Bent°Corner handles no money."
@@ -68,6 +101,7 @@ class Browser(QtCore.QObject):
         self.settings, self.key, self.checkable = settings, key, checkable
         self.all_rows, self.rows, self.filters, self.exclusive, self.active = [], [], [], [], set()
         self.search, self.info, self.empty, self.empty_text = "", "", "", ""
+        self.info_tip = ""   # the legal text on the „≈" of the info line
         self.mode = settings.get(f"browse_{key}") if settings.get(f"browse_{key}") in ("grid", "list") else "grid"
 
     # --- Data ---
@@ -121,13 +155,16 @@ class Browser(QtCore.QObject):
         n = sum(int(r.get("count") or 1) for r in rows)
         val = sum((r.get("price") or 0) * int(r.get("count") or 1) for r in rows)
         if self.checkable:  # price of the checked cards, followed by all
-            chk = sum((r.get("price") or 0) * int(r.get("count") or 1) for r in rows if r.get("checked"))
-            self.info = tr(f"{n} cards · {eur(chk)}") + " " + tr(f"(All: {eur(val)})")
+            checked = [r for r in rows if r.get("checked")]
+            chk = sum((r.get("price") or 0) * int(r.get("count") or 1) for r in checked)
+            self.info = (tr(f"{n} cards · {card_eur(chk, rows_est(checked))}") + " "
+                         + tr(f"(All: {card_eur(val, rows_est(rows))})"))
         else:
-            self.info = tr(f"{n} cards · {eur(val)}")
+            self.info = tr(f"{n} cards · {card_eur(val, rows_est(rows))}")
+        self.info_tip = rows_tip(rows)
         from system import orbit
         if not orbit.prices_shown():   # Orbit's Core: only the count
-            self.info = tr(f"{n} cards")
+            self.info, self.info_tip = tr(f"{n} cards"), ""
         self.empty = "" if rows else (self.empty_text if not self.all_rows
                                       else tr("Nothing found – change the search or filters."))
         self.changed.emit()
@@ -276,7 +313,7 @@ def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
             text(QRectF(L, y, R - L - (110 if priced else 0), 24), Qt.AlignLeft | Qt.AlignVCenter, nm, 17, ink, True)
             if priced:
                 text(QRectF(L, y, R - L, 24), Qt.AlignRight | Qt.AlignVCenter,
-                     eur(None if r.get("price") is None else r["price"] * n), 17)
+                     card_eur(None if r.get("price") is None else r["price"] * n, row_est(r)), 17)
             extra = f"{r['set']} #{r['number']}" + (" · Foil" if r.get("foil") else "") +                 (f" · {LANG_SHORT.get(r.get('lang'), '')}" if (r.get("lang") or "en") != "en" else "")
             text(QRectF(L + 34, y + 24, R - L - 34, 18), Qt.AlignLeft | Qt.AlignVCenter, extra, 14, muted)
             y += ROW
@@ -293,7 +330,8 @@ def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
         p.setPen(QtGui.QPen(line, 1))
         p.drawLine(QtCore.QPointF(L, y + 6), QtCore.QPointF(R, y + 6))
         text(QRectF(L, y + 12, R - L, 28), Qt.AlignLeft | Qt.AlignVCenter, tr("TOTAL"), 13, muted, True)
-        text(QRectF(L, y + 12, R - L, 28), Qt.AlignRight | Qt.AlignVCenter, eur(total), 22, ink, display=True)
+        text(QRectF(L, y + 12, R - L, 28), Qt.AlignRight | Qt.AlignVCenter, card_eur(total, rows_est(rows)), 22, ink,
+             display=True)
         y += 50
     if abs(money) >= 0.01:   # money on top (from f to o, reversed if negative)
         # a side without a name is me (my profile has none): the same name as in the header
@@ -311,7 +349,8 @@ def offer_image(me, friend, get_rows, give_rows, tk=None, priced=True):
         text(QRectF(L, y + 22, R - L, 30), Qt.AlignLeft | Qt.AlignVCenter, tr(f"BALANCE FOR {me[0]}").upper(), 13, muted,
              True)
         text(QRectF(L, y + 22, R - L, 30), Qt.AlignRight | Qt.AlignVCenter,
-             ("+" if diff > 0.005 else "") + eur(diff), 22, ink, display=True)
+             ("+" if diff > 0.005 else "") + card_eur(diff, rows_est(get_rows) or rows_est(give_rows)), 22, ink,
+             display=True)
         text(QRectF(L, y + 58, R - L, 18), Qt.AlignHCenter, tr("Prices: Cardmarket trend, no guarantee"), 12, muted)
     if tk:
         # stub: ticket number, hint, below it the pixel code (light blocks on the paper)

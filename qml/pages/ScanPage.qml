@@ -49,6 +49,40 @@ Item {
     // wish card hit (0.9.9): a bar at the top of the image – draggable, no ✕, dims after 8 s (WishBar.qml)
     WishBar { id: wishBar; z: 4; wish: page.sp.wish; sp: page.sp; visible: on && !page.studio
               blockers: tiles.visible ? tiles.tiles : [] }   // its first place cuts no tile (lead 14.11.)
+    // the camera message without a picture ("No camera found …", scanview.paint_layers): wrapped inside the free gap
+    // between the tiles, as central as it goes – never into a tile (lead 14.11.). Bands from the middle outwards.
+    readonly property var msgBox: {
+        var m = 12, need = 260, bh = 130, rects = [], i
+        var list = tiles.visible ? tiles.tiles : []
+        for (i = 0; i < list.length; i++) {
+            var t = list[i]
+            if (t && t.visible && t.width > 0 && t.height > 0 && t.x + t.y + t.width + t.height > -1e9) {   // (bindings)
+                var q = t.mapToItem(page, 0, 0)
+                rects.push({x: q.x - m, y: q.y - m, r: q.x + t.width + m, b: q.y + t.height + m})
+            }
+        }
+        var mid = width / 2, lo = 20, hi = width - 20, y0 = height / 2 - bh / 2
+        for (var k = 0; k < 40; k++) {
+            var y = y0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 12
+            if (y < 20 || y + bh > height - 90) continue
+            var cuts = rects.filter(function (r) { return r.y < y + bh && r.b > y }).sort(function (a, b) { return a.x - b.x })
+            var gaps = [], x = lo
+            for (i = 0; i < cuts.length; i++) {
+                if (cuts[i].x > x) gaps.push([x, cuts[i].x])
+                x = Math.max(x, cuts[i].r)
+            }
+            if (hi > x) gaps.push([x, hi])
+            var best = null
+            for (i = 0; i < gaps.length; i++) {
+                var g = gaps[i]
+                if (g[1] - g[0] < need) continue
+                if (best === null || Math.abs((g[0] + g[1]) / 2 - mid) < Math.abs((best[0] + best[1]) / 2 - mid)) best = g
+            }
+            if (best !== null) return Qt.rect(best[0], y, best[1] - best[0], bh)
+        }
+        return Qt.rect(0, 0, 0, 0)
+    }
+    onMsgBoxChanged: sp.setMessageBox(msgBox.x, msgBox.y, msgBox.width, msgBox.height)
     property bool soundOpen: false   // the dock's sound key: the dock grows a slider upwards (SoundColumn.qml)
 
     // frosted glass under the tiles (Oliver): Python hands over the camera image small and already blurred
@@ -100,7 +134,7 @@ Item {
             maskEnabled: true; maskSource: frostMask
         }
     }
-    Component.onCompleted: scanTiles.setActive(visible)
+    Component.onCompleted: { scanTiles.setActive(visible); sp.setMessageBox(msgBox.x, msgBox.y, msgBox.width, msgBox.height) }
 
     // the moments on top of everything (tiles, windows): the big preview of a card under the mouse, the Biggest Hit
     Image {

@@ -269,6 +269,7 @@ Item {
                                 onHoveredChanged: if (hovered) {
                                     var q = node.mapToItem(null, node.width / 2, node.height + 2)
                                     shell.tip(node.modelData.label + " · " + node.modelData.cards + " · " + node.modelData.valueText
+                                              + (node.modelData.valueTip ? "\n≈ " + node.modelData.valueTip : "")
                                               + "\n" + (node.lit ? shell.text("Click: back to here") : shell.text("Click: show these cards")), q.x, q.y)
                                 } else shell.tip("", 0, 0) }
                             TapHandler { onTapped: { shell.tip("", 0, 0); gp.g.pick(colItem.index, node.modelData.v) } }

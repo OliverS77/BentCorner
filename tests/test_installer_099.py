@@ -80,6 +80,23 @@ class Script(unittest.TestCase):
         for lang in ("de", "en"):
             self.assertIn(f"{lang}.HomeLine=", self.s)
 
+    def test_uninstaller_takes_only_the_unread_installer_json(self):
+        """lead 14.11.2026: the setup's hand-over file installer.json goes with the uninstall if it is still there; the
+        file goes only in usPostUninstall, the folder only via RemoveDir (empty only), never DelTree on it."""
+        proc = self.s[self.s.index("procedure CurUninstallStepChanged"):]
+        proc = proc[:proc.index("\nend;") + 5]
+        notes = proc[proc.index("Notes := "):proc.index("App := ")]
+        self.assertLess(proc.index("usPostUninstall then Exit;"), proc.index("Notes := "))
+        self.assertIn("Notes := ExpandConstant('{userappdata}\\BentCorner');", notes)
+        # one line, no begin/end block: test_datafolder_safe reads this procedure up to its first "end;"
+        self.assertIn("if FileExists(Notes + '\\installer.json') and DeleteFile(Notes + '\\installer.json') then "
+                      "RemoveDir(Notes);", notes)
+        self.assertEqual(notes.count("DeleteFile("), 1)
+        self.assertNotIn("begin", notes)
+        self.assertNotIn("DelTree", notes)
+        self.assertEqual(self.s.count("DelTree("), 1)   # only the program folder's (with its collection guard)
+        self.assertLess(proc.index("RemoveDir(Notes)"), proc.index("settings.json"))   # before the program folder's Exit
+
     def test_uninstaller_checkbox_always_unticked(self):
         self.assertIn("ServerBox.Checked := False;", self.s)
         self.assertNotIn("ServerBox.Checked := True;", self.s)

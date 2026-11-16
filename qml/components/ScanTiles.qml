@@ -289,7 +289,15 @@ Item {
         }
         // the price always stays far right – the keys appear before it (like the lists' sidebar)
         Text { id: crPrice; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-               text: cr.c.priceShort; color: T.text2; font.family: T.font; font.pixelSize: Math.round(13 * g.fz) }
+               text: cr.c.priceShort; color: T.text2; font.family: T.font; font.pixelSize: Math.round(13 * g.fz)
+               HoverHandler {   // „≈": the legal text
+                   enabled: (cr.c.priceTip || "") !== ""
+                   onHoveredChanged: {
+                       if (!hovered) { shell.tip("", 0, 0); return }
+                       var p = crPrice.mapToItem(null, crPrice.width / 2, crPrice.height)
+                       shell.tip(cr.c.priceTip, p.x, p.y)
+                   }
+               } }
         Loader {   // the keys: only while the mouse is on the row (a long list stays light)
             id: crKeys
             active: crh.hovered
@@ -693,6 +701,14 @@ Item {
         id: ht
         tight: true                        // a narrow edge: the card fills the tile
         property var h: ({})
+        HoverHandler {   // „≈": the legal text on a converted price (legal 14.11.2026)
+            enabled: (ht.h.priceTip || "") !== ""
+            onHoveredChanged: {
+                if (!hovered) { shell.tip("", 0, 0); return }
+                var p = ht.mapToItem(null, ht.width / 2, ht.height)
+                shell.tip(ht.h.priceTip, p.x, p.y)
+            }
+        }
         // the large form's type follows the tile's width (the card is the tile – the words go with it)
         readonly property real nameSize: Math.max(18, Math.min(30, width * 0.068))
         readonly property real priceSize: Math.max(30, Math.min(58, width * 0.125))

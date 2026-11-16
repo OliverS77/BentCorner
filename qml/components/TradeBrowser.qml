@@ -60,8 +60,16 @@ Rectangle {
         id: infoRow
         x: 12; width: box.width - 24; height: 32
         anchors.top: chips.bottom; anchors.topMargin: 8
-        Text { anchors.verticalCenter: parent.verticalCenter; width: parent.width - (box.br.checkable ? 190 : 0)
-               text: box.br.info; elide: Text.ElideRight; color: T.muted; font.family: T.font; font.pixelSize: 13 }
+        Text { id: infoText; anchors.verticalCenter: parent.verticalCenter; width: parent.width - (box.br.checkable ? 190 : 0)
+               text: box.br.info; elide: Text.ElideRight; color: T.muted; font.family: T.font; font.pixelSize: 13
+               HoverHandler {   // „≈": the legal text (legal 14.11.2026)
+                   onHoveredChanged: {
+                       var tip = hovered ? (box.br.infoTip || "") : ""
+                       if (tip === "") { shell.tip("", 0, 0); return }
+                       var p = infoText.mapToItem(null, infoText.width / 2, infoText.height)
+                       shell.tip(tip, p.x, p.y)
+                   }
+               } }
         Row {
             visible: box.br.checkable
             anchors.right: parent.right; spacing: 6
@@ -98,6 +106,7 @@ Rectangle {
                 width: grid.cellWidth; height: grid.cellHeight
                 name: modelData.name
                 price: modelData.price
+                priceTip: modelData.priceTip || ""
                 setLine: modelData.setLine + (modelData.tags ? " · " + modelData.tags : "")
                 chips: modelData.chips
                 img: modelData.img
@@ -142,8 +151,16 @@ Rectangle {
                        width: parent.width * 0.34; elide: Text.ElideRight
                        text: lr.modelData.setLine + (lr.modelData.tags ? " · " + lr.modelData.tags : "")
                        color: T.muted; font.family: T.font; font.pixelSize: 13 }
-                Text { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                       text: lr.modelData.price; color: lr.ink; font.family: T.font; font.pixelSize: 13 }
+                Text { id: lrPrice; anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                       text: lr.modelData.price; color: lr.ink; font.family: T.font; font.pixelSize: 13
+                       HoverHandler {   // „≈": the legal text
+                           enabled: (lr.modelData.priceTip || "") !== ""
+                           onHoveredChanged: {
+                               if (!hovered) { shell.tip("", 0, 0); return }
+                               var p = lrPrice.mapToItem(null, lrPrice.width / 2, lrPrice.height)
+                               shell.tip(lr.modelData.priceTip, p.x, p.y)
+                           }
+                       } }
                 HoverHandler { id: lh; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: box.cardClicked(lr.modelData.i) }
             }

@@ -218,6 +218,150 @@ class SwitchesOff(unittest.TestCase):
         self.assertFalse(edhrec.ALLOWED)
 
 
+
+class SpellbookGate(unittest.TestCase):
+    """Commander Spellbook and EDHTop16 only from Near Orbit on and with their switch (Oliver/legal 16.11.2026): in Core
+    or with the switch off nothing goes to either – no combo search, no bracket, no cEDH numbers, no deck import by
+    link, no cached combos shown. Network mocked, never real."""
+
+    def setUp(self):
+        from system import orbit
+        self.orbit = orbit
+        self.addCleanup(orbit.bind, None)
+
+    def bind(self, level, switch=None):
+        s = {"orbit": "near" if level == "full" else level, "relay": {"on": level == "full"}}
+        if switch is not None:
+            s["spellbook"] = switch
+        self.orbit.bind(s)
+        return s
+
+    def calls(self):
+        from cards import combos
+        from collection import deckimport
+        sent = []
+
+        def post(url, **kw):
+            sent.append(url)
+            r = mock.Mock(ok=True, status_code=200)
+            r.json.return_value = {"results": {}, "data": {"commander": None}, "bracketTag": ""}
+            return r
+
+        def get(url, **kw):
+            sent.append(url)
+            r = mock.Mock(ok=True, status_code=200)
+            r.json.return_value = {"cards": [], "deck": {}}
+            return r
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch.object(combos.netpolite, "post", post), mock.patch.object(deckimport.netpolite, "get", get), \
+                mock.patch.object(combos, "CACHE", pathlib.Path(tmp.name)):
+            for fn in (lambda: combos.find(["Atraxa"], {"Sol Ring": 1}), lambda: combos.cedh(["Atraxa"]),
+                       lambda: deckimport.fetch("https://example.org/deck/1")):
+                try:
+                    fn()
+                except Exception:  # noqa: BLE001 – refused (off) or the mocked answer's shape
+                    pass
+        return sent
+
+    def test_core_sends_nothing(self):
+        self.bind("core")
+        self.assertEqual(self.calls(), [])
+        self.bind("core", True)   # the switch alone does not open Core
+        self.assertEqual(self.calls(), [])
+
+    def test_switch_off_sends_nothing(self):
+        self.bind("near", False)
+        self.assertEqual(self.calls(), [])
+        self.bind("full", False)
+        self.assertEqual(self.calls(), [])
+
+    def test_near_and_full_as_before(self):
+        for lv in ("near", "full"):
+            self.bind(lv)   # default: on
+            sent = self.calls()
+            self.assertTrue(any("commanderspellbook.com/find-my-combos" in u for u in sent), lv)
+            self.assertTrue(any("edhtop16.com" in u for u in sent), lv)
+            self.assertTrue(any("card-list-from-url" in u for u in sent), lv)
+
+    def test_level_change_at_runtime_and_unbound(self):
+        s = self.bind("near")
+        self.assertTrue(self.orbit.spellbook_ok())
+        s["orbit"] = "core"
+        self.assertFalse(self.orbit.spellbook_ok())
+        self.orbit.bind(None)
+        self.assertFalse(self.orbit.spellbook_ok())   # fails closed
+
+    def test_link_import_says_why(self):
+        from collection import deckimport
+        self.bind("core")
+        with self.assertRaises(RuntimeError) as e:
+            deckimport.fetch("https://example.org/deck/1")
+        self.assertEqual(str(e.exception), deckimport.LINK_OFF)
+        from locales import de
+        self.assertIn(deckimport.LINK_OFF, de.TEXTS)
+
+    def test_deck_editor_no_lookup_no_cache_in_core(self):
+        from collection import deckcore
+        fake = types.SimpleNamespace(deck={"format": "commander"}, rows={}, online={"csb": {"included": [1]}},
+                                     page=types.SimpleNamespace(ctrl=types.SimpleNamespace(
+                                         settings={"orbit": "core", "relay": {"on": False}})))
+        with mock.patch.object(deckcore.combos, "cached_find", side_effect=AssertionError("cache read")):
+            deckcore.DeckEditor.online_lookup(fake)
+        self.assertEqual(fake.online, {})
+        fake.page.ctrl.settings = {"orbit": "near", "spellbook": False}
+        fake.online = {"csb": {}}
+        with mock.patch.object(deckcore.combos, "cached_find", side_effect=AssertionError("cache read")):
+            deckcore.DeckEditor.online_lookup(fake)
+        self.assertEqual(fake.online, {})
+
+    def test_wait_on_429(self):
+        self.assertGreaterEqual(netpolite.COOL_429["backend.commanderspellbook.com"], 60)
+        self.assertGreaterEqual(netpolite.COOL_429["edhtop16.com"], 60)
+        self.assertIn("BentCorner/", netpolite.UA)
+        import version
+        self.assertIn(version.VERSION, netpolite.UA)
+
+
+
+class ScryfallOnlyForMagic(unittest.TestCase):
+    """The detail view asked Scryfall for a Pokémon ID (api.scryfall.com/cards/xy7-98, lead 16.11.2026): Scryfall's
+    card record and extra info only for a game whose details are online (Magic). Network mocked."""
+
+    def ask(self, key):
+        import games
+        from cards import library
+        sent = []
+
+        def get(url, **kw):
+            sent.append(url)
+            r = mock.Mock(status_code=200)
+            r.json.return_value = {"name": "x", "prints_search_uri": "https://api.scryfall.com/x?q=1",
+                                   "rulings_uri": "https://api.scryfall.com/r", "data": []}
+            return r
+        g = games.load(key)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        d = pathlib.Path(tmp.name)
+        with mock.patch.object(games, "current", lambda: g), mock.patch.object(library.netpolite, "get", get), \
+                mock.patch.object(library, "DETAILS", d), mock.patch.object(library, "FULL", d / "full"):
+            full = library.card_full("xy7-98")
+            info = library.card_details({"id": "xy7-98_0"})
+        return sent, full, info
+
+    def test_other_games_never_ask_scryfall(self):
+        for key in ("pokemon", "yugioh", "lorcana"):
+            sent, full, info = self.ask(key)
+            self.assertEqual(sent, [], key)
+            self.assertIsNone(full, key)
+            self.assertEqual(info, {}, key)
+
+    def test_magic_as_before(self):
+        sent, full, info = self.ask("mtg")
+        self.assertTrue(any("api.scryfall.com/cards/xy7-98" in u for u in sent))
+        self.assertIsNotNone(full)
+
+
 if __name__ == "__main__":
     unittest.main()
 

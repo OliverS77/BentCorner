@@ -33,7 +33,8 @@ Item {
         id: legend
         // fits next to the time range buttons? otherwise below
         y: implicitWidth + rangeRow.width + 16 > ch.width ? rangeRow.height + 8 : 0
-        columns: 2
+        // long names (Magic: "Cardmarket trend via Scryfall, no guarantee", legal 16.11.2026) – one per row, uncut
+        columns: ch.legendLines.some(function (l) { return l.name.length > 28 }) ? 1 : 2
         columnSpacing: 16; rowSpacing: 6
         Repeater {
             model: ch.legendLines
@@ -50,8 +51,15 @@ Item {
                     onPaint: { var g = getContext("2d"); g.reset(); g.strokeStyle = ch.lineColor(l); g.lineWidth = 2
                         g.setLineDash(l.shop === "t" ? [3, 2] : []); g.beginPath(); g.moveTo(0, 6); g.lineTo(16, 6); g.stroke() }
                 }
-                Text { text: modelData.name; color: T.text2; font.family: T.font; font.pixelSize: 11 }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                Text { text: modelData.name + (modelData.shop === "t" ? "  (≈ €)" : ""); color: T.text2
+                       font.family: T.font; font.pixelSize: 11 }
+                HoverHandler { cursorShape: Qt.PointingHandCursor
+                    onHoveredChanged: {   // TCGplayer in euros = converted: the legal text (legal 14.11.2026)
+                        if (modelData.shop !== "t" || !(ch.info && ch.info.approxTip)) return
+                        if (!hovered) { shell.tip("", 0, 0); return }
+                        var p = parent.mapToItem(null, parent.width / 2, parent.height)
+                        shell.tip(ch.info.approxTip, p.x, p.y)
+                    } }
                 TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds
                              onTapped: { ch.hidden[modelData.name] = !ch.hidden[modelData.name]; ch.hiddenRev++ } }
             }
@@ -128,7 +136,8 @@ Item {
                     for (var d = 0; d < L[c2].pts.length; d++) if (!best || Math.abs(L[c2].pts[d][0] - t) < Math.abs(best[0] - t)) best = L[c2].pts[d]
                     if (best) {
                         g.fillStyle = ch.lineColor(L[c2]); g.beginPath(); g.arc(X(best[0]), Y(best[1]), 3.5, 0, 6.3); g.fill()
-                        label += "   " + L[c2].name + " " + best[1].toFixed(2).replace(".", ",") + " €"
+                        label += "   " + L[c2].name + " " + (L[c2].shop === "t" ? "≈ " : "")
+                                 + best[1].toFixed(2).replace(".", ",") + " €"
                     }
                 }
                 g.fillStyle = T.text; g.font = "11px " + T.font; g.textAlign = "right"

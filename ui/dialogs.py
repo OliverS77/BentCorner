@@ -56,7 +56,7 @@ def end_session_dialog(stats, to_coll=True, note=""):
                 tr("The log stays under Logs & stats.") if st["keep"] else
                 tr("The log is deleted (its packs don't count in the statistics).")]
         return ui.col([
-            ui.label(tr(f"{stats['packs']} packs · {stats['cards']} cards · value {eur(stats['total'])}"),
+            ui.label(tr(f"{stats['packs']} packs · {stats['cards']} cards · value {eur(stats['total'], stats.get('est'))}"),
                      color="gray"),
             question(tr("Add the scanned cards to your collection?"), "coll"),
             question(tr("Save the log (logs & statistics)?"), "keep"),

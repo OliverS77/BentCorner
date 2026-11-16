@@ -37,12 +37,54 @@ RARITY = dict(games.current().rarities)
 CARD_MARGIN = 28          # margin around the detail-view card image (room for shine/tilt, as formerly CardView)
 
 
-def eur(v):
-    """Price (in euros) in the chosen display currency (Settings → Collection) – "" in Orbit's Core."""
+def eur(v, est=False):
+    """Price (in euros) in the chosen display currency (Settings → Collection) – "" in Orbit's Core.
+    est: converted from dollars (or a sum with such a price) – „≈" in front (legal 14.11.2026)."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
         return ""
-    return currency.fmt(v)
+    return currency.fmt(v, est)
+
+
+def price_tip(sid, game=None):
+    """(„≈"?, tooltip) for ONE print's price: the legal text with the day of the rate, ("", False) for Cardmarket.
+    game: a row of another game (its own card database)."""
+    if not currency.estimated(sid, game):
+        return False, ""
+    return True, currency.approx_tip(currency.rate_day_of(sid, game))
+
+
+def row_est(r):
+    """Is the VALUE of a library row (price × count) converted from dollars? A row merged by name („group_sets")
+    holds the answer for all its copies (value_est), a single print asks the card database."""
+    if "value_est" in r:
+        return r["value_est"]
+    return currency.estimated(r.get("sid"), r.get("game"))
+
+
+def approx_link(v, est, day):
+    """A sum in a rich-text status line: „≈ 12,30 €" with the legal text on hover (the link "approx:<day>" is only a
+    hover target – a click does nothing), plain euros without a converted price."""
+    text = eur(v, est)
+    if not est or not text:
+        return text
+    return f"<a href='approx:{day or ''}' style='color:inherit; text-decoration:none'>{text}</a>"
+
+
+def rows_sum(rows):
+    """(value, converted?, newest rate day) of library rows – a merged row brings its own value and mark."""
+    total, est, day = 0.0, False, None
+    for r in rows:
+        v = r.get("value", (r.get("price") or 0) * (r.get("count") or 0))
+        if not v:
+            continue
+        total += v
+        if row_est(r):
+            est = True
+            d = r.get("value_day") if "value_est" in r else currency.rate_day_of(r.get("sid"), r.get("game"))
+            if d and (day is None or d > day):
+                day = d
+    return total, est, day
 
 
 # ---------- Background ----------
@@ -205,8 +247,11 @@ def group_rows(rows, disp):
         g = by.get(key)
         var = (r["count"], r.get("lang") or "en", r.get("fin") or ("Foil" if r.get("foil") else ""))
         val = (r.get("price") or 0) * (r.get("count") or 0)
+        est = bool(val) and currency.estimated(r.get("sid"), r.get("game"))   # „≈": one converted copy is enough
+        day = currency.rate_day_of(r.get("sid"), r.get("game")) if est else None
         if g is None:
-            g = by[key] = dict(r, variants=[var] if r.get("count") else [], sets={}, value=val, _best=rank(r))
+            g = by[key] = dict(r, variants=[var] if r.get("count") else [], sets={}, value=val, _best=rank(r),
+                               value_est=est, value_day=day)
             g["sets"][(r["set"], r["number"])] = r.get("count") or 0
             g["key"] = f"{key[0]}|{key[1]}|*" if key[0] else f"{key[1]}|*"
             out.append(g)
@@ -216,6 +261,10 @@ def group_rows(rows, disp):
             g["conds"] = (g.get("conds") or []) + (r.get("conds") or [])
         g["count"] = (g.get("count") or 0) + (r.get("count") or 0)
         g["value"] += val
+        if est:
+            g["value_est"] = True
+            if day and (not g.get("value_day") or day > g["value_day"]):
+                g["value_day"] = day
         g["sets"][(r["set"], r["number"])] = g["sets"].get((r["set"], r["number"]), 0) + (r.get("count") or 0)
         if rank(r) > g["_best"]:  # image, language, detail: the desired language, otherwise the most common one
             for k in ("sid", "set", "number", "lang", "foil", "img", "thumb", "normal", "card", "db", "rarity", "price"):
@@ -651,6 +700,20 @@ class PrintsState(Shown):
     def set_marks(self, marks):
         self.marks = {k: v for k, v in marks.items() if k}
 
+def pricehist_own():
+    from cards import pricehist
+    return pricehist.own_curve(games.current().key)
+
+
+def cm_label(foil=False):
+    """Name of the Cardmarket line in a price chart: Magic's own curve says where it comes from (legal 16.11.2026)."""
+    if not pricehist_own():
+        return "Cardmarket" + (" " + tr(games.current().foil_word) if foil else "")
+    if foil:
+        return tr("Cardmarket trend {foil} via Scryfall, no guarantee").format(foil=tr(games.current().foil_word))
+    return tr("Cardmarket trend via Scryfall, no guarantee")
+
+
 class PriceData(Shown):
     """Price history of a card: Cardmarket and TCGplayer (converted from $), normal/foil, time range."""
     RANGES = [(30, "30 T"), (90, "90 T")]   # the source doesn't provide more (pricehist.WINDOW)
@@ -706,8 +769,9 @@ class PriceData(Shown):
             self.finish = fin
             try:
                 for name, _col, pts, unit in self.lines():
-                    out.append((name + (" " + tr(games.current().foil_word) if fin == "f" else ""),
-                                "c" if name == "Cardmarket" else "t",
+                    own = unit == "€" and pricehist_own()   # its label already names the finish
+                    out.append((name + (" " + tr(games.current().foil_word) if fin == "f" and not own else ""),
+                                "c" if unit == "€" else "t",
                                 fin == "f", fin != keep, pts, unit))
             finally:
                 self.finish = keep
@@ -716,7 +780,9 @@ class PriceData(Shown):
     def lines(self):
         """[(name, color, [(date, value in €, original value)], original currency)] in the selected time range."""
         out = []
-        for shop, name, col in (("c", "Cardmarket", "#62f2ff"), ("t", "TCGplayer", "#ffb347")):
+        # Magic's own curve names the finish in its label; every other game: lines_all adds the foil word (once)
+        cm = cm_label(self.finish == "f") if pricehist_own() else "Cardmarket"
+        for shop, name, col in (("c", cm, "#62f2ff"), ("t", "TCGplayer", "#ffb347")):
             pts = (self.data or {}).get(shop + self.finish) or []
             if shop == "t":
                 pts = [(d, currency.from_usd(p), p) for d, p in pts]
@@ -1111,8 +1177,9 @@ class DetailState(QtCore.QObject, Shown):
         token = self.token
         run_async(self, lambda: library.print_languages(row["set"], row["number"]),
                   lambda res, err: self.on_langs(token, res, err))
-        sid = row["sid"]  # everything Scryfall has (cached; offline: card database)
-        run_async(self, lambda: library.card_full(sid), lambda res, err: self.on_full(token, res, err))
+        sid = row["sid"]  # everything Scryfall has (cached; offline: card database) – only Magic's details are online
+        if games.current().online_details:
+            run_async(self, lambda: library.card_full(sid), lambda res, err: self.on_full(token, res, err))
         self.flip.setVisible(self.has_back())
         from cards import finishes
         opts = finishes.options(row["card"])
@@ -1293,8 +1360,10 @@ class DetailState(QtCore.QObject, Shown):
         shop_foil = {m["key"]: m["url"] for m in shoplinks.market_links(c, self.ctrl.settings, foil=True)}
         rows = []
         est = games.current().price_estimated(r.get("sid") or "")   # euros only converted from TCGplayer
+        est_day = games.current().price_rate_day(r.get("sid") or "") if est else None
         fw = tr(games.current().foil_word)   # "Foil" or "Reverse Holo"
         tw = "Trend " if games.current().price_trend_word else ""
+        cmp = games.current().cardmarket_prices   # False: no "Cardmarket" anywhere (Yu-Gi-Oh!, legal 16.11.2026)
         for key, label in (("eur", "Cardmarket Trend"), ("eur_foil", f"Cardmarket {tw}{fw}"),
                            ("eur_etched", "Cardmarket Trend Etched"), ("usd", "TCGplayer Market"),
                            ("usd_foil", f"TCGplayer {'Market ' if tw else ''}{fw}"), ("usd_etched", "TCGplayer Market Etched"),
@@ -1302,6 +1371,11 @@ class DetailState(QtCore.QObject, Shown):
             if key == "tix" and not self.ctrl.settings.get("show_tix"):   # Magic Online: only on request
                 continue
             v = pr.get(key)
+            if not cmp and key.startswith("eur") and not est:   # a game without Cardmarket: its euro is no CM value
+                if v:
+                    fin = "" if key == "eur" else f" {fw}" if key == "eur_foil" else " Etched"
+                    rows.append((tr("Price in €") + fin, f"<b>{v.replace('.', ',')} €</b>"))
+                continue
             if v:
                 unit = "€" if key.startswith("eur") else "$" if key.startswith("usd") else "Tix"
                 urls = shop_foil if ("foil" in key or "etched" in key) else shop_url
@@ -1309,12 +1383,16 @@ class DetailState(QtCore.QObject, Shown):
                 # name of the price = link to the page (Cardmarket or TCGplayer)
                 lab = (f"<a href='{_esc(url)}' style='color:#8a91a8; text-decoration:none; white-space:nowrap'>"
                        f"{label}&nbsp;↗</a>" if url else label)
-                if est and key == "eur":   # no Cardmarket price: converted from TCGplayer
-                    lab = label + " <span style='color:#5c6380'>" + tr("(converted from TCGplayer)") + "</span>"
-                    rows.append((lab, f"<b>≈ {v.replace('.', ',')} {unit}</b>"))
+                if est and key.startswith("eur"):   # no Cardmarket price: converted from TCGplayer
+                    # never „Cardmarket" on a converted value (legal 14.11.2026, lead): „Price in € (converted …)"
+                    fin = "" if key == "eur" else f" {fw}" if key == "eur_foil" else " Etched"
+                    lab = (tr("Price in €") + fin + " <span style='color:#5c6380'>" + tr("(converted from TCGplayer)")
+                           + "</span>")
+                    rows.append((lab, f"<a href='approx:{est_day or ''}' style='text-decoration:none'>"
+                                      f"<b>≈ {v.replace('.', ',')} {unit}</b></a>"))   # hover: the legal text
                     continue
                 rows.append((lab, f"<b>{v.replace('.', ',')} {unit}</b>"))
-            elif "etched" not in key:  # missing (e.g. new card, not on MTGO): show anyway
+            elif "etched" not in key and (cmp or not key.startswith("eur")):   # missing (new card, not on MTGO)
                 rows.append((label, "<span style='color:#5c6380'>–</span>"))
         from system import orbit
         if not orbit.prices_shown():   # Orbit's Core: no price rows – the QML section shows the PriceVeil instead
@@ -1322,9 +1400,11 @@ class DetailState(QtCore.QObject, Shown):
         stamp = self.full.get("fetched") if complete and self.full else None
         trend = []  # collapsed: Cardmarket trend price (Scryfall "eur" = Cardmarket trend)
         if pr.get("eur"):
-            trend.append(tr("Cardmarket trend ") + ("≈ " if est else "") + eur(float(pr["eur"])))
+            trend.append((tr("Price in €") + " ≈ " if est else tr("Cardmarket trend ") if cmp else tr("Price in €") + " ")
+                         + eur(float(pr["eur"])))
         if pr.get("eur_foil"):
-            trend.append((f"{fw} " if trend else f"{tr("Cardmarket trend")} {fw} ") + eur(float(pr["eur_foil"])))
+            trend.append((f"{fw} " if trend else f"{tr("Price in €") if est or not cmp else tr("Cardmarket trend")} {fw} ")
+                         + eur(float(pr["eur_foil"]), est))
         if not trend and pr.get("usd"):
             trend.append("TCGplayer " + pr["usd"].replace(".", ",") + " $")
         if not orbit.prices_shown():
@@ -1741,7 +1821,7 @@ class DetailState(QtCore.QObject, Shown):
             self.own_view.append((it, codes))
         total = sum(it.get("count", 1) for it in items)
         value = sum((item_price(it) or 0) * it.get("count", 1) for it in items)
-        self.own_total = tr(f"Together {total}× · {eur(value)}")
+        self.own_total = tr(f"Together {total}× · {eur(value, bool(value) and currency.estimated(self.row['sid']))}")
 
     def set_add_cond(self, c):
         """Condition of the cards you add – stays set (like the edition)."""
@@ -2572,21 +2652,24 @@ class LibraryCore(QtCore.QObject):
             return
         if self.mode == "mine" and self.source is not None:
             n = sum(r["count"] for r in rows)
-            value = sum(r.get("value", (r["price"] or 0) * r["count"]) for r in rows)
-            self.status.setText(tr(f"<b>{n}</b> cards shown · value <b>{eur(value)}</b>") if eur(value)
-                                else tr(f"<b>{n}</b> cards shown"))   # Orbit's Core: no value
+            value, est, day = rows_sum(rows)
+            self.status.setText(tr(f"<b>{n}</b> cards shown · value <b>{approx_link(value, est, day)}</b>")
+                                if eur(value) else tr(f"<b>{n}</b> cards shown"))   # Orbit's Core: no value
             return
         if self.mode == "mine":
             s = self.ctrl.collection.summary()
             n = sum(r["count"] for r in rows)
-            value = sum(r.get("value", (r["price"] or 0) * r["count"]) for r in rows)
+            value, est, day = rows_sum(rows)
             langs = " · ".join(f"{lang_short(k)} {v}" for k, v in sorted(s["langs"].items(), key=lambda t: -t[1]))
             from cards import valuehist
-            total = eur(s["value"])
+            total = eur(s["value"], s.get("value_est"))
             if total:
-                txt = tr(f"<b>{n}</b> cards shown · value <b>{eur(value)}</b>")
+                txt = tr(f"<b>{n}</b> cards shown · value <b>{approx_link(value, est, day)}</b>")
                 if valuehist.available() and s["cards"]:   # click the value: the history expands at the bottom
-                    total = f"<a href='value'>{total}</a>"
+                    tip = f"|approx:{s.get('value_day') or ''}" if s.get("value_est") else ""   # hover: the „≈" text
+                    total = f"<a href='value{tip}'>{total}</a>"
+                elif s.get("value_est"):
+                    total = approx_link(s["value"], True, s.get("value_day"))
                 txt += tr(f"  —  whole collection: {s['cards']} cards ({s['unique']} different) · ") + total
             else:   # Orbit's Core: counts only – the PriceVeil's short line stands next to the status
                 txt = tr(f"<b>{n}</b> cards shown") + tr(f"  —  whole collection: {s['cards']} cards ({s['unique']} different)")

@@ -635,6 +635,13 @@ class ScanBackend(LiveView):
         """The scan tile: the preview of a card of its list stands right beside it."""
         self.ctrl.overlay.list_tile = QtCore.QRectF(x, y, w, h) if w > 0 and h > 0 else None
 
+    @QtCore.Slot(float, float, float, float)
+    def setMessageBox(self, x, y, w, h):
+        """The free gap between the tiles (page = view coordinates): the camera message ("No camera found …") is
+        wrapped inside it instead of running into a tile. w = 0: none – the old column in the middle."""
+        self.view.msg_box = QtCore.QRectF(x, y, w, h) if w > 0 and h > 0 else None
+        self._dirty = True
+
     @QtCore.Slot(float, float)
     def setFreeBand(self, top, bottom):
         """The free strip between the status tile and the dock: that preview stays inside it (name and price too)."""

@@ -169,7 +169,9 @@ def main(MainWindow):   # the window class from app.py – not importable here (
             log.error("First-run setup: Qt Quick does not start")
             sys.exit(1)
         if not dlg.accepted:
-            sys.exit(0)
+            sys.exit(0)   # installer.json stays: closed without finishing, the next first start still takes it
+        if datahome.installer_ours():
+            datahome.drop_installer()   # setup 0.9.9: taken (or not usable) – gone either way
         home = dlg.result_home
         datahome.set_home(home)
         games_on = dlg.result_games or ["mtg"]
@@ -184,6 +186,8 @@ def main(MainWindow):   # the window class from app.py – not importable here (
         # restart once: all paths depend on the data folder, language and game are only settled now
         setupui.relaunch()
         sys.exit(0)
+    if datahome.installer_ours():   # an existing user: an installer.json is never read, only removed (lead 13.11.)
+        datahome.drop_installer()
     setup_logging()
     if os.environ.get("QT_QUICK_BACKEND") == "software":
         log.info("UI renders in software (no graphics driver found, or set that way)")

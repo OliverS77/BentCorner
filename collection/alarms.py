@@ -24,11 +24,34 @@ from cards import currency
 from system.i18n import tr
 
 
-def eur(v):
+def eur(v, est=False):
+    """est: the euros are converted from dollars – „≈" in front (legal 14.11.2026; also where the dollars stand next
+    to it – lead 14.11.). A limit the user typed is euros: never „≈"."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
         return ""
-    return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".") if v is not None else "–"
+    if v is None:
+        return "–"
+    return ("≈ " if est else "") + f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _usd(v):
+    return f"{v:,.2f} $".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def price_est(a, sid, v=None):
+    """Is an alert's current price (v, of the printing sid) converted from dollars? TCGplayer: always; Cardmarket:
+    when that printing's euros are converted; both sources: unless the real Cardmarket price is the one that counts."""
+    o = opts_of(a)
+    if o["src"] == "tcg":
+        return True
+    if not sid or currency.estimated(sid):
+        return bool(sid)
+    if o["src"] == "cm" or v is None:
+        return False
+    row = carddb.cards_by_ids({sid}).get(sid) if carddb.exists() else None
+    cm = _value(row, None, dict(o, src="cm", basis="day")) if row else None
+    return cm is None or abs(cm - v) > 0.005
 
 
 def key_of(a):
@@ -116,7 +139,42 @@ def cheapest(names):
     return out
 
 
+def cheapest_ids(names):
+    """{name: id of the print whose price cheapest() took} – for the „≈" of a list value (legal 14.11.2026). SQLite
+    gives the other columns of the row that holds the MIN."""
+    out = {}
+    if not names or not carddb.exists():
+        return out
+    with carddb.connection() as con:
+        names = list(names)
+        for i in range(0, len(names), 300):
+            part = names[i:i + 300]
+            q = ",".join("?" * len(part))
+            for r in con.execute(f"SELECT name, MIN(eur), id FROM cards WHERE name IN ({q}) AND eur IS NOT NULL "
+                                 f"GROUP BY name", part):
+                out[r[0]] = r[2]
+            rest = [n for n in part if n not in out]
+            if rest:
+                q = ",".join("?" * len(rest))
+                for r in con.execute(f"SELECT name, MIN(eur_foil), id FROM cards WHERE name IN ({q}) "
+                                     f"AND eur_foil IS NOT NULL GROUP BY name", rest):
+                    out[r[0]] = r[2]
+    return out
+
+
 SOURCES = (("cm", "Cardmarket"), ("tcg", "TCGplayer"), ("both", "beide"))
+
+
+def cm_name(est=False):
+    """Name of the euro source: "Cardmarket" – or "Price in €" for a converted value (legal 14.11.2026) and in a game
+    without any Cardmarket value (Yu-Gi-Oh!, legal 16.11.2026)."""
+    import games
+    return tr("Price in €") if est or not games.current().cardmarket_prices else "Cardmarket"
+
+
+def sources():
+    """SOURCES with the open game's name of the euro source."""
+    return tuple((k, cm_name() if k == "cm" else t) for k, t in SOURCES)
 BASES = (("day", "Tagespreis"), ("avg7", "Ø 7 Tage"), ("avg30", "Ø 30 Tage"))
 FINISHES = (("any", "normal, sonst Foil"), ("n", "nur normal"), ("f", "nur Foil"))
 _LAYOUTS = "layout NOT IN ('art_series', 'token', 'double_faced_token', 'emblem')"
@@ -133,7 +191,7 @@ def opts_of(a):
 def opts_text(o):
     """"Cardmarket · Ø 7 days" – empty for the defaults."""
     parts = ([] if o["src"] == "cm" else ["Cardmarket + TCGplayer"] if o["src"] == "both"
-             else [dict(SOURCES)[o["src"]]])
+             else [dict(sources())[o["src"]]])
     if o["basis"] != "day":
         parts.append(tr(dict(BASES)[o["basis"]]))
     if o["finish"] == "f":
@@ -214,9 +272,11 @@ def price_facts(sid):
     def usd(v):
         if v is None:
             return "–"
-        return f"{eur(currency.from_usd(v))}  ({eur(v)[:-2]} $)"
-    out.append({"label": "Cardmarket", "value": eur(r.get("eur")), "sub": tr("Trend · normal")})
-    out.append({"label": "Cardmarket", "value": eur(r.get("eur_foil")), "sub": tr("Trend · foil")})
+        return f"{eur(currency.from_usd(v), True)}  ({_usd(v)})"
+    est = currency.estimated(sid)   # this printing's „Cardmarket" euros converted from dollars (legal 14.11.)
+    cm = cm_name(est)   # a converted value is no Cardmarket price (legal 14.11.)
+    out.append({"label": cm, "value": eur(r.get("eur"), est), "sub": tr("Trend · normal")})
+    out.append({"label": cm, "value": eur(r.get("eur_foil"), est), "sub": tr("Trend · foil")})
     out.append({"label": "TCGplayer", "value": usd(r.get("usd")), "sub": tr("Market · normal")})
     out.append({"label": "TCGplayer", "value": usd(r.get("usd_foil")), "sub": tr("Market · foil")})
     from cards import pricehist
@@ -227,11 +287,12 @@ def price_facts(sid):
         if not pts:
             continue
         conv = (lambda v: currency.from_usd(v)) if key[0] == "t" else (lambda v: v)
+        ce = key[0] == "t"   # TCGplayer history in euros: converted
         last7, last30 = pts[-7:], pts[-30:]
         out.append({"label": shop, "sub": tr(f"{fin} · Ø 7 / Ø 30 days"),
-                    "value": f"{eur(conv(sum(last7) / len(last7)))} / {eur(conv(sum(last30) / len(last30)))}"})
+                    "value": f"{eur(conv(sum(last7) / len(last7)), ce)} / {eur(conv(sum(last30) / len(last30)), ce)}"})
         out.append({"label": shop, "sub": tr(f"{fin} · low / high 30 days"),
-                    "value": f"{eur(conv(min(last30)))} / {eur(conv(max(last30)))}"})
+                    "value": f"{eur(conv(min(last30)), ce)} / {eur(conv(max(last30)), ce)}"})
     return out
 
 
@@ -249,10 +310,12 @@ def price_table(sid, days=30, rows=("now", "avg", "range"), fins=("n", "f"), set
     fin_label = {"n": tr("normal"), "f": tr("Foil")}
     days = max(1, int(days))
 
+    est = currency.estimated(sid)   # „≈" (legal 14.11.2026): converted euros
+
     def money(v, usd):
         if v is None:
             return "–"
-        return f"{eur(currency.from_usd(v))}  ({eur(v)[:-2]} $)" if usd else eur(v)
+        return f"{eur(currency.from_usd(v), True)}  ({_usd(v)})" if usd else eur(v, est)
     cols = []
     for shop, title, now_title, usd, now_keys in (("c", "Cardmarket", tr("Trend"), False, {"n": "eur", "f": "eur_foil"}),
                                                   ("t", "TCGplayer", tr("Market"), True, {"n": "usd", "f": "usd_foil"})):
@@ -272,8 +335,8 @@ def price_table(sid, days=30, rows=("now", "avg", "range"), fins=("n", "f"), set
                 if not pts:
                     rr.append({"label": fin_label[f], "value": "–"})
                     continue
-                a7 = eur(conv(sum(pts[-7:]) / len(pts[-7:])))
-                an = eur(conv(sum(pts[-days:]) / len(pts[-days:])))
+                a7 = eur(conv(sum(pts[-7:]) / len(pts[-7:])), usd)
+                an = eur(conv(sum(pts[-days:]) / len(pts[-days:])), usd)
                 rr.append({"label": fin_label[f], "value": a7 if days == 7 else f"{a7} / {an}"})
             groups.append({"title": title_avg, "rows": rr})
         if "range" in rows:
@@ -283,8 +346,12 @@ def price_table(sid, days=30, rows=("now", "avg", "range"), fins=("n", "f"), set
                     continue
                 pts = hist[f][-days:]
                 rr.append({"label": fin_label[f],
-                           "value": f"{eur(conv(min(pts)))} / {eur(conv(max(pts)))}" if pts else "–"})
+                           "value": f"{eur(conv(min(pts)), usd)} / {eur(conv(max(pts)), usd)}" if pts else "–"})
             groups.append({"title": tr(f"Low / high {days} days"), "rows": rr})
+        if shop == "c" and est:   # converted euros: not „Cardmarket" (legal 14.11.2026)
+            title = tr("Price in €") + " " + tr("(converted from TCGplayer)")
+        elif shop == "c":
+            title = cm_name(False)
         cols.append({"key": "cardmarket" if shop == "c" else "tcgplayer", "title": title,
                      "url": links.get("cardmarket" if shop == "c" else "tcgplayer", ""), "groups": groups})
     return {"cols": cols}
@@ -374,8 +441,9 @@ def check_lists(settings, coll):
             high = a.get("rise") is not None and b > 0 and p >= b * (1 + a["rise"] / 100)
             if (low or high) and not hit.get(k):
                 pct = (p / b - 1) * 100
+                pe = opts_of(a)["src"] != "cm" or currency.estimated(cheapest_ids({k}).get(k))   # „≈" (legal 14.11.)
                 out.append((tr(f"Price alert – {tr(name)}"),
-                            tr(f"{k} now costs {eur(p)} ({pct:+.0f} % since {eur(b)}).")))
+                            tr(f"{k} now costs {eur(p, pe)} ({pct:+.0f} % since {eur(b, pe)}).")))
             hit[k] = low or high
     settings["list_alarms"] = lst
     return out
@@ -396,10 +464,12 @@ def check(settings, coll=None):
         high = a.get("above") is not None and p >= a["above"]
         if (low or high) and not a.get("hit"):
             label = f"{a['name']}" + (f" ({a['set']})" if a.get("set") else "")
+            # „≈" on the price – the limit is the user's own euros
+            pe = price_est(a, opts_of(a)["psid"] or a.get("sid") or cheapest_ids({a["name"]}).get(a["name"]), p)
             if low:
-                text = tr(f"{label} now costs {eur(p)} – below your limit of {eur(a['below'])}.")
+                text = tr(f"{label} now costs {eur(p, pe)} – below your limit of {eur(a['below'])}.")
             else:
-                text = tr(f"{label} now costs {eur(p)} – above your limit of {eur(a['above'])}.")
+                text = tr(f"{label} now costs {eur(p, pe)} – above your limit of {eur(a['above'])}.")
             out.append((tr("Price alert") if a["kind"] == "wish" else tr("Price alert – trade card"), text))
         a["hit"] = low or high
     settings["price_alarms"] = every
@@ -429,7 +499,7 @@ def form(settings, key, over=None):
     trade card: more expensive); plus what is watched and which price counts. over: changes in the open editor
     (src, basis, finish, psid) – not saved yet."""
     over = {k: v for k, v in (over or {}).items() if v is not None}
-    seg = {"sources": [{"key": k, "text": tr(t)} for k, t in SOURCES],
+    seg = {"sources": [{"key": k, "text": tr(t)} for k, t in sources()],
            "bases": [{"key": k, "text": tr(t)} for k, t in BASES],
            "finishes": [{"key": k, "text": tr(t)} for k, t in FINISHES]}
     if key.startswith("list:"):
@@ -459,7 +529,8 @@ def form(settings, key, over=None):
     base = now or 1.0
     eur_ = {"unit": " €", "step": 0.5, "from": 0.01, "to": 100000, "dec": 2}
     o = dict(o, psid=o["psid"] or "")
-    return dict(seg, **o, key=key, list=False, kind=t["kind"], exists=bool(old), now=eur(now), sid=sid or "",
+    return dict(seg, **o, key=key, list=False, kind=t["kind"], exists=bool(old), now=eur(now, price_est(a, sid, now)),
+                sid=sid or "",
                 mode="print" if o["psid"] and wish else "cheapest", note=tr(NOTE_CARD),
                 a=dict(eur_, label=tr("drops below"), on=old.get("below") is not None or (not old and wish),
                        value=old.get("below") or round(base * 0.8, 2)),

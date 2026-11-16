@@ -77,10 +77,28 @@ class SelectBackend(QtCore.QObject):
         if not rows:
             return tr("Click cards to choose them")
         cards = sum(int(r.get("count") or 0) for r in rows) if self.mine() else len(rows)
-        value = sum(float(r.get("price") or 0) * (int(r.get("count") or 0) if self.mine() else 1) for r in rows)
+        value, est, _day = self._value(rows)
         from ui.librarycore import eur
         head = tr("1 card chosen") if cards == 1 else tr(f"{cards} cards chosen")
-        return head + " · " + tr("value") + " " + eur(value)
+        return head + " · " + tr("value") + " " + eur(value, est)
+
+    def _value(self, rows):
+        """(value, converted?, newest rate day) of the chosen cards – „≈" with one converted price (legal 14.11.)."""
+        from cards import currency
+        mine = self.mine()
+        return currency.approx_sum((float(r.get("price") or 0) * (int(r.get("count") or 0) if mine else 1), r.get("sid"))
+                                   for r in rows)
+
+    @QtCore.Property(str, notify=changed)
+    def infoTip(self):
+        """The legal text on the „≈" of the chosen value – "" without a converted price."""
+        rows = self.chosen()
+        if not rows:
+            return ""
+        from cards import currency
+        from ui.librarycore import eur
+        value, est, day = self._value(rows)
+        return currency.approx_tip(day) if est and eur(value) else ""
 
     @QtCore.Property(bool, notify=changed)
     def accent(self):

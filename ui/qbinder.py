@@ -284,12 +284,22 @@ class BinderBackend(QtCore.QObject):
         for sid, r in rows.items():
             prices[sid] = r.get("eur") if r.get("eur") is not None else r.get("eur_foil")
         total, have_v = binders.value(self.b, owned, prices)
+        # „≈" (legal 14.11.2026): a value with at least one price converted from dollars
+        from cards import currency
+        est_all = est_have = False
+        days = []
+        for s in self.b.get("slots") or []:
+            if s and prices.get(s.get("sid")) and currency.estimated(s.get("sid")):
+                est_all = True
+                est_have = est_have or bool(owned.get(binders.key(s)))
+                days.append(currency.rate_day_of(s.get("sid")) or "")
         pages = max(binders.pages(self.b), self.spread * 2 + 2)
         a = self.spread * 2 + 1
         return {"page": tr(f"Page {a}–{a + 1} of {pages}"), "cards": tr(f"{n} cards"),
                 "have": tr(f"{have} owned") + (" · ✓ " + tr("complete") if n and have == n else ""),
                 "missing": tr(f"{n - have} missing") if n - have else "",
-                "value": _eur(total), "haveValue": _eur(have_v)}
+                "value": _eur(total, est_all), "haveValue": _eur(have_v, est_have),
+                "valueTip": currency.approx_tip(max(days) or None) if est_all and _eur(total) else ""}
 
     @QtCore.Property(float, notify=changed)
     def split(self):
@@ -666,8 +676,10 @@ def rename_in(game, bid, name):
     f.write_text(json.dumps(data, ensure_ascii=False, indent=1), "utf-8")
 
 
-def _eur(v):
+def _eur(v, est=False):
+    """A binder's value in the display currency (lead 14.11.: no fixed "€" any more) – "" in Orbit's Core."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: a binder shows no value
         return ""
-    return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    from cards import currency
+    return currency.fmt(v, est)

@@ -68,6 +68,7 @@ from system.i18n import set_language, tr
 from collection import sessions
 from scanner.common import BASE, DATA, lang_img
 from scanner.core import INFO_DEFAULTS, Matcher, Session, pack_total, price_of, has_packs, kind_of
+from scanner.core import entries_est, entry_est, session_est   # „≈" on converted prices (legal 14.11.2026)
 
 from scanner.scan_ctl import ScanControl   # APP-SPLIT D: MainWindow mixin
 
@@ -149,8 +150,9 @@ LEGAL_TEXT = [
                 "href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, hosted on our server as "
                 "YGOPRODeck requires{lorcana_images}{more_images}."
                 "<br><b>Prices:</b> Cardmarket and TCGplayer (see "
-                "Prices) · price history for Magic: <a href='https://mtgjson.com'>MTGJSON</a> · exchange rates: "
-                "European Central Bank via Frankfurter.<br><b>Symbols:</b> mana symbols are redrawn by Bent°Corner "
+                "Prices) · price history for Magic: <a href='https://mtgjson.com'>MTGJSON</a>."
+                "<br><b>Exchange rates:</b> European Central Bank (reference rates, via Frankfurter)"
+                "<br><b>Symbols:</b> mana symbols are redrawn by Bent°Corner "
                 "(they remain property of Wizards of the Coast); the game icons are our own pixel art – no publisher "
                 "logos, no set symbols.<br><b>SCAN°:</b> the fingerprint indexes in the data packs are computed "
                 "by Bent°Corner from the card images and contain no images."),
@@ -180,8 +182,8 @@ LEGAL_TEXT = [
                   "href='https://creativecommons.org/licenses/by-sa/4.0/'>CC BY-SA 4.0</a>) – as a separate file in "
                   "the data pack (ygo-locale.sqlite, filtered and converted by Bent°Corner, CC BY-SA 4.0 as well), "
                   "shown with the image of the English print; prices "
-                  "from our price server (Cardmarket via YGOPRODeck, TCGplayer via <a "
-                  "href='https://tcgcsv.com'>TCGCSV</a>) – thank you! Yu-Gi-Oh! is a trademark of Konami Digital "
+                  "from our price server (TCGplayer via <a href='https://tcgcsv.com'>TCGCSV</a>, euros converted at the "
+                  "ECB rate) – thank you! Yu-Gi-Oh! is a trademark of Konami Digital "
                   "Entertainment; card texts and images © 4K Media Inc. / Konami. Bent°Corner is not affiliated "
                   "with Konami or 4K Media."),
     ("Weitere Quellen", "Kombos: <a href='https://commanderspellbook.com'>Commander Spellbook</a> · Turnierdaten: "
@@ -189,7 +191,8 @@ LEGAL_TEXT = [
                         "<a href='https://edhrec.com'>EDHREC</a> · Preisverlauf: <a href='https://mtgjson.com'>MTGJSON</a> "
                         "(MIT-Lizenz, © 2018–heute Zach Halpern) · Wechselkurse: "
                         "<a href='https://frankfurter.dev'>Frankfurter</a> (EZB). Alle Angaben ohne Gewähr; Bent°Corner ist mit diesen "
-                        "Seiten nicht verbunden."),
+                        "Seiten nicht verbunden. EDHTop16-Daten werden ohne Unterstützung oder Billigung durch EDHTop16 "
+                        "verwendet."),
     ("Schätzungen", "Bracket, Kartenfunktionen (Ramp, Removal …), erkannte Karten beim Scannen und ähnliche Auswertungen "
                     "sind automatische Schätzungen und können falsch sein."),
     ("Datenschutz", "<b>The camera image never leaves your computer when you scan</b> – SCAN° (our smart card search) "
@@ -199,10 +202,13 @@ LEGAL_TEXT = [
                     "you want them to: uploads from the Scan Studio and the scan data you send yourself.<br><br>"
                     "At start, Bent°Corner reads which processor, how much memory and which graphics card are "
                     "installed – only to set up SCAN° and animations. This stays on your computer. Online "
-                    "lookups (Scryfall, Commander Spellbook …) contain only the cards or decks you look up – "
-                    "no personal data. Our own server: the app checks for updates every 6 hours (version file only); "
-                    "images of {mirror_games} come through our image mirror (only if it can't "
-                    "deliver an image does the app ask the source directly), Yu-Gi-Oh! data, images and prices from our "
+                    "lookups (Scryfall …) contain only the cards you look up – no identifier. Commander Spellbook and "
+                    "EDHTop16 only from Near Orbit on and with their switch on: to Spellbook the card list of the "
+                    "Commander deck you open or edit (or the link you load), to EDHTop16 only the commander's name. "
+                    "Our own server: the app checks for updates every 6 hours (version file only); "
+                    "images of {mirror_games} come through our image mirror (only if it can't deliver an image "
+                    "because of a fault does the app ask the source directly – not for a game or images we have "
+                    "switched off), Yu-Gi-Oh! data, images and prices from our "
                     "server. Prices and exchange rates only from Near Orbit on (Bent°Corner Orbit, Settings → Friends & "
                     "privacy). Only in Full Orbit, which you turn on yourself: the exchange with friends (end-to-end "
                     "encrypted), anonymous usage numbers if you also turn them on there (once a week, without any ID), and "
@@ -326,10 +332,10 @@ from ui.scanview import ScanView  # noqa: E402
 # (review .93, Oliver) – the width counts only the longer line
 NAV_ITEMS = (("stats", "Statistik"), ("sessions", "Logs\nStats"), ("scan", "Scannen"),
              ("library", "Bibliothek"), ("decks", "Decks"), ("testing", "Spielen"), ("import", "Import\nExport"),
-             ("trade", "Orbit"), ("settings", "Einstellungen"), ("profile", "Profil"))
+             ("trade", "Lists\nOrbit"), ("settings", "Einstellungen"), ("profile", "Profil"))   # Oliver 14.11.: "Listen | Orbit"
 # Start page at program start (Settings → General → Program window)
 START_PAGES = {"library": "Bibliothek", "scan": "Scannen", "sessions": "Logs & stats", "decks": "Decks",
-               "trade": "Orbit", "import": "Import/Export", "stats": "Statistik"}
+               "trade": "Lists & Orbit", "import": "Import/Export", "stats": "Statistik"}
 # Page transition (appearance; Qt Quick plays it)
 PAGE_ANIMS = [("flip", "Blättern – die neue Seite kommt von hinten (zurück: legt sich von vorn darüber)"),
               ("slide", "Rutschen – wie Wischen in der Fotos-App: Seite gleitet seitlich raus, die neue rein")]
@@ -429,6 +435,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         perf.set_level(self.settings["perf_level"])
         currency.set_current(self.settings["currency"])
         orbit.bind(self.settings)   # Core shows no card prices (orbit.prices_shown)
+        from games import offswitch
+        offswitch.startup()   # switched-off games/images: blocks + image cache locked before any image is shown
         QtCore.QTimer.singleShot(4000, carddb.prewarm_printed)  # names in other languages for the search (background)
         self.camera = Camera()
         self.camera.phone_starter = self.phone_start   # phone as camera: server only when needed
@@ -993,15 +1001,21 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
                 self.enqueue("update", s["code"])
 
     @staticmethod
-    def apply_prices(prices):
-        """Write today's prices into the card database and set files (background thread). -> number of set cards."""
+    def apply_prices(prices, history=False):
+        """Write today's prices into the card database and set files (background thread). -> number of set cards.
+        Magic (the only game on this path): from MTGJSON only TCGplayer ($); the euros are Scryfall's (Oliver/legal
+        16.11.2026), a print without any becomes TCGplayer converted (≈) – games/mtg.scryfall_euros."""
         if carddb.exists() and prices:
+            from games import mtg
             with carddb.connection() as con:
                 con.executemany(
-                    "UPDATE cards SET eur = COALESCE(?, eur), eur_foil = COALESCE(?, eur_foil), "
-                    "usd = COALESCE(?, usd), usd_foil = COALESCE(?, usd_foil) WHERE id = ?",
-                    [(p.get("eur"), p.get("eur_foil"), p.get("usd"), p.get("usd_foil"), sid) for sid, p in prices.items()])
+                    "UPDATE cards SET usd = COALESCE(?, usd), usd_foil = COALESCE(?, usd_foil) WHERE id = ?",
+                    [(p.get("usd"), p.get("usd_foil"), sid) for sid, p in prices.items()])
                 con.commit()
+                euros = mtg.scryfall_euros(con, history)
+            # the set files get the same euros as the database (a print it doesn't know: its set file keeps its own)
+            prices = {sid: (dict(p, eur=euros[sid][0], eur_foil=euros[sid][1]) if sid in euros else
+                            {k: v for k, v in p.items() if k not in ("eur", "eur_foil")}) for sid, p in prices.items()}
         n = 0
         for st in library.installed_sets():
             meta = library._meta(st["code"])
@@ -1094,7 +1108,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         for title, text in hits[:5]:
             self.tray.notify(title, text)
         if len(hits) > 5:
-            self.tray.notify(tr("Price alert"), tr(f"… and {len(hits) - 5} more – Orbit → Wishlist."))
+            self.tray.notify(tr("Price alert"), tr(f"… and {len(hits) - 5} more – Lists & Orbit → Wishlist."))
 
     def alarms_at_start(self):
         """At start: check alerts (report newly triggered ones) and say once how many are currently triggered –
@@ -1107,8 +1121,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         except Exception:  # noqa: BLE001
             return
         if n:
-            self.stream_toast(tr("1 price alert triggered – Orbit → Price alerts") if n == 1 else
-                              tr(f"{n} price alerts triggered – Orbit → Price alerts"))
+            self.stream_toast(tr("1 price alert triggered – Lists & Orbit → Price alerts") if n == 1 else
+                              tr(f"{n} price alerts triggered – Lists & Orbit → Price alerts"))
             self.stream.set_badge("trade", True)
 
     def show_import(self, key="deck", back=True, **ctx):
@@ -1920,7 +1934,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             return
         started = time.strftime("%d.%m.%Y %H:%M", time.localtime(self.session.started))
         answer = qdialogs.ask(tr("Last log"),
-                              tr(f"The log from {started} is still open ({st['packs']} packs, {eur(st['total'])})."),
+                              tr(f"The log from {started} is still open ({st['packs']} packs, {eur(st['total'], st.get('est'))})."),
                               [("new", tr("Start new log"), ""), ("cont", tr("Continue"), "active")])
         if answer != "cont":
             self.new_session(ask=False)
@@ -2259,7 +2273,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             if kind_of(info) == "cards":   # scanning cards: no packs (and no pack types)
                 types = tr("Scan cards")
             tags = ", ".join(info.get("tags") or []) or "–"
-            vals = (date, title, types, tags, str(st["packs"]) if has_packs(info) else "–", str(st["cards"]), eur(st["total"]),
+            vals = (date, title, types, tags, str(st["packs"]) if has_packs(info) else "–", str(st["cards"]), eur(st["total"], session_est(s)[0]),
                     money(st["paid"]) if st.get("paid") else "–", profit)
             cells = [{"text": x, "color": "", "tip": ""} for x in vals]
             cells[2]["tip"], cells[3]["tip"] = types, tags
@@ -2302,7 +2316,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         st = s["stats"]
         n = int(st.get("cards") or 0)
         vals = (date, self._manual_title(s), tr("By hand"), "–", "–", (f"+{n}" if n > 0 else f"−{-n}" if n < 0 else "0"),
-                signed(st["total"], ""), "–", "–")
+                signed(st["total"], "", est=session_est(s)[0]), "–", "–")
         cells = [{"text": x, "color": "", "tip": ""} for x in vals]
         cells[2]["tip"] = tr("Changes by hand outside the scanner – each line can be undone on its own")
         return {"sid": s["id"], "cells": cells, "imp": False, "singles": False, "kind": "manual"}
@@ -2319,7 +2333,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             f"<span style='color:#eef1ff; font-size:14px; font-weight:700'>{self._manual_title(d)}</span>"
             f"&nbsp;&nbsp;<span style='color:#6c7390'>{first} – {last}</span>",
             tr(f"{plus} added · {minus} taken out by hand – already in your collection"),
-            tr(f"Value <b style='color:#f2f2f2'>{eur(st['total'])}</b>"),
+            tr(f"Value <b style='color:#f2f2f2'>{eur(st['total'], session_est(d)[0])}</b>"),
         ])
         cards = []
         for ci, e in enumerate(lines):
@@ -2328,11 +2342,12 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             cards.append({"ci": ci, "name": f"{sign}  " + shown_name(e, self.settings) +
                           (f"  · {tr(finish_label(e))}" if finish_label(e) else ""),
                           "set": f"{e.get('set', '')} #{e.get('number', '')}",
-                          "price": tr("–") if e.get("price") is None else eur(e["price"]),
+                          "price": tr("–") if e.get("price") is None else eur(e["price"], entry_est(e)),
                           "note": edit_note(e.get("edit")) or e.get("why") or "",
                           "fin": finish_short(e), "entry": e, "manual": True, "added": e.get("added")})
         self.sess_packs.append({"pi": 0, "name": tr("1 change") if len(lines) == 1 else tr(f"{len(lines)} changes"), "type": "", "typeKey": "",
-                                "typeColor": "", "price": eur(st["total"]), "cards": cards, "plain": True, "manual": True})
+                                "typeColor": "", "price": eur(st["total"], session_est(d)[0]), "cards": cards, "plain": True,
+                                "manual": True})
         self.sess_changed.emit()
 
     def sess_manual_undo(self, ci):
@@ -2406,7 +2421,8 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         if info.get("tags"):
             lines.append(tr("Tags: ") + " ".join(f"<span style='background:#4a3a1f; color:#ffe9c2'>&nbsp;{t}&nbsp;</span>"
                                                   for t in info["tags"]))
-        value = tr(f"Value <b style='color:#f2f2f2'>{eur(st['total'])}</b>")   # greyscale, no accent
+        d_est, d_day = session_est(d)   # „≈" + the legal text once under the summary (legal 14.11.2026)
+        value = tr(f"Value <b style='color:#f2f2f2'>{eur(st['total'], d_est)}</b>")   # greyscale, no accent
         if st.get("paid"):
             pr = st["profit"]
             value += tr(f" · spent {money(st['paid'])} · balance ") + \
@@ -2417,9 +2433,12 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         lines.append((tr(f"{st['packs']} packs · {st['cards']} cards") if has_packs(info) else tr(f"{st['cards']} cards")) +
                      f" · {top} {counts['mythic']} · {second} {counts['rare']} · {foil} {counts['foil']}")
         if st["biggest_hit"]:
-            lines.append(tr(f"Biggest hit: <b>{st['biggest_hit']['name']}</b> {eur(st['biggest_hit']['price'])}"))
+            lines.append(tr(f"Biggest hit: <b>{st['biggest_hit']['name']}</b> "
+                            f"{eur(st['biggest_hit']['price'], entry_est(st['biggest_hit']))}"))
         if info.get("notes"):
             lines.append(f"<span style='color:#8a91a8'>{info['notes']}</span>")
+        if d_est and eur(st["total"]):   # the price legend's „≈", once (legal 14.11.2026)
+            lines.append(f"<span style='color:#5c6380'>≈ = {currency.approx_tip(d_day)}</span>")
         self.sess_summary = "<br>".join(lines)
         for pi, pack in enumerate(d["packs"]):
             if not pack["cards"] and pi != len(d["packs"]) - 1:
@@ -2429,17 +2448,18 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             if self.settings.get("printed_names", True):   # the names in card language: one database read for all
                 carddb.printed_names_for([(e.get("set") or "", e.get("number") or "", e.get("lang") or "en") for e in pack["cards"]])
             cards = [{"ci": ci, "name": shown_name(e, self.settings) + (f"  · {tr(finish_label(e))}" if finish_label(e) else ""),
-                      "set": f"{e['set']} #{e['number']}", "price": tr("–") if e["price"] is None else eur(e["price"]),
+                      "set": f"{e['set']} #{e['number']}", "price": tr("–") if e["price"] is None else eur(e["price"], entry_est(e)),
                       "fin": finish_short(e), "note": edit_note(e.get("edits")), "entry": e}
                      for ci, e in enumerate(pack["cards"])]
             if not has_packs(info) and kind_of(info) != "singles":
                 self.sess_packs.append({"pi": pi, "name": tr(f"{len(pack['cards'])} cards"), "type": "", "typeKey": key,
-                                        "typeColor": "", "price": eur(pack_total(pack)), "cards": cards, "plain": True})
+                                        "typeColor": "", "price": eur(pack_total(pack), entries_est(pack["cards"])[0]),
+                                        "cards": cards, "plain": True})
                 continue
             self.sess_packs.append({"pi": pi, "name": tr(f"Pack {pi + 1} · {opened} · {len(pack['cards'])} cards"),
                                     "type": tr(packtypes.name(self.settings, key)), "typeKey": key,
                                     "typeColor": "#e2e2e2" if packtypes.counts(self.settings, key) else "#8e8e8e",   # counts: bright, not: quiet
-                                    "price": eur(pack_total(pack)), "cards": cards})
+                                    "price": eur(pack_total(pack), entries_est(pack["cards"])[0]), "cards": cards})
         self.sess_changed.emit()
 
     def tree_target(self, need_card=True):
@@ -2712,9 +2732,16 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
         sessions.delete(sid)
 
     def logs_purge(self):
-        """Hidden longer than 60 days: for good, oldest first."""
+        """Hidden longer than 60 days: for good, oldest first. Also the price history's one-time backups after
+        60 days (pricehist.drop_old_backups – the open game's folder: runs at start and after a game switch)."""
         for d in sessions.due_for_good():
             self.log_for_good(d["id"])
+        try:
+            gone = pricehist.drop_old_backups()
+            if gone:
+                log.info("Price history backups older than 60 days removed: %s", ", ".join(gone))
+        except Exception:  # noqa: BLE001 – housekeeping never stops the start
+            log.exception("Removing old price history backups")
 
     # --- Collection ---
     def currency_changed(self):
@@ -2740,7 +2767,7 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
             self.coll_info.setText(tr("<b>Collection</b>: still empty."))
             return
         langs = " · ".join(f"{lang_short(k)} {v}" for k, v in sorted(s["langs"].items(), key=lambda t: -t[1]))
-        self.coll_info.setText(tr(f"<b>Collection</b>: {s['cards']} cards ({s['unique']} different) · value <b>{currency.fmt(s['value'])}</b>") + f"<br>{langs}")
+        self.coll_info.setText(tr(f"<b>Collection</b>: {s['cards']} cards ({s['unique']} different) · value <b>{currency.fmt(s['value'], s.get('value_est'))}</b>") + f"<br>{langs}")
 
     def open_library(self):
         self.stream.show_page("library")
@@ -3131,16 +3158,16 @@ class MainWindow(ScanControl, JobQueue, UpkeepControl, RelayControl, SyncControl
     def refresh_table(self):
         s = self.snap
         self.pack_rows = [(shown_name(c, self.settings), tr(finish_label(c)),
-                           tr("–") if c["price"] is None else eur(c["price"])) for c in s["pack"]]
+                           tr("–") if c["price"] is None else eur(c["price"], entry_est(c))) for c in s["pack"]]
         if self.pack_sel is not None and self.pack_sel >= len(s["pack"]):
             self.pack_sel = None
         if not s.get("packs_shown", True):   # scanning cards: no packs, one list
-            self.totals.setText(tr(f"{len(s['pack'])} cards · {eur(s['pack_total'])}"))
+            self.totals.setText(tr(f"{len(s['pack'])} cards · {eur(s['pack_total'], entries_est(s['pack'])[0])}"))
             qstate._changed()
             return
-        text = tr(f"Pack {s['pack_number']}: {len(s['pack'])} cards · {eur(s['pack_total'])}")
+        text = tr(f"Pack {s['pack_number']}: {len(s['pack'])} cards · {eur(s['pack_total'], entries_est(s['pack'])[0])}")
         if s["pack_number"] > 1:
-            text += tr(f"   (log {eur(s['session_total'])})")
+            text += tr(f"   (log {eur(s['session_total'], (s.get('stats') or {}).get('est'))})")
         self.totals.setText(text)
         qstate._changed()
 

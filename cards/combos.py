@@ -62,6 +62,13 @@ def _variant(v, deck_names):
             "url": f"https://commanderspellbook.com/combo/{v.get('id')}/"}
 
 
+def _gate():
+    """Orbit's Core or the switch off: nothing goes to Commander Spellbook or EDHTop16 (Oliver/legal 16.11.2026)."""
+    from system import orbit
+    if not orbit.spellbook_ok():
+        raise RuntimeError("Commander Spellbook / EDHTop16 off (Orbit's Core or switch)")
+
+
 def cached_find(commanders, main):
     """Cached result for exactly this list (or the last one for this deck) – without internet."""
     return _load(_cache_path("csb", _deck_key(commanders, main)))
@@ -74,6 +81,7 @@ def _deck_key(commanders, main):
 def find(commanders, main, timeout=25):
     """Combos for a deck: commanders [names], main {name: count}. -> {"included", "almost", "tag", "t"} or
     raises an exception (offline). The result is cached."""
+    _gate()
     body = {"commanders": [{"card": n, "quantity": 1} for n in commanders],
             "main": [{"card": n, "quantity": q} for n, q in main.items()]}
     r = netpolite.post(f"{SPELLBOOK}/find-my-combos", json=body, headers=UA, timeout=timeout)
@@ -103,6 +111,7 @@ def cached_cedh(commanders):
 def cedh(commanders, timeout=20):
     """cEDH tournament data (EDHTop16, last year) for the commander(s) -> {"name", "count", "winRate",
     "conversionRate", "metaShare", "topCuts", "t"} or {"count": 0} (never in tournaments). Cached for 7 days."""
+    _gate()
     key = " / ".join(sorted(commanders))
     path = _cache_path("cedh", key)
     hit = _load(path, CEDH_DAYS * 86400)

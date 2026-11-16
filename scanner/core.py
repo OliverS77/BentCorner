@@ -186,6 +186,29 @@ def pack_total(pack):
     return round(sum((e["price"] or 0) * _n(e) for e in pack["cards"]), 2)
 
 
+def entry_est(e):
+    """Is a log line's price converted from dollars? (its print, asked now – legal 14.11.2026: „≈")"""
+    if not e or e.get("price") is None:
+        return False
+    from cards import currency
+    from collection.collection import scryfall_id
+    return currency.estimated(scryfall_id(str(e.get("id") or "")))
+
+
+def session_est(s):
+    """(converted?, newest rate day) of a whole log – asked from its lines now (stored stats of an older log don't
+    know „est")."""
+    return entries_est([c for p in (s or {}).get("packs") or [] for c in p.get("cards") or []])
+
+
+def entries_est(entries):
+    """(converted?, newest rate day) of log lines – a sum with one converted price gets „≈"."""
+    from cards import currency
+    from collection.collection import scryfall_id
+    days = [currency.rate_day_of(scryfall_id(str(e.get("id") or ""))) or "" for e in entries if entry_est(e)]
+    return bool(days), (max(days) or None) if days else None
+
+
 def session_stats(packs, info):
     """Key figures of a session (also for saved sessions in the statistics)."""
     # scanning cards, singles (trade, purchase): one list – no packs, no average per pack, no best pack
@@ -197,7 +220,9 @@ def session_stats(packs, info):
     priced = [e for e in gained if e["price"] is not None]
     best_i = max(range(len(packs)), key=lambda i: totals[i]) if opened else None
     paid = float(info.get("paid") or 0)
+    est, est_day = entries_est(all_cards)
     return {
+        "est": est, "est_day": est_day,   # „≈" on the log's sums (legal 14.11.2026)
         "packs": len(opened),
         "cards": sum(_n(e) for e in all_cards),
         "total": total,
@@ -334,6 +359,9 @@ class Session:
         """Card without a price (e.g. Pokémon from the bundled index – the card database has no prices):
         ask the game for the price in the background and fill it in."""
         import games
+        from system import orbit
+        if not orbit.prices_fetch_ok():   # Orbit's Core: no price request (legal 15.11., R2)
+            return
         look = games.current().price_lookup
         if look is None:
             return

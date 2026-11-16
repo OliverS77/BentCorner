@@ -150,6 +150,22 @@ class ListsBackend(QtCore.QObject):
             row = carddb.cards_by_ids({sid}).get(sid) if sid else None
         return value, db_image(row) if row else "", (row or {}).get("artist") or ""
 
+    def _list_value_est(self, kind, entries):
+        """(converted?, newest rate day) of a list's value – the same prints _list_value_art prices (legal 14.11.)."""
+        from cards import currency
+        if not entries or not carddb.exists():
+            return False, None
+        if kind in ("wish", "custom"):
+            from collection import alarms
+            sids = set(alarms.cheapest_ids({e["name"] for e in entries}).values())
+        else:
+            from collection.collection import price as item_price, scryfall_id
+            by_uid = {it["uid"]: it for it in self.ctrl.collection.items}
+            its = [by_uid.get(e.get("uid")) for e in entries]
+            sids = {scryfall_id(it["id"]) for it in its if it is not None and item_price(it)}
+        days = [currency.rate_day_of(s) or "" for s in sids if currency.estimated(s)]
+        return bool(days), (max(days) or None) if days else None
+
     @QtCore.Slot(str, str, result="QVariantList")
     def listMenu(self, kind, lid):
         """The "⋯" menu of a list – the same as in the library, plus the price alert for the list."""

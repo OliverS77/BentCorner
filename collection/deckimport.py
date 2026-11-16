@@ -13,6 +13,8 @@ _MOX = re.compile(r"moxfield\.com/decks/([\w-]+)", re.I)
 _ARCH = re.compile(r"archidekt\.com/(?:api/)?decks/(\d+)", re.I)
 _ASK = ("{} only allows other programs to fetch decks with permission – until then: copy the deck there as text "
         "via “Export” and paste it here.")   # shown via tr(str(e)) in the import view
+LINK_OFF = ("Loading a deck by link goes through Commander Spellbook – from Near Orbit on, with the Spellbook switch on. "
+            "You can paste the list as text.")   # legal 16.11.2026; also via tr(str(e))
 
 
 def is_url(text):
@@ -39,7 +41,10 @@ def fetch(url, timeout=25):
     for pattern, site in ((_MOX, "Moxfield"), (_ARCH, "Archidekt")):   # no permission (yet): never asked
         if pattern.search(url):
             raise RuntimeError(_ASK.format(site))
-    # all other sites: Commander Spellbook reads the list (names only)
+    # all other sites: Commander Spellbook reads the list (names only) – from Near Orbit on, with its switch
+    from system import orbit
+    if not orbit.spellbook_ok():
+        raise RuntimeError(LINK_OFF)
     r = netpolite.get("https://backend.commanderspellbook.com/card-list-from-url", params={"url": url}, headers=UA,
                      timeout=timeout)
     if r.status_code >= 400:

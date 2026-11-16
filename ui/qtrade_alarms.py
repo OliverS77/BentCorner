@@ -4,6 +4,8 @@ import json
 
 from PySide6 import QtCore
 
+from cards import currency
+
 from collection.tradelib import value as tradelib_value
 from ui.qtrade import carddb, db_image, db_image_of, eur, games_key, has_image, tr, trade, value   # shared helpers of the trade page
 
@@ -117,8 +119,9 @@ class AlarmsBackend(QtCore.QObject):
         lines = []
         import games
         fw = tr(games.current().foil_word)
-        for shop, name, col, f2 in (("c", "Cardmarket", "", "n"), ("t", "TCGplayer", "", "n"),
-                                    ("c", f"Cardmarket {fw}", "", "f"), ("t", f"TCGplayer {fw}", "", "f")):
+        from ui.librarycore import cm_label
+        for shop, name, col, f2 in (("c", cm_label(False), "", "n"), ("t", "TCGplayer", "", "n"),
+                                    ("c", cm_label(True), "", "f"), ("t", f"TCGplayer {fw}", "", "f")):
             pts = h.get(shop + f2) or []
             if not pts:
                 continue
@@ -135,7 +138,8 @@ class AlarmsBackend(QtCore.QObject):
                 lines.append({"name": name, "shop": shop, "foil": f2 == "f", "dim": f2 != fin,
                               "unit": "$" if shop == "t" else "€", "pts": out})
         return {"lines": lines, "days": days, "finish": fin, "both": False,
-                "ranges": [{"days": 30, "text": tr("30 d")}, {"days": 90, "text": tr("90 d")}]} \
+                "ranges": [{"days": 30, "text": tr("30 d")}, {"days": 90, "text": tr("90 d")}],
+                "approxTip": currency.approx_tip(currency.rate_day())} \
             if lines else {}
 
     @QtCore.Slot(str, str, str)
@@ -253,7 +257,7 @@ class AlarmsBackend(QtCore.QObject):
             g = alarms.game_of(a)
             if g == cur:
                 continue
-            last, imgs = a.get("last"), []
+            last, imgs, psid = a.get("last"), [], a.get("sid")
             try:
                 if a["kind"] == "trade":
                     r = carddb.cards_by_ids({a.get("sid")}, game=g).get(a.get("sid"))
@@ -266,13 +270,18 @@ class AlarmsBackend(QtCore.QObject):
                     imgs = [db_image_of(r, g) for r in rows if has_image(r, g)][:9]
                     ps = [r.get("eur") for r in rows if r.get("eur") is not None]
                     last = last if last is not None else (min(ps) if ps else None)
+                    priced = [r for r in rows if r.get("eur") is not None]
+                    psid = min(priced, key=lambda r: r["eur"])["id"] if priced else None
             except Exception:  # noqa: BLE001 – the other game's database is missing
                 pass
             where = f"{(a.get('set') or '').upper()}{' · Foil' if a.get('foil') else ''}" if a["kind"] == "trade" \
                 else tr("cheapest printing")
             out.append({"key": f"other:{g}:card:" + alarms.card_key(a)[5:], "section": a["kind"], "game": g,
                         "other": True, "icon": "bell",
-                        "name": a["name"], "where": where, "now": alarms.eur(last) if last is not None else "–",
+                        "name": a["name"], "where": where,
+                        # „≈" (legal 14.11.2026): TCGplayer, or that game's print with converted euros
+                        "now": alarms.eur(last, alarms.opts_of(a)["src"] == "tcg" or currency.estimated(psid, g))
+                        if last is not None else "–",
                         "nowVal": float(last) if last is not None else -1.0, "rule": alarms.text_of(a),
                         "hit": bool(a.get("hit")), "imgs": [i for i in imgs if i], "draft": False})
         return out
@@ -296,7 +305,8 @@ class AlarmsBackend(QtCore.QObject):
                         "name": tr(x["name"]) if main else x["name"],
                         "where": f"{names.get(a['lkind'], '')} · " + tr(f"{len(entries)} cards")
                         + (f" · {alarms.opts_text(alarms.opts_of(a))}" if alarms.opts_text(alarms.opts_of(a)) else ""),
-                        "now": tradelib_value(value), "nowVal": value,
+                        "now": tradelib_value(value, value and self.host.lists_b._list_value_est(a["lkind"], entries)[0]),
+                        "nowVal": value,
                         "rule": alarms.list_rule(a) + ((" · " + tr("triggered") + ": " + ", ".join(hits[:3])
                                                         + (f" +{nhit - 3}" if nhit > 3 else "")) if nhit else ""),
                         "hit": nhit > 0, "imgs": [art] if art else [], "draft": False})

@@ -13,8 +13,10 @@ W, H = 1600, 900
 CYAN, AMBER, PINK, GREEN, RED = "#62f2ff", "#ffb347", "#ff5bd6", "#46d17a", "#ff4d5e"
 
 
-def eur(v):
-    return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+def eur(v, est=False):
+    """est: converted from dollars (or a sum holding such a price) – „≈" in front (legal 14.11.2026). Stays euros:
+    what the user typed (spent) is euros, and a shared picture shows the log as it was counted."""
+    return ("≈ " if est else "") + f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _font(px, bold=True, display=True):
@@ -167,16 +169,18 @@ def render(d, settings):
     profit = st.get("total", 0) - paid if paid else None
     from scanner import core
     packs = core.has_packs(info)   # pack figures only when opening boosters
+    s_est = core.session_est(d)[0]   # „≈" on the log's sums (legal 14.11.2026)
     kpis = [(tr("Packs"), str(st.get("packs", 0)), "#eef1ff")] if packs else []
     kpis += [(tr("Cards"), str(st.get("cards", 0)), "#eef1ff")]
     if priced:
-        kpis.append((tr("Value"), eur(st.get("total", 0)), CYAN))
+        kpis.append((tr("Value"), eur(st.get("total", 0), s_est), CYAN))
     if packs and priced:
-        kpis.append((tr("Ø per pack"), eur(st.get("avg_pack", 0)), "#eef1ff"))
+        kpis.append((tr("Ø per pack"), eur(st.get("avg_pack", 0), s_est), "#eef1ff"))
     if paid:
         kpis.append((tr("Einsatz"), eur(paid), "#aab1c8"))   # what the user spent: his own number
     if paid and priced:   # the balance comes from market values – not in Orbit's Core
-        kpis.append((tr("Balance"), ("+" if profit >= 0 else "−") + eur(abs(profit)), GREEN if profit >= 0 else RED))
+        kpis.append((tr("Balance"), ("≈ " if s_est else "") + ("+" if profit >= 0 else "−") + eur(abs(profit)),
+                     GREEN if profit >= 0 else RED))
     y = 196
     for label, value, col in kpis:   # (at most six rows: they end above the counters)
         p.setPen(QtGui.QColor("#8a91a8"))
@@ -209,7 +213,8 @@ def render(d, settings):
     shimmer = _shimmer(d)
     images = _game(d) not in NO_IMAGES
     drawn = False
-    money = (lambda c: (eur(c["price"]) if c.get("price") is not None else "")) if priced else (lambda c: "")
+    money = (lambda c: (eur(c["price"], core.entry_est(c)) if c.get("price") is not None else "")) if priced \
+        else (lambda c: "")
     if top:
         big_h = 600
         big = QRectF(560, 210, big_h * 63 / 88, big_h)

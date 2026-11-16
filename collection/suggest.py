@@ -191,8 +191,12 @@ def commander_ideas(pool, chosen=None, online=True, progress=lambda done, total:
     progress(len(cands), len(cands))
     out.sort(key=lambda x: -x["coverage"])
     prices = _cheapest_prices({n for x in out for n in x["missing"]})
+    from cards import currency
+    from collection import alarms
+    ids = alarms.cheapest_ids({n for x in out for n in x["missing"]})   # „≈" (legal 14.11.2026)
     for x in out:
         x["missing_eur"] = round(sum(prices.get(n, 0) for n in x["missing"]), 2)
+        x["missing_est"] = any(prices.get(n) and currency.estimated(ids.get(n)) for n in x["missing"])
     return out
 
 

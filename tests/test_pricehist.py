@@ -39,7 +39,8 @@ class _DB(unittest.TestCase):
                   mock.patch.object(pricehist, "_download", _no_net),
                   mock.patch.object(pricehist, "_build_date", _no_net),
                   mock.patch.object(netpolite, "get", _no_net),
-                  mock.patch.object(pricehist, "_status_cache", {})]
+                  mock.patch.object(pricehist, "_status_cache", {}),
+                  mock.patch.object(pricehist, "GAME", "pokemon")]   # Magic hides cn/cf (CM_HISTORY_MTG)
         for p in self.p:
             p.start()
 
@@ -280,6 +281,198 @@ class ValueHistory(_DB):
     def test_marks_group_close_additions(self):
         marks = valuehist._marks({10: (1, 1.0), 11: (2, 1.0), 40: (1, 1.0)}, W)
         self.assertEqual(marks, [{"i": 10, "label": "+3"}, {"i": 40, "label": "+1"}])
+
+
+
+class MagicWithoutCardmarket(_DB):
+    """Oliver/legal 16.11.2026 (E1b): Magic hands out no Cardmarket series (MTGJSON cn/cf) until Cardmarket agrees –
+    chart, alert editor and alerts read series()/series_many(). Stored all the same; TCGplayer stays."""
+
+    REC = {"a": {"e": 1005, "cn": [[1000, 1.0]], "cf": [[1000, 2.0]], "tn": [[1000, 3.0]], "tf": [[1005, 4.0]]},
+           "b": {"e": 1005, "cn": [[1000, 1.0]]}}   # only Cardmarket: nothing to show
+
+    def test_mtg_hides_cardmarket(self):
+        self.store(self.REC)
+        with mock.patch.object(pricehist, "GAME", "mtg"):
+            self.assertFalse(pricehist.CM_HISTORY_MTG)
+            s = pricehist.series("a")
+            self.assertEqual(set(s), {"tn", "tf"})
+            self.assertIsNone(pricehist.series("b"))
+            many = pricehist.series_many(["a", "b"])
+            self.assertEqual(set(many), {"a"})
+            self.assertEqual(set(many["a"]), {"tn", "tf"})
+            with mock.patch.object(pricehist, "CM_HISTORY_MTG", True):   # the switch brings them back
+                self.assertEqual(set(pricehist.series("a")), {"cn", "cf", "tn", "tf"})
+
+    def test_other_games_keep_cardmarket(self):
+        self.store(self.REC)
+        for game in ("pokemon", "lorcana"):
+            with mock.patch.object(pricehist, "GAME", game):
+                self.assertEqual(set(pricehist.series("a")), {"cn", "cf", "tn", "tf"}, game)
+                self.assertIn("cn", pricehist.series("b"), game)
+
+    def test_yugioh_has_no_cardmarket_series(self):   # E1c: older local points from YGOPRODeck are not handed out
+        self.store(self.REC)
+        with mock.patch.object(pricehist, "GAME", "yugioh"):
+            self.assertEqual(set(pricehist.series("a")), {"tn", "tf"})
+            self.assertIsNone(pricehist.series("b"))
+
+
+
+class OwnEuroCurve(_DB):
+    """Magic's own euro curve (Oliver 16.11.2026, legal's conditions – docs/entscheidungen/preise-quellen.md): one point
+    a day from the Scryfall euros already in the card database, only from Near Orbit on, no back-fill from MTGJSON,
+    stored apart (eur_own) so an MTGJSON import never wipes it, handed out as Magic's Cardmarket series, and the file
+    stays on the device."""
+
+    def mtg(self):
+        return mock.patch.object(pricehist, "GAME", "mtg")
+
+    def test_one_point_a_day_from_the_first_day(self):
+        d = pricehist.today()
+        self.assertEqual(pricehist.write_own({"a": (2.0, 5.0), "b": (None, None)}, d), 1)
+        self.assertEqual(pricehist.write_own({"a": (9.0, 9.0)}, d), 0)        # same day again: nothing
+        self.assertEqual(pricehist.write_own({"a": (2.5, None)}, d + 1), 1)
+        with self.mtg():
+            s = pricehist.series("a")
+        dt = pricehist.date_of
+        self.assertEqual(s["cn"], [(dt(d), 2.0), (dt(d + 1), 2.5)])         # begins on its first day, nothing before
+        self.assertEqual(s["cf"], [(dt(d), 5.0), (dt(d + 1), 5.0)])
+        self.assertIsNone(pricehist.series("b"))
+
+    def test_handed_out_as_cardmarket_only_for_magic_mtgjson_cn_stays_locked(self):
+        d = pricehist.today()
+        self.store({"a": {"e": d, "cn": [[d - 3, 99.0]], "tn": [[d - 3, 3.0]]}})   # MTGJSON's Cardmarket: locked
+        pricehist.write_own({"a": (2.0, None)}, d)
+        with self.mtg():
+            s = pricehist.series("a")
+            self.assertEqual([p for _, p in s["cn"]], [2.0])                 # the own point, not MTGJSON's 99
+            self.assertIn("tn", s)
+            self.assertEqual(pricehist.series_many(["a"])["a"], s)
+        s = pricehist.series("a")                                            # another game: its own cn, no eur_own
+        self.assertEqual({p for _, p in s["cn"]}, {99.0})
+
+    def test_mtgjson_full_import_keeps_the_own_curve(self):
+        d = pricehist.today()
+        pricehist.write_own({"a": (2.0, None)}, d)
+        paper = {"tcgplayer": {"retail": {"normal": {pricehist.date_of(d).isoformat(): 3.0}}}}
+        with mock.patch.object(pricehist, "_load_ids", lambda con, progress: {"u1": "a"}), \
+                mock.patch.object(pricehist, "_download", lambda *a, **k: None), \
+                mock.patch.object(pricehist, "_stream_entries", lambda *a, **k: iter([("u1", {"paper": paper})])):
+            pricehist.full_import(lambda *a: None)
+        with self.mtg():
+            s = pricehist.series("a")
+        self.assertEqual([p for _, p in s["cn"]], [2.0])
+        self.assertEqual([p for _, p in s["tn"]], [3.0])
+
+    def test_the_file_stays_on_the_device(self):
+        from system import datastore
+        self.assertNotIn("card-data", {name.split("/")[0] for _, name in datastore.personal_roots()})
+        root = pathlib.Path(__file__).resolve().parents[1]
+        for folder in ("net", "collection", "system"):   # nothing that sends, shares or backs up reads the history
+            for f in (root / folder).rglob("*.py"):
+                text = f.read_text("utf-8", errors="replace")
+                if "pricehist" in text:
+                    self.assertIn(f.relative_to(root).as_posix(),
+                                  {"collection/alarms.py", "system/jobqueue.py", "system/datastore.py"}, f)
+
+
+class OwnCurveFromThePriceJob(unittest.TestCase):
+    """games/mtg.scryfall_euros writes today's point only from Near Orbit on, only with the price history on, and only
+    real Scryfall euros (no converted ones)."""
+
+    def setUp(self):
+        from cards import carddb
+        self.tmp = tempfile.TemporaryDirectory()
+        base = pathlib.Path(self.tmp.name)
+        self.cdb = base / "cards.sqlite"
+        con = sqlite3.connect(self.cdb)
+        con.executescript(carddb.SCHEMA)
+        cols = [r[1] for r in con.execute("PRAGMA table_info(cards)")]
+        for sid, eur, usd in (("real", 4.0, 5.0), ("conv", None, 10.0)):
+            row = dict(id=sid, name=sid, set_code="x", number="1", lang="en", layout="normal", booster=1, eur=eur,
+                       usd=usd)
+            con.execute(f"INSERT INTO cards ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
+                        tuple(row.get(c) for c in cols))
+        con.commit()
+        con.close()
+        self.written = []
+        for q in (mock.patch.object(carddb, "DB_PATH", self.cdb),
+                  mock.patch("cards.currency.from_usd", lambda u: round(u * 0.9, 2) if u else None),
+                  mock.patch("cards.currency.rate_day", lambda: "2026-11-16"),
+                  mock.patch.object(pricehist, "write_own", lambda euros, day=None: self.written.append(euros))):
+            q.start()
+            self.addCleanup(q.stop)
+        self.addCleanup(self.tmp.cleanup)
+        from games import base as gbase
+        self.addCleanup(gbase.price_est_changed)
+        from system import orbit
+        self.addCleanup(orbit.bind, None)
+
+    def run_job(self, level, history=True):
+        from cards import carddb
+        from games import mtg
+        from system import orbit
+        orbit.bind({"orbit": level, "relay": {"on": False}})
+        with carddb.connection() as con:
+            mtg.scryfall_euros(con, history)
+
+    def test_core_writes_nothing(self):
+        self.run_job("core")
+        self.assertEqual(self.written, [])
+
+    def test_history_off_writes_nothing(self):
+        self.run_job("near", history=False)
+        self.assertEqual(self.written, [])
+
+    def test_near_writes_only_real_euros(self):
+        self.run_job("near")
+        self.assertEqual(self.written, [{"real": (4.0, None)}])   # "conv" got ≈ 9.0 – never in the curve
+
+
+class NoCardmarketName(unittest.TestCase):   # Yu-Gi-Oh! (legal 16.11.2026): "Cardmarket" appears nowhere
+    def test_alarm_labels(self):
+        import games
+        from collection import alarms
+        for key, want in (("yugioh", "Price in €"), ("mtg", "Cardmarket"), ("pokemon", "Cardmarket")):
+            with mock.patch.object(games, "current", lambda k=key: games.load(k)):
+                self.assertEqual(alarms.cm_name(), want, key)
+                self.assertEqual(dict(alarms.sources())["cm"], want, key)
+                self.assertEqual(alarms.cm_name(True), "Price in €")
+
+
+class PriceNote(unittest.TestCase):   # legal 16.11.2026: the note names where the prices come from
+    def test_per_game(self):
+        from ui.qdetail import price_note
+        self.assertIn("Cardmarket via Scryfall", price_note("mtg"))
+        self.assertNotIn("Cardmarket", price_note("yugioh"))
+        self.assertIn("(Cardmarket, TCGplayer)", price_note("pokemon"))
+
+
+
+class LegendNames(unittest.TestCase):   # the foil word once – Magic's own curve names it in its label
+    def names(self, key):
+        import games
+        from ui.librarycore import PriceData
+        d = datetime.date(2026, 11, 16)
+        pd = PriceData({"ph_range": 90})
+        pd.data = {"cn": [(d, 1.0)], "cf": [(d, 2.0)], "tn": [(d, 1.0)], "tf": [(d, 2.0)]}
+        g = games.load(key)
+        with mock.patch.object(games, "current", lambda: g), mock.patch.object(pricehist, "GAME", key), \
+                mock.patch("cards.currency.from_usd", lambda v: v):
+            return [x[0] for x in pd.lines_all()], g
+
+    def test_pokemon(self):
+        from system.i18n import tr
+        names, g = self.names("pokemon")
+        fw = tr(g.foil_word)
+        self.assertIn("Cardmarket " + fw, names)
+        self.assertFalse(any(n.count(fw) > 1 for n in names), names)
+
+    def test_magic_own_curve(self):
+        names, g = self.names("mtg")
+        self.assertTrue(any("Scryfall" in n for n in names), names)
+        self.assertFalse(any(n.count("Foil") > 1 for n in names), names)
 
 
 if __name__ == "__main__":

@@ -228,6 +228,7 @@ class ProfileBackend(QtCore.QObject):
         – followed (while fewer than 8) by a "+ New binder"."""
         from collection import binders
         from cards import carddb
+        from cards import currency
         from cards import packs
         from collection.tradelib import value as eur   # a binder's worth: a card value – not in Orbit's Core
         cur = games.current().key
@@ -245,13 +246,15 @@ class ProfileBackend(QtCore.QObject):
                 db = {}
             prices = {sid: (r.get("eur") if r.get("eur") is not None else r.get("eur_foil")) for sid, r in db.items()}
             total, _have_v = binders.value(b, owned, prices)
+            # „≈" (legal 14.11.2026) – a binder of another game: that game's card database
+            est = any(prices.get(s) and currency.estimated(s, g) for s in prices)
             have, n = binders.progress(b, owned)
             ok = g == cur or packs.game_ready(g)
             out.append({"key": f"{g}:{b['id']}", "game": g, "chip": games.SHORT.get(g, g.upper()), "id": b["id"],
                         # formerly shared only via the menu (no flag): counts as shared while on display
                         "shared": bool(b["shared"]) if "shared" in b else bool(
                             __import__("net.relay", fromlist=["relay"]).posted(self.ctrl.settings, g, f"binder-{b['id']}")),
-                        "name": b.get("name") or tr("Binders"), "value": (eur(total) if total else "–") if eur(0) != "" else "",
+                        "name": b.get("name") or tr("Binders"), "value": (eur(total, est) if total else "–") if eur(0) != "" else "",
                         "info": tr(f"{have} of {n} cards"), "owned": ok, "icon": self._game_icon(g),
                         "hue": (sum(ord(c) for c in b["id"]) * 37) % 360})
         if len(out) < self.MAX_BINDERS:

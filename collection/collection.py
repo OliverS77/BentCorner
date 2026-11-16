@@ -309,7 +309,11 @@ class Collection:
             for it in self.items:
                 langs[it.get("lang") or "en"] = langs.get(it.get("lang") or "en", 0) + it.get("count", 1)
             unique = len({scryfall_id(it["id"]) for it in self.items})
-        return {"cards": n, "unique": unique, "value": round(value, 2), "langs": langs}
+            priced = {scryfall_id(it["id"]) for it in self.items if price(it)}
+        from cards import currency   # „≈" on the value: at least one price converted from dollars (legal 14.11.)
+        days = [currency.rate_day_of(s) for s in priced if currency.estimated(s)]
+        return {"cards": n, "unique": unique, "value": round(value, 2), "langs": langs,
+                "value_est": bool(days), "value_day": max((d for d in days if d), default=None)}
 
 
 # ---------- Export ----------

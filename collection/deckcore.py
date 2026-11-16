@@ -27,6 +27,7 @@ from collection import suggest
 from collection.collection import scryfall_id
 from system.i18n import tr
 from system import i18n
+from system import orbit
 from ui.librarycore import THUMBS, CompareState, DetailState, ImageLoader, LibraryCore, run_async
 from ui.searchbox import CountSection, Mode, SearchBox, Steps
 from games import mtg as _mtg
@@ -45,11 +46,12 @@ FOLDER_COLORS = [("#62f2ff", "Cyan"), ("#ffb347", "Bernstein"), ("#ff5bd6", "Pin
 LOOSE = ""  # key for "No folder" (None = all decks)
 
 
-def eur(v):
+def eur(v, est=False):
+    """est: converted from dollars (or a sum holding such a price) – „≈" in front (legal 14.11.2026)."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
         return ""
-    return currency.fmt(v)
+    return currency.fmt(v, est)
 
 
 def pips_html(colors):
@@ -65,7 +67,7 @@ def _price(r):
     if r is None:
         return ""
     v = r.get("eur") if r.get("eur") is not None else r.get("eur_foil")
-    return eur(v) if v is not None else ""
+    return eur(v, currency.estimated(r.get("id"))) if v is not None else ""
 
 
 class _Text:
@@ -603,8 +605,8 @@ class StatsPanel:
     def set_online(self, deck, rows, online, status):
         """Combos (Commander Spellbook) and cEDH data (EDHTop16). status: "" | "loading" | "offline"."""
         commander = deck.get("format") == "commander"
-        self.combo_shown = commander
-        if not commander:
+        self.combo_shown = commander and orbit.spellbook_on(self.editor.page.ctrl.settings)   # Core: no section
+        if not self.combo_shown:
             return
         csb, cedh = online.get("csb"), online.get("cedh") or {}
         page = self.editor.page
@@ -939,7 +941,9 @@ class DeckEditor(QtCore.QObject):
     def online_lookup(self):
         """Combos/tournament data for the current list: immediately from the cache, fresh after a short pause."""
         deck = self.deck
-        if deck is None or deck.get("format") != "commander" or not self.page.ctrl.settings.get("deck_online", True):
+        st = self.page.ctrl.settings
+        if deck is None or deck.get("format") != "commander" or not st.get("deck_online", True) \
+                or not orbit.spellbook_on(st):   # Core / switch off: no lookup and no cached result either
             self.online, self._online_key = {}, None
             return
         cm, main = combos.deck_lists(deck, self.rows)
@@ -962,7 +966,7 @@ class DeckEditor(QtCore.QObject):
 
     def _fetch_online(self):
         key, deck = self._online_key, self.deck
-        if key is None or deck is None:
+        if key is None or deck is None or not orbit.spellbook_on(self.page.ctrl.settings):   # level changed meanwhile
             return
         cm, main = combos.deck_lists(deck, self.rows)
         bridge = self._online_bridge
@@ -1002,7 +1006,7 @@ class DeckEditor(QtCore.QObject):
                  if deck.get("format") == "commander" else "")
         self.summary = (f"<span style='font-size:16px; font-weight:700; color:{color}'>{a['count']}"
                         f"{' / ' + str(size) if size else ''}</span>&nbsp;&nbsp;{pips_html(a['identity'])}"
-                        f"&nbsp;&nbsp;<span style='color:#62f2ff'>{eur(a['price'])}</span>{extra}")
+                        f"&nbsp;&nbsp;<span style='color:#62f2ff'>{eur(a['price'], a.get('price_est'))}</span>{extra}")
         self.summary_tip = (
             f"<b>{tr("Bracket (estimate)")} {a['bracket']} – {decks.BRACKETS[a['bracket']]}</b><ul>"
             + "".join(f"<li>{tr(x)}</li>" for x in a["bracket_reasons"]) + "</ul>"
@@ -1120,7 +1124,7 @@ class DeckEditor(QtCore.QObject):
                         tip = tr("Missing – owned by: ") + ", ".join(f"{h[1]} ({h[3]}×)" for h in hold)
                 out.append({"head": False, "sid": sid, "board": board, "count": f"{count}×", "n": count,
                             "name": r["name"], "cost": (r.get("mana_cost") or "").split(" // ")[0],
-                            "price": eur((price or 0) * count), "own": own,
+                            "price": eur((price or 0) * count, bool(price) and currency.estimated(sid)), "own": own,
                             "ownColor": "#46d17a" if own in ("✓", "≈") else "#ffb347" if own == "⚑" else "#ff5bd6",
                             "ownTip": tip, "alt": sid == alt, "inUse": usage.get(r["name"], []), "holders": hold,
                             "pinned": pin, "where": (f"({(r.get('set_code') or '').upper()} #{r.get('number') or ''})"
@@ -1764,7 +1768,7 @@ class SuggestPage(QtCore.QObject):
             cov = round(idea["coverage"] * 100)
             if idea.get("online"):
                 info = (tr(f"You already have <b>{cov} %</b> of its typical deck ({idea['owned']} cards)")
-                        + "<br>" + (tr(f"{len(idea['missing'])} cards missing, about {eur(idea['missing_eur'])}")
+                        + "<br>" + (tr(f"{len(idea['missing'])} cards missing, about {eur(idea['missing_eur'], idea.get('missing_est'))}")
                                    if eur(idea['missing_eur']) else tr(f"{len(idea['missing'])} cards missing")))
             else:
                 info = tr(f"offline estimate: {idea['owned']} matching cards in its colors")
@@ -1809,7 +1813,7 @@ class CompareSide:
         br = f" · {tr('Bracket')} <b style='color:#ffb347'>{a['bracket']}</b>" if deck.get("format") == "commander" \
             else ""
         cm = [rows[s]["name"] for s in deck.get("commanders", []) if s in rows]
-        self.info = (f"<span style='color:#aab1c8'>{fmt} · {a['count']} {tr("Cards")}{' · ' + eur(a['price']) if eur(a['price']) else ''}{br}"
+        self.info = (f"<span style='color:#aab1c8'>{fmt} · {a['count']} {tr("Cards")}{' · ' + eur(a['price'], a.get('price_est')) if eur(a['price']) else ''}{br}"
                      + (f"<br>{tr('Commander')}: <b>{' + '.join(cm)}</b>" if cm else "") + "</span>")
         by_name = {r["name"]: r for r in rows.values()}
         groups = {}
@@ -1828,7 +1832,8 @@ class CompareSide:
                 o = other.get(name, 0)
                 price = (r or {}).get("eur") if (r or {}).get("eur") is not None else (r or {}).get("eur_foil")
                 kind = "only" if not o else ("diff" if o != n else "same")
-                out.append({"head": False, "count": f"{n}", "price": eur(price) if price is not None else "–",
+                out.append({"head": False, "count": f"{n}", "price": eur(price, currency.estimated((r or {}).get("id")))
+                            if price is not None else "–",
                             "name": name + (f"   ({o}× " + tr("in the other") + ")" if o and o != n else ""),
                             "kind": kind, "tip": tr("Only in this deck") if kind == "only" else ""})
         self.rows = out
@@ -1900,9 +1905,10 @@ class CompareView(QtCore.QObject):
         self.a.fill(aa, ca, cb, rows)
         self.b.fill(ab, cb, ca, rows)
         combo_n = []
+        sb_on = orbit.spellbook_on(self.page.ctrl.settings)   # Core: no combos from the cache either
         for d in (da, db):
             cm, main = combos.deck_lists(d, rows)
-            hit = combos.cached_find(cm, main) if d.get("format") == "commander" else None
+            hit = combos.cached_find(cm, main) if d.get("format") == "commander" and sb_on else None
             combo_n.append(len((hit or {}).get("included") or []))
         sa, sb = self.scores(aa, combo_n[0]), self.scores(ab, combo_n[1])
         names = (tr("Tempo"), tr("Interaction"), tr("Card advantage"), tr("Power"))
@@ -1935,7 +1941,7 @@ class CompareView(QtCore.QObject):
             row(tr("Board wipes"), aa["roles"]["Board Wipes"], ab["roles"]["Board Wipes"], better="high"),
             row(tr("Tutors"), aa["roles"]["Tutoren"], ab["roles"]["Tutoren"], better="high"),
             row(tr("Game Changers"), len(aa["game_changers"]), len(ab["game_changers"])),
-            row(tr("Combos (Spellbook)"), combo_n[0], combo_n[1]),
+            *([row(tr("Combos (Spellbook)"), combo_n[0], combo_n[1])] if sb_on else []),
             row(tr("Creatures"), aa["types"].get("Creature", 0), ab["types"].get("Creature", 0)),
             row(tr("Im Besitz"), aa["owned"], ab["owned"], better="high"),
         ]
@@ -2077,7 +2083,7 @@ class DeckPage(QtCore.QObject):
         order = {i: n for n, i in enumerate(self.ctrl.settings.get("deck_order") or [])}
         for d in sorted(shown, key=lambda d: (order.get(d["id"], 1e9), -d.get("updated", 0))):
             a = decks.analyze(d, rows, self.owned_id, self.owned_name)
-            items.append((d, {"count": a["count"], "size": a["size"], "price": a["price"],
+            items.append((d, {"count": a["count"], "size": a["size"], "price": a["price"], "price_est": a.get("price_est"),
                               "identity": a["identity"] or "".join(c for c in "WUBRG" if a["colors"].get(c)),
                               "bracket": a["bracket"] if d.get("format") == "commander" else None,
                               "art_row": self._art_row(d, rows)}))

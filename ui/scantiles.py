@@ -14,6 +14,8 @@ import time
 from PySide6 import QtCore
 
 from scanner.common import BASE
+from scanner import core
+from cards import currency
 from system.i18n import tr
 from system import orbit
 from ui.scanlook import eur, money
@@ -184,8 +186,11 @@ def card_row(e):
         bits.append(lang)
     price = e.get("price") if orbit.prices_shown() else None   # Orbit's Core: no card prices
     dash = "–" if orbit.prices_shown() else ""
-    return {"name": e.get("name") or "", "sub": " · ".join(b for b in bits if b), "price": eur(price) if price is not None else dash,
-            "priceShort": f"{price:.2f}".replace(".", ",") if price is not None else dash,
+    est = price is not None and core.entry_est(e)   # „≈": converted from dollars (legal 14.11.2026)
+    return {"name": e.get("name") or "", "sub": " · ".join(b for b in bits if b),
+            "price": eur(price, est) if price is not None else dash,
+            "priceShort": ("≈ " if est else "") + f"{price:.2f}".replace(".", ",") if price is not None else dash,
+            "priceTip": _tip(e) if est else "",
             "img": _img(e), "pack": int(e.get("pack") or 1), "idx": int(e.get("idx") or 0),
             "set": (e.get("set") or "").upper(), "setName": e.get("set_name") or "", "number": str(e.get("number") or ""),
             "cond": cond, "foil": bool(e.get("foil")), "lang": lang,
@@ -203,11 +208,19 @@ def pack_list(view, current):
         out[-1]["cards"] += 1
         out[-1]["sum"] += e.get("price") or 0.0
         out[-1]["rows"].append(card_row(e))
+        out[-1]["est"] = out[-1].get("est") or core.entry_est(e)
     if not any(p["n"] == current for p in out):
         out.insert(0, {"n": current, "cards": 0, "sum": 0.0, "rows": []})
     for p in out:
-        p["total"] = eur(p.pop("sum"))
+        p["total"] = eur(p.pop("sum"), p.pop("est", False))
     return out
+
+
+def _tip(e):
+    """The legal text on a log line's „≈" (with the day of the rate)."""
+    from cards import currency
+    from collection.collection import scryfall_id
+    return currency.approx_tip(currency.rate_day_of(scryfall_id(str(e.get("id") or ""))))
 
 
 # ---------- the filtered scan's sets (session.info["sets"]: [{code, name}], code "" = free text, shown only) ----------
@@ -404,11 +417,13 @@ class TilesBackend(QtCore.QObject):
                 "removed": self._removed["name"] if self._removed else "",
                 "notes": info.get("notes") or "", "autoName": self._auto_name(), "scanTitle": scan_title(),
                 "name": info.get("title") or "", "meta": " · ".join(m for m in meta if m),
-                "cards": int(st.get("cards") or 0), "value": eur(st.get("total") or 0.0),
-                "paid": money(paid) if paid else "", "balance": eur(profit) if profit is not None else "",
+                "cards": int(st.get("cards") or 0), "value": eur(st.get("total") or 0.0, st.get("est")),
+                "valueTip": currency.approx_tip(st.get("est_day")) if st.get("est") else "",
+                "paid": money(paid) if paid else "", "balance": eur(profit, st.get("est")) if profit is not None else "",
                 "balanceNeg": profit is not None and profit < 0,
                 "packNumber": int(snap.get("pack_number") or 1), "packsPlanned": int(info.get("packs_planned") or 0),
-                "packTotal": eur(snap.get("pack_total") or 0.0), "packCards": len(snap.get("pack") or []),
+                "packTotal": eur(snap.get("pack_total") or 0.0, core.entries_est(snap.get("pack") or [])[0]),
+                "packCards": len(snap.get("pack") or []),
                 "packType": self._pack_type_name(snap.get("pack_type") or ""), "tags": " · ".join(info.get("tags") or []),
                 "scanLang": scan_lang_name(info.get("scan_lang"))}
 
@@ -550,7 +565,8 @@ class TilesBackend(QtCore.QObject):
                            "until": time.time() + 4}
         else:
             cards = tr("1 card") if n == 1 else tr(f"{n} cards")
-            self._ended = {"text": tr("Saved in Logs"), "detail": f"{name} · {cards} · {eur(st.get('total') or 0.0)}",
+            self._ended = {"text": tr("Saved in Logs"),
+                           "detail": f"{name} · {cards} · {eur(st.get('total') or 0.0, st.get('est'))}",
                            "id": sid, "undo": bool(undo), "until": time.time() + UNDO_S}
         self._rev = None
         self._poll()

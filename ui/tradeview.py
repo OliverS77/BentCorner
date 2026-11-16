@@ -17,6 +17,7 @@ import time
 from PySide6 import QtCore
 
 from cards import carddb
+from cards import currency
 from collection import decks
 import games
 from collection import trade
@@ -24,7 +25,7 @@ from system import userprofile
 from system.i18n import tr
 from scanner.common import image_rel
 from ui.librarycore import DetailHost, LibraryCore
-from collection.tradelib import PAY_NOTE, Browser, money_text, offer_image, same_cards
+from collection.tradelib import PAY_NOTE, Browser, card_eur, money_text, offer_image, rows_est, rows_tip, same_cards
 from ui import qdialogs
 from ui import textsafe
 
@@ -68,7 +69,7 @@ def pinned_rows(rows, pinned, have_any=()):
                 out.append(dict(r, count=n, pinned_name=True, pinned_match=exact))
     return out
 
-CLOSING_DIFFERS = "This closing ticket doesn't match your last offer – it's waiting under Orbit → Trade offers."
+CLOSING_DIFFERS = "This closing ticket doesn't match your last offer – it's waiting under Lists & Orbit → Trade offers."
 
 
 def _price(r, foil):
@@ -367,6 +368,7 @@ class TradePage(QtCore.QObject):
         self.rail_current = None
         self.has_note = self.lib_note = ""
         self.trade_sum, self.can_offer = "", False
+        self.trade_sum_tip = ""   # the legal text on the sum's „≈"
         self.list_panel = ListPanel(self)
         self.list_panel.changed.connect(self.list_changed)
         self.get_browser = self._browser("get")
@@ -835,6 +837,7 @@ class TradePage(QtCore.QObject):
         vs = sum((r["price"] or 0) * r["count"] for r in give)
         money = float(getattr(self, "trade_money", 0.0) or 0.0)   # + = I pay extra
         diff = gs - vs - money
+        self.trade_sum_tip = ""
         self.can_offer = bool(get or give)
         if not self.get_browser.all_rows and not self.give_browser.all_rows:
             self.trade_sum = tr("Nothing matches right now.")
@@ -848,11 +851,13 @@ class TradePage(QtCore.QObject):
                               + f"<span style='color:#8a91a8'>  ·  {tr("only checked cards")}</span>")
             self.sum_changed.emit()
             return
-        bal = tr("even") if abs(diff) < 1 else (tr(f"you get {eur(diff)} more") if diff > 0
-                                                         else tr(f"you give {eur(-diff)} more"))
+        ge, ve = rows_est(get), rows_est(give)   # „≈": a side with a price converted from dollars (legal 14.11.)
+        self.trade_sum_tip = rows_tip(get + give)
+        bal = tr("even") if abs(diff) < 1 else (tr(f"you get {card_eur(diff, ge or ve)} more") if diff > 0
+                                                         else tr(f"you give {card_eur(-diff, ge or ve)} more"))
         cash = (f" · {tr("you pay")} {eur(money)}" if money > 0 else f" · {tr("you get")} {eur(-money)}") \
             if abs(money) >= 0.01 else ""
-        self.trade_sum = (f"<b>{tr("You get")}</b> {eur(gs)} · <b>{tr("You give")}</b> {eur(vs)}{cash} · "
+        self.trade_sum = (f"<b>{tr("You get")}</b> {card_eur(gs, ge)} · <b>{tr("You give")}</b> {card_eur(vs, ve)}{cash} · "
                           f"<span style='color:#62f2ff'>{bal}</span>"
                           f"<span style='color:#8a91a8'>  ·  {tr("only checked cards")}</span>")
         self.sum_changed.emit()
@@ -916,7 +921,9 @@ class TradePage(QtCore.QObject):
                 name = (c[5] if len(c) > 5 and c[5] else (r or {}).get("name")) or "?"
                 out.append({"name": f"{name} · {games.SHORT.get(g, g.upper())}" if other else name,
                             "set": str(c[0]).upper(), "number": str(c[1]), "count": int(c[4] or 1),
-                            "price": _price(r, c[3]), "lang": c[2] or "en", "foil": bool(c[3])})
+                            "price": _price(r, c[3]), "lang": c[2] or "en", "foil": bool(c[3]),
+                            # „≈" on the receipt (legal 14.11.) – another game's print: that game's database
+                            "est": currency.estimated((r or {}).get("id"), g)})
             return out
         img = offer_image((prof.get("name") or tr("Me"), prof.get("back")), (partner[1] or "?", friend.get("back")),
                           rows(get), rows(give), t, priced=self.priced())
@@ -956,7 +963,7 @@ class TradePage(QtCore.QObject):
             return None
         if ticket.kind(t) == "o" and sd[2] == (t.get("f") or ["", ""]):   # offer from the other party
             o = offers.record_received(t, sd[2])
-            self.toast(tr(f"Trade offer from {sd[2][1] or '?'} received – Orbit → Trade offers"))
+            self.toast(tr(f"Trade offer from {sd[2][1] or '?'} received – Lists & Orbit → Trade offers"))
             self.ctrl.trade_offers_changed(open_folder=True)
             return o
         if ticket.kind(t) == "o":   # own offer scanned again: just remember it
@@ -1014,6 +1021,9 @@ class TradePage(QtCore.QObject):
         gs, _ = bookings.prices_of(get, db)
         vs, _ = bookings.prices_of(give, db)
         money = ticket.money_from_me(t, me.get("id"))
+        # „≈" per side: one card with euros converted from dollars (legal 14.11.)
+        est = {side: any(currency.estimated((db.get((str(c[0]).lower(), str(c[1]))) or {}).get("id")) for c in cards)
+               for side, cards in (("get", get), ("give", give))}
 
         def lines(cards):   # the same card twice (two copies picked one by one): one line "2×", also on the receipt
             cards = same_cards(cards, lambda c: (str(c[0]).lower(), str(c[1]), c[2] or "en", bool(c[3])),
@@ -1025,9 +1035,11 @@ class TradePage(QtCore.QObject):
             return "\n".join(out) or tr("nothing")
         priced = self.priced()   # Core: no card values (legal 03.11.)
 
-        def head(side, v):
+        def head(side, v, e=None):
+            e = est[side] if e is None else e
             if priced:
-                return tr(f"You get ({eur(v)}):") if side == "get" else tr(f"You give ({eur(v)}):")
+                return (tr(f"You get ({card_eur(v, e)}):") if side == "get"
+                        else tr(f"You give ({card_eur(v, e)}):"))
             return tr("You get" if side == "get" else "You give") + ":"
         info = head("get", gs) + "\n" + lines(get) + "\n\n" + head("give", vs) + "\n" + lines(give)
         if money and priced:
@@ -1042,9 +1054,11 @@ class TradePage(QtCore.QObject):
                 gdb = carddb.by_prints([(c[0], c[1]) for c in part["give"] + part["get"]], game=g)
                 ogs, _ = bookings.prices_of(part["get"], gdb)
                 ovs, _ = bookings.prices_of(part["give"], gdb)
+                oe = {s: any(currency.estimated((gdb.get((str(c[0]).lower(), str(c[1]))) or {}).get("id"), g)
+                             for c in part[s]) for s in ("get", "give")}   # „≈" of that game (lead 14.11.)
                 info += (("\n\n" if info else "") + f"<b>{games.nick_of(g)}</b>\n"
-                         + head("get", ogs) + "\n" + lines(part["get"]) + "\n\n"
-                         + head("give", ovs) + "\n" + lines(part["give"]))
+                         + head("get", ogs, oe["get"]) + "\n" + lines(part["get"]) + "\n\n"
+                         + head("give", ovs, oe["give"]) + "\n" + lines(part["give"]))
         opts = {"have": bool(lists[0]), "wish": bool(lists[1])}
         if answer is None:
             def build(ui, d):

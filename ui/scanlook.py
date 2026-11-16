@@ -75,18 +75,22 @@ def _game_changed():
     RARITY.update(games.current().rarities)
 
 
-def eur(v):
-    """A card value (market price) – "" in Orbit's Core. What the user typed in himself: money()."""
+def eur(v, est=False):
+    """A card value (market price) in the display currency – "" in Orbit's Core. est: converted from dollars (or a
+    sum holding such a price) – „≈" in front (legal 14.11.2026). What the user typed in himself: money()."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
         return ""
-    return money(v)
+    from cards import currency
+    return currency.fmt(v, est)
 
 
-def signed(v, plus="+"):
+def signed(v, plus="+", est=False):
     """A balance from card values with its sign ("+12,30 €" / "−4,00 €") – "" in Orbit's Core (no sign left alone)."""
     s = eur(abs(v))
-    return s and (plus if v >= 0 else "−") + s
+    if not s:
+        return s
+    return ("≈ " if est else "") + (plus if v >= 0 else "−") + s
 
 
 def money(v):

@@ -28,14 +28,16 @@ log = logging.getLogger(__name__)
 PACKS = {
     # extra cardback.npy: the card back's fingerprint (scanner/fingerprint.py drops index entries that only show it);
     # without it nothing is filtered, so "installed" doesn't wait for it
+    # extra fingerprints-add.npz (Magic, Yu-Gi-Oh!): the new cards since the main index (docs/FP-ADD-FORMAT.md) – only
+    # used when it belongs to the main index next to it (scanner/fingerprint.Index), never needed for "installed"
     "mtg": {"name": "Magic-Daten", "dir": "mtg", "files": ["fingerprints-all.npz", "langs.tsv.gz", "setnames.json"],
-            "extra": ["cardback.npy"]},
+            "extra": ["cardback.npy", "fingerprints-add.npz"]},
     "pokemon": {"name": "Pokémon-Daten", "dir": "pokemon", "files": ["cards.sqlite", "fingerprints-all.npz", "cm_fix.json",
                                                             "setnames.json"]},
     # extra: comes along (packs.json lists it), but "installed" doesn't depend on it – ygo-locale.sqlite (OCG/Asia/
     # Spanish prints, CC BY-SA, own file on purpose) is merged locally by games/yugioh.merge_extra when it is there
     "yugioh": {"name": "Yu-Gi-Oh!-Daten", "dir": "yugioh", "files": ["cards.sqlite", "fingerprints-all.npz"],
-               "extra": ["ygo-locale.sqlite"]},
+               "extra": ["ygo-locale.sqlite", "fingerprints-add.npz"]},
     **__import__("games").extra("PACKS", {}),   # private games (games/extras.py)
 }
 # only games whose description is part of this program: a pack installed earlier for a game this program doesn't
@@ -179,8 +181,8 @@ def _data_listing():
     if not datakeys.keys():
         return None
     try:
-        r = netpolite.get(base_url() + "/packs-data.json", timeout=20)
-        s = netpolite.get(base_url() + "/packs-data.json.sig", timeout=20)
+        r = netpolite.get(f"{base_url()}/{datakeys.DATA_NAME}", timeout=20)   # packs-data2.json (v2, "path")
+        s = netpolite.get(f"{base_url()}/{datakeys.DATA_NAME}.sig", timeout=20)
     except Exception:  # noqa: BLE001
         return None
     if r.status_code != 200 or s.status_code != 200:
@@ -208,12 +210,21 @@ def _known(key):
         return {}
 
 
+def allowed_names(key, entry):
+    """Names a pack entry may list: the release list for packs.json; for a data entry the data key's hard list, plus –
+    for the files it doesn't name and packs.json keeps (datakeys.merge "rel_names") – only names of the release list."""
+    if entry.get("src") != "data":
+        return datakeys.release_names(key)
+    rel = set(datakeys.release_names(key))
+    return (*datakeys.DATA_FILES.get(key, ()), *(n for n in entry.get("rel_names") or () if n in rel))
+
+
 def outdated(key, entry=None):
     """Files of an installed pack that are newer on the server (different checksum). -> [name]"""
     entry = entry if entry is not None else manifest().get(key) or {}
     known = _known(key)
     out = []
-    names = datakeys.DATA_FILES.get(key, ()) if entry.get("src") == "data" else datakeys.release_names(key)
+    names = allowed_names(key, entry)
     for f in entry.get("files") or []:
         if not isinstance(f, dict) or f.get("name") not in names:
             continue   # never a path from the listing
@@ -248,7 +259,7 @@ def download(key, progress=lambda text, done, total: None):
     files = entry.get("files") or []
     # what comes from the server is foreign, whichever key signed it: only the program's own file names, sizes within
     # the limits (cards/datakeys.py) – the data key only the games and files of its hard list
-    names = datakeys.DATA_FILES.get(key, ()) if entry.get("src") == "data" else datakeys.release_names(key)
+    names = allowed_names(key, entry)
     try:
         datakeys.check_files(key, files, names)
     except datakeys.DataRejected as e:
@@ -267,7 +278,8 @@ def download(key, progress=lambda text, done, total: None):
             done += int((f.get("gz") or f).get("size") or 0)   # already there and unchanged
             continue
         gz = f.get("gz") if isinstance(f.get("gz"), dict) else None
-        dl_name = gz["name"] if gz else name
+        # on the server: the hashed name ("path", checked by datakeys.check_files) or the fixed one; here always `name`
+        dl_name = (gz.get("path") or gz["name"]) if gz else (f.get("path") or name)
         dl_size, dl_want = (int(gz.get("size") or 0), gz.get("sha256")) if gz else (size, want)
         part = dest / (dl_name + ".part")
         have = part.stat().st_size if part.exists() else 0
@@ -326,5 +338,32 @@ def download(key, progress=lambda text, done, total: None):
         _remember(key, known)
         done += size
         log.info("Pack %s: %s downloaded (%s MB)", key, name, size >> 20)
+    drop_stale_add(key)
     forget_installed(key)
     return len(files)
+
+
+ADD_NAME = "fingerprints-add.npz"
+
+
+def drop_stale_add(key):
+    """A fingerprint add-on whose base isn't the main index next to it (a new full index came) is of no use any more:
+    delete it (scanner/fingerprint.Index would ignore it anyway). -> True if one was deleted."""
+    add, base = folder(key) / ADD_NAME, folder(key) / "fingerprints-all.npz"
+    if not add.exists():
+        return False
+    try:
+        import numpy as np
+        with np.load(add, allow_pickle=False) as z:
+            want = json.loads(str(z["meta"])).get("base")
+    except (OSError, ValueError, KeyError):
+        want = None
+    known = _known(key)
+    have = known.get("fingerprints-all.npz") or (_sha256(base) if base.exists() else None)
+    if want and want == have:
+        return False
+    add.unlink(missing_ok=True)
+    known.pop(ADD_NAME, None)
+    _remember(key, known)
+    log.info("Pack %s: fingerprint add-on of another main index removed", key)
+    return True

@@ -33,6 +33,7 @@ def _num(v):
 
 
 class YuGiOh(Game):
+    name_confirm = True
     key = "yugioh"
     name = "Yu-Gi-Oh! TCG"
     short = "yugioh"
@@ -92,6 +93,7 @@ class YuGiOh(Game):
     finishes = (("nonfoil", "Normal"),)
     FINISHES = (("nonfoil", "Normal", "N", False),)   # finish = the printing's rarity (finish_options)
     variant_numbers = True   # rarities as separate printings with a suffix on the number (carddb: once in search lists)
+    cardmarket_prices = False   # no Cardmarket € any more (Oliver/legal 16.11.2026, E1c): euros only converted (≈)
     foil_word = "1st Edition"   # second price per printing (usd_foil) = TCGplayer for the 1st Edition
     colors = ()
     pack_types = [
@@ -346,8 +348,10 @@ class YuGiOh(Game):
         if currency.from_usd(1.0) is None:   # no rate yet (e.g. first price fetch in this game): fetch ECB rate
             currency.refresh(max_age=0)
         hist, est, n_eur, n_usd = {}, [], 0, 0
+        from .base import ensure_price_est, price_est_changed
+        rate_day = currency.rate_day()
         with carddb.connection(plain=True) as con:
-            con.execute("CREATE TABLE IF NOT EXISTS price_est (sid TEXT PRIMARY KEY)")
+            ensure_price_est(con)
             con.execute("DELETE FROM price_est")
             # Cardmarket € comes from YGOPRODeck PER CARD (its cheapest print): only right for a card with exactly one
             # print – otherwise every print got it (Blue-Eyes LOB-001 at 0.02 €). Then € from the print's TCGplayer
@@ -365,17 +369,18 @@ class YuGiOh(Game):
                 cm, usd = _num(vals[0]), _num(vals[1])
                 usd1 = _num(vals[2]) if len(vals) > 2 else None
                 eur = cm if prints.get(name_of[sid]) == 1 else None
+                real = eur is not None   # a real Cardmarket € (not converted)
                 if eur is None and usd:
                     e = currency.from_usd(usd)
                     eur = round(e, 2) if e else None
                     if eur is not None:
-                        est.append((sid,))
+                        est.append((sid, rate_day))
                 upd.append((eur, usd, usd1, sid))
                 n_eur += eur is not None
                 n_usd += usd is not None
                 h = {"e": day}
-                if eur is not None:
-                    h["cn"] = [[day, eur]]
+                if real:   # only real Cardmarket euros are Cardmarket points; a converted one is the TCGplayer point
+                    h["cn"] = [[day, eur]]   # (library 14.11.2026 – the chart converts "tn" itself, with "$")
                 if usd is not None:
                     h["tn"] = [[day, usd]]
                 hist[sid] = h
@@ -383,28 +388,17 @@ class YuGiOh(Game):
                 # price they may still carry (data pack, older price lists) – single-print cards keep theirs
                 upd += [(None, None, None, sid) for sid in known - set(rows) if prints.get(name_of[sid], 0) > 1]
             con.executemany("UPDATE cards SET eur = ?, usd = ?, usd_foil = ? WHERE id = ?", upd)
-            con.executemany("INSERT OR IGNORE INTO price_est VALUES (?)", est)
+            con.executemany("INSERT OR IGNORE INTO price_est (sid, rate_day) VALUES (?, ?)", est)
             con.execute("INSERT OR REPLACE INTO meta VALUES ('prices_fetched', ?)", (str(time.time()),))
             con.commit()
-        YuGiOh._est = None
+        price_est_changed()
         multi = {sid for sid, name in name_of.items() if prints.get(name, 0) > 1}
         _clean_cm_history(multi, day)
+        _clean_converted_cn({sid for sid, _ in est})
         from .base import write_hist
         write_hist(hist, day)
         return n_eur, n_usd
 
-    _est = None
-
-    def price_estimated(self, sid):
-        """Is this printing's euro price converted from TCGplayer (no Cardmarket price)? -> "≈" in front."""
-        if YuGiOh._est is None:
-            from cards import carddb
-            try:
-                with carddb.connection() as con:
-                    YuGiOh._est = {r[0] for r in con.execute("SELECT sid FROM price_est")}
-            except sqlite3.Error:
-                YuGiOh._est = set()
-        return sid in YuGiOh._est
 
 
 CM_FIX = "ygo_cm_per_card_cleared"   # meta key in the price history: the one-time cleanup below has run
@@ -444,6 +438,44 @@ def _clean_cm_history(multi, day):
         hc.commit()
         log.info("Price history: Cardmarket points before the fix removed for %d prints of multi-print cards",
                  len(fixed))
+    finally:
+        if hc is not None:
+            hc.close()
+
+
+CN_CONV_FIX = "ygo_cn_converted_cleared"   # meta key in the price history: the cleanup below has run
+
+
+def _clean_converted_cn(est):
+    """Once (0.9.9.104): up to then the price job also wrote converted euros (TCGplayer $ -> €, "≈") as Cardmarket
+    points ("cn") – the chart's "Cardmarket" line was converted TCGplayer for those prints. Drop the "cn" points of the
+    prints whose euro price is converted now (`est`: multi-print cards – YGOPRODeck's Cardmarket price is per card, so
+    they never get a real one); their TCGplayer points ("tn") stay. Backup of the file first. Single-print cards keep
+    everything."""
+    import shutil
+    from cards import pricehist
+    if not est or not pricehist.exists():
+        return
+    hc = pricehist._connect()
+    try:
+        if hc.execute("SELECT 1 FROM meta WHERE k = ?", (CN_CONV_FIX,)).fetchone():
+            return
+        hc.close()
+        hc = None
+        shutil.copy2(pricehist.DB, pricehist.DB.with_name("price-history.before-cn-conv-fix.sqlite"))
+        hc = pricehist._connect()
+        fixed = []
+        for sid, blob in hc.execute("SELECT sid, data FROM hist").fetchall():
+            if sid not in est:
+                continue
+            rec = pricehist._unpack(blob)
+            if rec.pop("cn", None) is None:
+                continue
+            fixed.append((pricehist._pack(rec), sid))
+        hc.executemany("UPDATE hist SET data = ? WHERE sid = ?", fixed)
+        hc.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", (CN_CONV_FIX, pricehist.today()))
+        hc.commit()
+        log.info("Price history: converted euro points removed from the Cardmarket line for %d prints", len(fixed))
     finally:
         if hc is not None:
             hc.close()

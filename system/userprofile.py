@@ -533,7 +533,7 @@ def back_pixmap(back, height, **kw):
 
 # ---------- "Who's scanning?" (existing users without a profile; new users: first-run setup, onboarding.py) ----------
 def welcome(settings, done_cb):
-    """Asks once for name and card back – playful, with the note that everything stays local.
+    """Asks once for name and card back – playful, with the note who sees them (legal 16.11.).
     Does not wait (the program keeps running behind it)."""
     from ui import qdialogs
     st = {"name": "", "back": DEFAULT_BACK}
@@ -557,7 +557,7 @@ def profile_items(ui, st):
     name["focus"] = True
     return [
         ui.label(tr("Hey! Who's scanning? 👋"), px=22, bold=True),
-        ui.label(tr("When you trade collections and wishlists with friends, they see this name and your card back. Both stay on your computer until you share something yourself.")),
+        ui.label(tr("When you trade collections and wishlists with friends, they see this name and your card back. Others see your name and card back as soon as you send or accept a friend request.")),
         name,
         ui.label(tr("Your own card back ✦ – pick one or draw your own:")),
         ui.pixel(st["back"], lambda b: st.update(back=b)),

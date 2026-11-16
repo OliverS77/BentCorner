@@ -169,7 +169,7 @@ Item {
                             TapHandler { onTapped: { fm.open = false; shell.openBack("trade"); fm.tf.openFriend(fe.modelData.fid) } }
                         }
                     }
-                    FmLink { visible: fm.tf.friends.length > 0; text: shell.text("Folders, notes and more in Orbit →"); onClicked: fm.go("trade") }
+                    FmLink { visible: fm.tf.friends.length > 0; text: shell.text("Folders, notes and more under Lists & Orbit →"); onClicked: fm.go("trade") }
 
                     // ---------- sent requests (only while there are any) ----------
                     Text {

@@ -25,6 +25,13 @@ log = logging.getLogger("booster")
 CARD_FILL = (24, 24, 24)   # card surface behind the placeholders (missing / loading) – grey like the "grau" look
 
 
+def _est(card):
+    """Is a card's euro price converted from dollars? (its print in the card database – „≈", legal 14.11.2026)"""
+    from cards import currency
+    from collection.collection import scryfall_id
+    return currency.estimated(scryfall_id(str((card or {}).get("id") or "")))
+
+
 class Overlay(OverlayFx):
     """Recreation of overlay.html with QPainter. Coordinates on a 1920-wide grid.
     With the mouse in the stream window, buttons appear (hover); self.buttons holds them for clicking."""
@@ -596,7 +603,7 @@ class Overlay(OverlayFx):
         p.setFont(font(54, QtGui.QFont.Weight.Bold, "Bahnschrift"))
         p.setPen(TIER_COLOR[level])
         p.drawText(QRectF(base.x() - 500, base.y() + 98, 1000, 70), Qt.AlignHCenter | Qt.AlignVCenter,
-                   tr("no price") if price is None else eur(price))
+                   tr("no price") if price is None else eur(price, _est(c)))
         # Card info to the right (Magic: Scryfall, other games: own card database) – not when the
         # card search is open beside it (it shows name, price and info itself)
         if free is None:
@@ -922,7 +929,7 @@ class Overlay(OverlayFx):
                    QtGui.QFontMetricsF(p.font()).elidedText(shown_name(c, self.settings), Qt.ElideRight, w - 10))
         p.setFont(font(30, QtGui.QFont.Weight.Bold, "Bahnschrift"))
         p.setPen(TIER_COLOR[tier(c["price"], self.settings["hit"])])
-        p.drawText(QRectF(x, ly + 28, w, 42), Qt.AlignHCenter | Qt.AlignVCenter, eur(c["price"]))
+        p.drawText(QRectF(x, ly + 28, w, 42), Qt.AlignHCenter | Qt.AlignVCenter, eur(c["price"], _est(c)))
         tag_k, fade = None, 1.0
         if state and manual:  # after a click: which animation was it?
             tag_k = k

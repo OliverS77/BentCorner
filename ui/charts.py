@@ -167,11 +167,13 @@ class SessionBars(Card):
         self.set_modes([tr("Total"), tr("per pack"), tr("per € spent")], on_mode=lambda _: self._derive())
 
     def set_data(self, sessions):
+        from scanner import core   # „≈": a log holding a price converted from dollars (legal 14.11.2026)
         self.raw = [(s.get("started", 0), s["stats"]["total"], s["stats"].get("paid") or 0,
-                     s["info"].get("title") or s["info"].get("product") or "", s["stats"].get("packs") or 0)
+                     s["info"].get("title") or s["info"].get("product") or "", s["stats"].get("packs") or 0,
+                     core.session_est(s)[0])
                     for s in sessions[-24:]]
         # "per pack" only when there are booster sessions (scanning cards has no packs)
-        keys = ["total", "pack", "euro"] if any(k for *_, k in self.raw) else ["total", "euro"]
+        keys = ["total", "pack", "euro"] if any(r[4] for r in self.raw) else ["total", "euro"]
         if keys != self.keys:
             cur = self.keys[self.mode] if self.mode < len(self.keys) else "total"
             labels = {"total": tr("Total"), "pack": tr("per pack"), "euro": tr("per € spent")}
@@ -184,11 +186,11 @@ class SessionBars(Card):
         (line at 1 = break-even; only sessions with spend)."""
         key = self.keys[self.mode] if self.mode < len(self.keys) else "total"
         if key == "pack":
-            self.data = [(ts, v / k, paid / k, title) for ts, v, paid, title, k in self.raw if k]
+            self.data = [(ts, v / k, paid / k, title, est) for ts, v, paid, title, k, est in self.raw if k]
         elif key == "euro":
-            self.data = [(ts, v / paid, 1.0, title) for ts, v, paid, title, k in self.raw if paid]
+            self.data = [(ts, v / paid, 1.0, title, est) for ts, v, paid, title, k, est in self.raw if paid]
         else:
-            self.data = [(ts, v, paid, title) for ts, v, paid, title, k in self.raw]
+            self.data = [(ts, v, paid, title, est) for ts, v, paid, title, k, est in self.raw]
 
 
 class Cumulative(Card):
@@ -200,15 +202,18 @@ class Cumulative(Card):
 
     def set_data(self, sessions, now=None):
         """now: {session ID: today's card value} – enables the "when opened · today" toggle."""
+        from scanner import core
         out = ([], [])
         for k in (0, 1):
             tot = paid = 0.0
-            pts = [(0, 0.0, 0.0)] if sessions else []
+            est = False   # „≈" from the first log holding a converted price on (legal 14.11.2026)
+            pts = [(0, 0.0, 0.0, False)] if sessions else []
             for s in sessions:
                 v = s["stats"]["total"] if k == 0 or not now else now.get(s["id"], s["stats"]["total"])
                 tot += v
                 paid += s["stats"].get("paid") or 0
-                pts.append((s.get("started", 0), tot, paid))
+                est = est or core.session_est(s)[0]
+                pts.append((s.get("started", 0), tot, paid, est))
             out[k].extend(pts)
         self.series = out
         self.set_modes([tr("when opened"), tr("today")] if now else [], self.mode if now else 0,

@@ -35,6 +35,7 @@ def model_path():
 
 
 GLOBAL_NAME = "fingerprints-all.npz"
+ADD_NAME = "fingerprints-add.npz"   # the new cards since the main index (docs/FP-ADD-FORMAT.md), next to it
 CARDBACK = "cardback.npy"   # the normal Magic card back as a fingerprint (Index._drop_card_backs), in the Magic pack
 
 
@@ -372,17 +373,30 @@ class Index:
             seen.update(ids[i] for i in keep)
             mats.append(vecs[keep])
         self.n_sets = len(self.ids)
-        self.n_global = 0
+        self.n_global = self.n_add = 0
+        tag = ""
         if global_file is not None:
             with np.load(global_file, allow_pickle=False) as z:
                 gids, gvecs = z["ids"].tolist(), z["vecs"]
+                gmeta = json.loads(str(z["meta"])) if "meta" in z.files else {}
+            tag = _index_tag(global_file)
+            add = load_add(pathlib.Path(global_file).with_name(ADD_NAME), tag.split(":")[1] if ":" in tag else "",
+                           gmeta)
+            if add is not None:   # the add-on wins over a base row with the same id (FP-ADD-FORMAT §3.2)
+                aids, avecs, atag = add
+                seen = seen | set(aids)
+                tag += f":add:{atag}"
             keep = [i for i, cid in enumerate(gids) if cid not in seen]
             self.ids += [gids[i] for i in keep]
             mats.append(gvecs[keep].astype(np.float32))
             self.n_global = len(keep)
+            if add is not None:   # base rows first, then the add-on's (§3.4)
+                self.ids += aids
+                mats.append(avecs.astype(np.float32))
+                self.n_add = len(aids)
         self.mat = np.concatenate(mats) if mats else np.zeros((0, 384), np.float32)
         self._drop_card_backs()
-        self.mat = _mapped(self.ids, self.mat, _index_tag(global_file) if global_file is not None else "")
+        self.mat = _mapped(self.ids, self.mat, tag)
         self.cards = dict(cards_by_id)
 
     def _drop_card_backs(self):
@@ -493,6 +507,34 @@ class Index:
             if e is not None:
                 out.append((e, float(sims[i])))
         return out
+
+
+def load_add(path, base_sha, base_meta):
+    """The fingerprint add-on next to the main index -> (ids, vecs, its sha256), or None when there is none or it
+    doesn't belong to this main index: meta.base must be the main file's sha256, model/batch/versions the same
+    (docs/FP-ADD-FORMAT.md §4). A mismatch is no error – one log line, the main index scans alone."""
+    path = pathlib.Path(path)
+    if not path.exists():
+        return None
+    try:
+        with np.load(path, allow_pickle=False) as z:
+            ids, vecs, meta = z["ids"].tolist(), z["vecs"], json.loads(str(z["meta"]))
+        if meta.get("base") != base_sha or not base_sha:
+            raise ValueError("base differs")
+        for k in ("model", "batch", "versions"):
+            if meta.get(k) != base_meta.get(k):
+                raise ValueError(f"{k} differs")
+        if vecs.ndim != 2 or vecs.shape != (len(ids), 384) or meta.get("count") != len(ids):
+            raise ValueError("shape")
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for block in iter(lambda: f.read(1 << 20), b""):
+                h.update(block)
+        log.info("AI index: %d cards from the add-on", len(ids))
+        return ids, vecs, h.hexdigest()
+    except (OSError, ValueError, KeyError) as e:
+        log.info("AI index add-on ignored: %s", e)
+        return None
 
 
 def _index_tag(path):

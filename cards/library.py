@@ -353,7 +353,10 @@ def _game_changed():
 
 
 def card_details(entry):
-    """Extra info from Scryfall for a card (cached in data/details)."""
+    """Extra info from Scryfall for a card (cached in data/details). Only for a game whose details are online
+    (Magic) – never a Pokémon/Yu-Gi-Oh! … ID at Scryfall (lead 16.11.2026). -> {} otherwise"""
+    if not _games.current().online_details:
+        return {}
     sid, _, face = entry["id"].rpartition("_")
     path = DETAILS / f"{sid}.json"
     if path.exists():
@@ -397,7 +400,10 @@ FULL = DETAILS / "komplett"  # everything Scryfall has on a printing (library de
 
 def card_full(sid, max_age=86400):
     """Full Scryfall record of a printing + rulings + printing history. Cached; refetched after one
-    day (prices change daily), offline the old copy is kept."""
+    day (prices change daily), offline the old copy is kept. Only for a game whose details are online (Magic) – other
+    games: None, nothing is asked (lead 16.11.2026: a Pokémon ID went to Scryfall)."""
+    if not _games.current().online_details:
+        return None
     path = FULL / f"{sid}.json"
     old = None
     if path.exists():

@@ -14,7 +14,10 @@ Read on 2026-10-20 (re-read when the services change):
   for image crops (art_crop) credit artist + copyright elsewhere in the same view.
 - Moxfield: no public API, access only on request (support@moxfield.com) → link import OFF.
 - Archidekt (archidekt.com/terms): forbids "automated searches, requests, or queries" → link import OFF.
-- Commander Spellbook: community project, code MIT, no API rules of their own published → sparingly, only on click.
+- Commander Spellbook (backend API rules, read by legal 16.11.2026: "a few HTTP calls per user interaction", about
+  80 requests/minute, respect 429, name the service in the User-Agent, credit + link): only from Near Orbit on and
+  with its switch (orbit.spellbook_on); a deck's list goes once per series of changes (1.5 s pause, deckcore), a 429
+  makes the app wait (COOL_429) instead of asking again; UA names Bent°Corner + version; linked in the sources.
 - EDHREC (edhrec.com/terms, read 2026-10-26): forbids "automated searches, requests, or queries" – same clause as
   Archidekt → OFF (cards/edhrec.py ALLOWED); only data already in the cache is used. Permission asked (backlog).
 - EDHTop16: "robust API", no rules published (questions via their Discord) → 2 s.
@@ -80,7 +83,7 @@ POLICY = {
     "svgs.scryfall.io": 0.0,
     "data.scryfall.io": 0.0,                 # bulk data (one file)
     "json.edhrec.com": 2.0,                  # terms forbid automated requests: off (cards/edhrec.py ALLOWED)
-    "backend.commanderspellbook.com": 1.0,   # no public rules: careful
+    "backend.commanderspellbook.com": 1.0,   # ~80/min allowed – one call a second is far below
     "edhtop16.com": 2.0,
     "api2.moxfield.com": 2.0,                # only on an explicit import
     "archidekt.com": 1.0,
@@ -143,7 +146,8 @@ FAILOVER_REST = 300.0    # s: after a connection failure of the new name, use th
 _new_down_until = [0.0]
 OWN = {SERVER_HOST} | OLD_HOSTS   # our own server: its errors lead to the fallback, not to a pause
 # minimum pause after a 429 per service (their own block time) – a Retry-After header takes precedence
-COOL_429 = {"tcgcsv.com": 600.0, "db.ygoprodeck.com": 3600.0, "images.ygoprodeck.com": 3600.0}
+COOL_429 = {"tcgcsv.com": 600.0, "db.ygoprodeck.com": 3600.0, "images.ygoprodeck.com": 3600.0,
+            "backend.commanderspellbook.com": 120.0, "edhtop16.com": 120.0}   # wait, don't ask again (legal 16.11.)
 # Mirror says 404 (it only knows some paths – older servers no capitals, i.e. no Japanese "ja/SV/SV10/…"): then
 # directly from the source, but slowly, never for bulk downloads (mirror_only) and never twice for a missing image
 FALLBACK_GAP = 1.0
@@ -232,8 +236,9 @@ def mark_lasting(url):
 
 
 def note_missing(url, r):
-    """After an image request: remember a 404."""
-    if getattr(r, "status_code", None) == 404:
+    """After an image request: remember a 404 – and a 410 (our mirror: the game or its images are switched off; legal
+    16.11.2026: remembered, no fallback to the source, not asked again for LASTING_DAYS)."""
+    if getattr(r, "status_code", None) in (404, 410):
         mark_lasting(url)
 
 
@@ -388,6 +393,11 @@ BLOCKED_OWN = set()   # paths on our own server not to be asked at all (the imag
 
 def block_own_paths(paths):
     BLOCKED_OWN.update(paths)
+
+
+def unblock_own_paths(paths):
+    """Emergency switch turned a game (or its images) back on: its paths on our server may be asked again."""
+    BLOCKED_OWN.difference_update(paths)
 
 
 def _blocked(url, host):

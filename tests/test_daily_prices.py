@@ -38,6 +38,7 @@ class DailyPrices(unittest.TestCase):
             return json.dumps(GUIDE).encode()
         self.p = [mock.patch.object(carddb, "DB_PATH", d / "cards.sqlite"),
                   mock.patch.object(pricehist, "DB", d / "price-history.sqlite"),
+                  mock.patch.object(pricehist, "GAME", "lorcana"),   # a daily-price game: its own cn
                   mock.patch.object(base, "tcgplayer_table", lambda net, cache, name: (TCG, False)),
                   mock.patch("net.netpolite.get_large", get_large)]
         for p in self.p:

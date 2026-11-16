@@ -104,21 +104,24 @@ def _session_bars(w):
         if key == "euro" and w.raw:
             empty = tr("Enter what you paid in the log – then you'll see how much card value you get per euro.")
         return {"type": "empty", "text": empty}
-    vmax = charts._nice(max(max(v, paid) for _, v, paid, _ in w.data))
+    vmax = charts._nice(max(max(r[1], r[2]) for r in w.data))
     n = len(w.data)
     bars, line = [], []
-    for i, (ts, v, paid, title) in enumerate(w.data):
+    for i, row in enumerate(w.data):
+        ts, v, paid, title = row[:4]
+        ap = "≈ " if len(row) > 4 and row[4] else ""   # „≈": the log holds a converted price (legal 14.11.2026)
         top = charts.GREEN if paid and v >= paid else charts.CYAN
         tip = [_date(ts, "%d.%m.%Y %H:%M") + (f" · {title}" if title else "")]
         if key == "euro":
-            tip += [tr("Card value per euro paid: ") + _money(w, v),
+            tip += [tr("Card value per euro paid: ") + ap + _money(w, v),
                     tr("got more out than you paid") if v >= 1 else tr("got less out than you paid")]
         else:
-            tip.append((tr("Avg. value per pack: ") if key == "pack" else tr("Value: ")) + _money(w, v))
+            tip.append((tr("Avg. value per pack: ") if key == "pack" else tr("Value: ")) + ap + _money(w, v))
             if paid:
                 d = v - paid
+                sign = "+" if d >= 0 else "−"
                 tip.append((tr("Paid per pack: ") if key == "pack" else tr("Stake: ")) + _money(w, paid)
-                           + f"  ({'+' if d >= 0 else '−'}{_money(w, abs(d))})")
+                           + f"  ({ap}{sign}{_money(w, abs(d))})")
         bars.append({"v": v, "color": _c(top), "label": _date(ts) if n <= 12 or i % max(1, n // 8) == 0 else "",
                      "tip": tip})
         line.append(paid if paid else None)
@@ -130,18 +133,20 @@ def _cumulative(w):
     from ui import charts
     if len(w.pts) < 2:
         return {"type": "empty", "text": tr("No data yet")}
-    vmax = charts._nice(max(max(v, pd) for _, v, pd in w.pts))
+    vmax = charts._nice(max(max(p[1], p[2]) for p in w.pts))
     tips = []
-    for i, (ts, v, pd) in enumerate(w.pts):
+    for i, p in enumerate(w.pts):
+        ts, v, pd = p[:3]
+        ap = "≈ " if len(p) > 3 and p[3] else ""   # „≈" (legal 14.11.2026)
         lines = [_date(ts, "%d.%m.%Y"), (tr("Total value today: ") if w.mode == 1 else tr("Total value when opened: "))
-                 + _money(w, v)]
+                 + ap + _money(w, v)]
         if pd:
             d = v - pd
-            lines += [tr("Spent: ") + _money(w, pd), tr("Balance: ") + ("+" if d >= 0 else "−") + _money(w, abs(d))]
+            lines += [tr("Spent: ") + _money(w, pd), tr("Balance: ") + ap + ("+" if d >= 0 else "−") + _money(w, abs(d))]
         tips.append(lines)
-    series = [{"vals": [v for _, v, _ in w.pts], "color": _c(charts.CYAN), "fill": True, "dash": False}]
+    series = [{"vals": [p[1] for p in w.pts], "color": _c(charts.CYAN), "fill": True, "dash": False}]
     if w.pts[-1][2] > 0:
-        series.append({"vals": [pd for _, _, pd in w.pts], "color": _c(charts.AMBER), "fill": False, "dash": True})
+        series.append({"vals": [p[2] for p in w.pts], "color": _c(charts.AMBER), "fill": False, "dash": True})
     return {"type": "line", "vmax": vmax, "grid": _axis(w, vmax), "series": series, "tips": tips, "skipFirst": True,
             "legend": [{"text": tr("Card value"), "color": _c(charts.CYAN)},
                        {"text": tr("Spent"), "color": _c(charts.AMBER)}]}
@@ -159,10 +164,20 @@ def _donut(w):
 def _hbars(w):
     if not w.rows:
         return {"type": "empty", "text": tr("No data yet")}
-    vmax = max(v for _, v, _ in w.rows) or 1
+    vmax = max(r[1] for r in w.rows) or 1
     from ui import charts
-    rows = [{"label": label, "v": v, "text": (charts._money(v, w.fmt) if w.money else str(round(v))),
-             "tip": [label, extra] if extra else []} for label, v, extra in w.rows]
+
+    def text(v, est):   # a 4th field in a row: its value holds a price converted from dollars – „≈" (legal 14.11.)
+        if not w.money:
+            return str(round(v))
+        if est and w.fmt:
+            try:
+                return w.fmt(v, True)
+            except TypeError:   # an old one-argument formatter
+                return "≈ " + charts._money(v, w.fmt)
+        return ("≈ " if est else "") + charts._money(v, w.fmt)
+    rows = [{"label": r[0], "v": r[1], "text": text(r[1], len(r) > 3 and r[3]),
+             "tip": [r[0], r[2]] if r[2] else []} for r in w.rows]
     return {"type": "hbars", "vmax": vmax, "rows": rows, "color": _c(w.color), "bottom": _c(charts.TEAL)}
 
 
@@ -184,13 +199,15 @@ def _pack_bars(w):
     from ui import charts
     if not w.rows:
         return {"type": "empty", "text": tr("No data yet")}
-    vmax = charts._nice(max(max(v for v, _, _ in w.rows), w.avg))
+    vmax = charts._nice(max(max(r[0] for r in w.rows), w.avg))
     n = len(w.rows)
     bars = []
-    for i, (v, best, best_p) in enumerate(w.rows):
-        tip = [tr(f"Pack {i + 1}") + ":  " + _money(w, v)]
+    for i, row in enumerate(w.rows):
+        v, best, best_p = row[:3]
+        ap, bp = ("≈ " if len(row) > 3 and row[3] else ""), ("≈ " if len(row) > 4 and row[4] else "")   # legal 14.11.
+        tip = [tr(f"Pack {i + 1}") + ":  " + ap + _money(w, v)]
         if best:
-            tip.append(tr("Best card: ") + best + (f"  ({_money(w, best_p)})" if best_p else ""))
+            tip.append(tr("Best card: ") + best + (f"  ({bp}{_money(w, best_p)})" if best_p else ""))
         if w.avg:
             from ui.statsview import _pct
             tip.append(tr("vs. your average: ") + _pct((v / w.avg - 1) * 100))

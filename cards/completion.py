@@ -13,11 +13,20 @@ MODES = [("booster", "Booster-Karten"), ("all", "Alle Drucke"), ("rare", "Nur Ra
 _SKIP = "('token', 'double_faced_token', 'art_series', 'emblem')"
 
 
-def eur(v):
+def eur(v, est=False):
+    """A set's value in the display currency (lead 14.11.: no fixed "€"), „≈" when it holds a price converted from
+    dollars (legal 14.11.2026) – "" in Orbit's Core."""
     from system import orbit
     if not orbit.prices_shown():   # Orbit's Core: no card prices anywhere (legal 06.11.)
         return ""
-    return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+    from cards import currency
+    return currency.fmt(v, est)
+
+
+def est(rows):
+    """Does a sum of these card rows hold a price converted from dollars?"""
+    from cards import currency
+    return any(r.get("eur") and currency.estimated(r.get("id")) for r in rows)
 
 
 SORTS = [("progress", "Fortschritt"), ("name", "Name"), ("date", "Datum"), ("missing", "Fehlt €")]
@@ -62,7 +71,8 @@ def compute(items, mode="booster"):
             continue
         s.update(have=len(have), total=len(nums), missing=sorted(missing, key=lambda r: _num_key(r["number"])),
                  missing_value=sum(r["eur"] or 0 for r in missing),
-                 total_value=sum(r["eur"] or 0 for r in nums.values()))
+                 total_value=sum(r["eur"] or 0 for r in nums.values()),
+                 missing_est=est(missing), total_est=est(nums.values()))
         out.append(s)
     out.sort(key=lambda s: (-s["have"] / s["total"], -s["total"]))
     return out
@@ -96,6 +106,8 @@ def families(data, catalog):
         f["total"] = sum(s["total"] for s in f["sets"])
         f["missing_value"] = sum(s["missing_value"] for s in f["sets"])
         f["total_value"] = sum(s.get("total_value", 0) for s in f["sets"])
+        f["missing_est"] = any(s.get("missing_est") for s in f["sets"])
+        f["total_est"] = any(s.get("total_est") for s in f["sets"])
         f["released"] = max((s.get("released") or "" for s in f["sets"]), default="")
         f["missing"] = [dict(m, _set=s["code"]) for s in f["sets"] for m in s["missing"]]
         out.append(f)

@@ -170,11 +170,13 @@ class GroupBackend(QtCore.QObject):
     def _show(self, t):
         for d, c in enumerate(t["cols"]):
             for n in c["nodes"]:
-                n["valueText"] = _euro(n["value"])
+                n["valueText"] = _euro(n["value"], n.get("est"))
+                n["valueTip"] = _tip(n)
                 if n["on"]:
                     self._labels[(c["key"], n["v"])] = n["label"]
-        t["root"]["valueText"] = _euro(t["root"]["value"])
-        t["here"]["valueText"] = _euro(t["here"]["value"])
+        for k in ("root", "here"):
+            t[k]["valueText"] = _euro(t[k]["value"], t[k].get("est"))
+            t[k]["valueTip"] = _tip(t[k])
         self._tree = t
         self.treeChanged.emit()
         self.changed.emit()   # (the chips show the numbers of the tree)
@@ -385,6 +387,12 @@ class GroupBackend(QtCore.QObject):
             self.changed.emit()
 
 
-def _euro(v):
+def _euro(v, est=False):
     from ui.librarycore import eur
-    return eur(v)
+    return eur(v, est)
+
+
+def _tip(n):
+    """The legal text on a branch's „≈" – "" without a converted price (or prices hidden in Orbit's Core)."""
+    from cards import currency
+    return currency.approx_tip(n.get("day")) if n.get("est") and _euro(n["value"]) else ""

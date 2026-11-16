@@ -37,7 +37,7 @@ class Chips(unittest.TestCase):
     def setUp(self):
         self.p = mock.patch.object(grouping.games, "current", lambda: GAME)   # (qgroup.games is the same module)
         self.p.start()
-        self.p3 = mock.patch.object(qgroup, "_euro", lambda v: f"{v:.2f} €")
+        self.p3 = mock.patch.object(qgroup, "_euro", lambda v, est=False: ("≈ " if est else "") + f"{v:.2f} €")
         self.p3.start()
         self.ctrl = SimpleNamespace(settings={}, settings_changed=lambda: None)
         self.lib = FakeLib()

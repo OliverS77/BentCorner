@@ -77,8 +77,8 @@ Item {
                   onClicked: d.det.showLists() }
             Btn { id: bell; compact: true; width: 30; height: 26; glyph: "bell"; inverted: d.det.alarm
                   visible: d.det.canAlarm
-                  tip: d.det.alarm ? shell.text("Price alert set – click: change (Orbit)")
-                                   : shell.text("Price alert for this card (Orbit)")
+                  tip: d.det.alarm ? shell.text("Price alert set – click: change (Lists & Orbit)")
+                                   : shell.text("Price alert for this card (Lists & Orbit)")
                   onClicked: d.det.alarmForCard() }
             Btn { id: book; compact: true; width: 30; height: 26; glyph: d.det.rulings ? "book" : "bookEmpty"; opacity: d.det.rulings ? 1 : 0.5
                   tip: d.det.rulings ? shell.text("Additional rulings available – click: go to the rulings")
@@ -535,6 +535,13 @@ Item {
                     onActiveChanged: if (!active) d.cardDropped(centroid.scenePosition.x, centroid.scenePosition.y)
                 }
             }
+            Text {   // images of this game switched off (legal 16.11.2026): why the placeholder – once, small
+                visible: d.det.imageNote !== ""
+                width: parent.width
+                text: d.det.imageNote
+                wrapMode: Text.Wrap
+                color: T.dim; font.family: T.font; font.pixelSize: 11
+            }
             Item {
                 width: parent.width; height: langFlow.height
                 Flow {
@@ -601,10 +608,18 @@ Item {
                 color: T.text2; font.family: T.font; font.pixelSize: 13
                 // bc-artist:Name = search all cards by this artist (section „Print“), otherwise open the website
                 onLinkActivated: function (link) {
+                    if (link.indexOf("approx:") === 0) return   // „≈": only a hover target (the legal text)
                     if (link.indexOf("bc-artist:") === 0) d.det.searchArtist(decodeURIComponent(link.slice(10)))
                     else Qt.openUrlExternally(link)
                 }
-                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                onLinkHovered: function (link) {
+                    var tip = link !== "" ? shell.approxTip(link) : ""
+                    if (tip === "") { shell.tip("", 0, 0); return }
+                    var p = mapToItem(null, width / 2, height)
+                    shell.tip(tip, p.x, p.y)
+                }
+                HoverHandler { cursorShape: parent.hoveredLink && parent.hoveredLink.indexOf("approx:") !== 0
+                                            ? Qt.PointingHandCursor : Qt.ArrowCursor }
             }
             PriceVeil {   // Orbit's Core: the note in place of the price rows, chart and hint (the marketplaces stay)
                 visible: fd.key === "prices" && !shell.pricesOn
@@ -649,7 +664,14 @@ Item {
             Text {   // legal 02.11.: prices are estimates – once, small, at the end of the prices (under the chart, if any)
                 visible: fd.key === "prices" && shell.pricesOn
                 width: parent.width
-                text: shell.text("Prices are estimates from daily market data (Cardmarket, TCGplayer) – no guarantee. The shop has the final price.")
+                text: d.det.priceNote
+                wrapMode: Text.Wrap
+                color: T.dim; font.family: T.font; font.pixelSize: 11
+            }
+            Text {   // legal 14.11.: the price legend's „≈" – once, only when this card's euros are converted
+                visible: fd.key === "prices" && shell.pricesOn && d.det.approxNote !== ""
+                width: parent.width
+                text: d.det.approxNote
                 wrapMode: Text.Wrap
                 color: T.dim; font.family: T.font; font.pixelSize: 11
             }

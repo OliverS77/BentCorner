@@ -51,6 +51,7 @@ def collection_series(items, starts=None):
     days = [today - datetime.timedelta(days=i) for i in range(pricehist.WINDOW - 1, -1, -1)]
     start = days[0]
     curves, flat = [], 0
+    conv, conv_day = 0, None   # cards whose euros are converted from dollars („≈", legal 14.11.2026)
     for (sid, foil), owned in groups.items():
         h = hist.get(sid) or {}
         pts = h.get("cf" if foil else "cn")
@@ -64,6 +65,12 @@ def collection_series(items, starts=None):
             price = it.get("eur_foil" if foil else "eur") or it.get("eur") or it.get("eur_foil") or 0
             daily = {start: float(price or 0)} if price else {}
             flat += sum(owned.values())
+            usd = bool(daily) and currency.estimated(sid)   # today's price itself converted
+        if daily and usd:
+            conv += sum(owned.values())
+            d = currency.rate_day_of(sid) or currency.rate_day()
+            if d and (conv_day is None or d > conv_day):
+                conv_day = d
         if daily:
             curves.append((daily, owned))
     if not curves:
@@ -113,11 +120,13 @@ def collection_series(items, starts=None):
             if n_then and p:
                 total += n_then * p
         base[i] = round(total, 2)
-    return {"days": days, "values": values, "base": base, "adds": adds, "flat": flat, "base_day": b}
+    return {"days": days, "values": values, "base": base, "adds": adds, "flat": flat, "base_day": b,
+            "conv": conv, "conv_day": conv_day}
 
 
-def _money(v):
-    return f"{v:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+def _money(v, est=False):
+    """A value in the display currency (lead 14.11.: no fixed "€"), „≈" when a converted price is in it."""
+    return currency.fmt(v, est)
 
 
 def chart_spec(res, title=None, h=260, sub_pad=0, link=""):
@@ -138,16 +147,21 @@ def chart_spec(res, title=None, h=260, sub_pad=0, link=""):
     floor = max(0.0, lo - span * 0.25)
     top = hi + span * 0.1
 
+    est = bool(res.get("conv"))   # „≈" on every value: dollars converted for some cards (legal 14.11.2026)
+
     def short(v):
-        return f"{round(v):,} €".replace(",", ".")
+        s = currency.fmt(v)
+        return s.rsplit(",", 1)[0] + " " + s.rsplit(" ", 1)[1] if "," in s else s   # whole units on the axis
     tips = []
     for i, (d, v) in enumerate(zip(days, vals)):
-        lines = [d.strftime("%d.%m.%Y"), tr("Value: ") + _money(v)]
+        lines = [d.strftime("%d.%m.%Y"), tr("Value: ") + _money(v, est)]
         if base[i] != v:
-            lines.append(tr("older cards: ") + _money(base[i]))
+            lines.append(tr("older cards: ") + _money(base[i], est))
         if i in adds:
             n, val = adds[i]
-            lines.append(tr(f"+{n} cards added (worth {_money(val)} then)"))
+            lines.append(tr(f"+{n} cards added (worth {_money(val, est)} then)"))
+        if est:
+            lines.append("≈ = " + currency.approx_tip(res.get("conv_day")))
         tips.append(lines)
     series = [{"vals": [max(0.0, v - floor) if v else 0.0 for v in vals], "color": "#62f2ff", "fill": True,
                "dash": False}]
@@ -156,7 +170,7 @@ def chart_spec(res, title=None, h=260, sub_pad=0, link=""):
                        "dash": True})
     v0 = vals[res.get("base_day", 0)]
     d = vals[-1] - v0
-    sub = _money(vals[-1]) + "  ·  " + (tr("since ") + days[0].strftime("%d.%m.") if c0 else tr("last 90 days"))
+    sub = _money(vals[-1], est) + "  ·  " + (tr("since ") + days[0].strftime("%d.%m.") if c0 else tr("last 90 days"))
     if base[-1] and base[-1] != vals[-1]:
         b0 = base[res.get("base_day", 0)]
         pct = (base[-1] - b0) / b0 * 100 if b0 else 0
@@ -167,6 +181,9 @@ def chart_spec(res, title=None, h=260, sub_pad=0, link=""):
     if res["flat"]:
         sub += "  ·  " + (tr("1 card without history") if res["flat"] == 1 else
                           tr(f"{res['flat']} cards without history"))
+    if est:
+        sub += "  ·  ≈ " + (tr("1 card converted from dollars") if res["conv"] == 1 else
+                            tr(f"{res['conv']} cards converted from dollars"))
     legend = [{"text": tr("Value"), "color": "#62f2ff"}]
     if len(series) > 1:
         legend.append({"text": tr("older cards without additions"), "color": "#8a91a8"})

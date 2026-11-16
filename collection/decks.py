@@ -11,6 +11,12 @@ import time
 import uuid
 
 import games
+
+
+def _est(r):
+    """Is a card row's euro price converted from dollars? („≈", legal 14.11.2026)"""
+    from cards import currency
+    return currency.estimated((r or {}).get("id"))
 from scanner.common import MINE
 
 _G = games.current()   # formats, card types and deck sizes come from the game description
@@ -264,7 +270,7 @@ def analyze(deck, rows, owned=None, owned_names=None, online=None):
            "roles": {"Ramp": 0, "Kartenziehen": 0, "Kartenauswahl": 0, "Removal": 0, "Board Wipes": 0, "Tutoren": 0},
            "role_cards": {"Ramp": [], "Kartenziehen": [], "Kartenauswahl": [], "Removal": [], "Board Wipes": [],
                           "Tutoren": []},
-           "tokens": {}, "price": 0.0, "missing_price": 0.0, "owned": 0, "missing": [], "warnings": [],
+           "tokens": {}, "price": 0.0, "missing_price": 0.0, "price_est": False, "missing_est": False, "owned": 0, "missing": [], "warnings": [],
            "identity": "", "game_changers": [], "avg_mv": 0.0, "lands": 0,
            # cards per group (database rows) – a click in the deck info shows them
            "type_rows": {}, "curve_rows": [[] for _ in range(8)], "color_rows": {c: [] for c in "WUBRGC"},
@@ -319,11 +325,15 @@ def analyze(deck, rows, owned=None, owned_names=None, online=None):
         price = r.get("eur") if r.get("eur") is not None else r.get("eur_foil")
         have = owned.get(r["id"], 0) or owned_names.get(r["name"], 0)
         out["price"] += (price or 0) * n
+        if price and _est(r):   # „≈" on the deck's value (legal 14.11.2026)
+            out["price_est"] = True
         got = min(n, have)
         out["owned"] += got
         if got < n:
             out["missing"].append((r["name"], n - got))
             out["missing_price"] += (price or 0) * (n - got)
+            if price and _est(r):
+                out["missing_est"] = True
         if _EXTRA_TURN.search(text):
             out.setdefault("extra_turns", []).append(r["name"])
         if _MLD.search(text):
@@ -494,7 +504,7 @@ def analyze_generic(deck, rows, owned, owned_names):
            "types": {}, "type_rows": {}, "colors": {c: 0 for c in pal}, "color_rows": {c: [] for c in pal},
            "producers": {}, "roles": {k: 0 for k in roles}, "role_cards": {k: [] for k in roles},
            "role_rows": {k: [] for k in roles}, "role_help": {k: v[1] for k, v in roles.items()},
-           "tokens": {}, "price": 0.0, "missing_price": 0.0, "owned": 0, "missing": [], "warnings": [],
+           "tokens": {}, "price": 0.0, "missing_price": 0.0, "price_est": False, "missing_est": False, "owned": 0, "missing": [], "warnings": [],
            "identity": "", "game_changers": [], "avg_mv": 0.0, "lands": 0, "combos": [], "online": {},
            "bracket": None, "bracket_reasons": []}
     if rules.get("size_main"):   # Yu-Gi-Oh!: Main Deck / Extra Deck / Side Deck counted separately
@@ -533,11 +543,15 @@ def analyze_generic(deck, rows, owned, owned_names):
         price = r.get("eur") if r.get("eur") is not None else r.get("eur_foil")
         have = owned.get(r["id"], 0) or owned_names.get(r["name"], 0)
         out["price"] += (price or 0) * n
+        if price and _est(r):   # „≈" on the deck's value (legal 14.11.2026)
+            out["price_est"] = True
         got = min(n, have)
         out["owned"] += got
         if got < n:
             out["missing"].append((r["name"], n - got))
             out["missing_price"] += (price or 0) * (n - got)
+            if price and _est(r):
+                out["missing_est"] = True
     out["kpis"] = g.deck_kpis(out)
     out["identity"] = "".join(c for c in pal if out["colors"][c])   # header line: types in the deck
     out["warnings"] = rule_warnings(deck, rows, rules, g)

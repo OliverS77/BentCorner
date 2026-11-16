@@ -7,6 +7,7 @@ Item {
     id: t
     property string name
     property string price
+    property string priceTip: ""   // „≈": converted from the TCGplayer US price (legal 14.11.2026)
     property string setLine
     property var chips: []
     property string cond: ""   // condition (EX, LP, PSA 10 …) – own outlined box bottom left in the image
@@ -315,6 +316,14 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: t.price
             color: T.muted; font.family: T.font; font.pixelSize: t.npx - 1
+            HoverHandler {
+                enabled: t.priceTip !== ""
+                onHoveredChanged: {
+                    if (!hovered) { shell.tip("", 0, 0); return }
+                    var p = priceText.mapToItem(null, priceText.width / 2, priceText.height)
+                    shell.tip(t.priceTip, p.x, p.y)
+                }
+            }
         }
         Marquee {
             x: 0; width: parent.width - (t.price ? priceText.implicitWidth + 8 : 0)

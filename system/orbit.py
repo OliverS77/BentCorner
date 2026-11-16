@@ -6,7 +6,8 @@
                        net/relay) – trade tickets are images, they never go through the mailbox
 
 One level = exactly what leaves the device beyond what every level needs. Card data, card images, data packs, updates
-and look-ups (EDHREC, Commander Spellbook …) are NOT part of Orbit – they have their own settings. The anonymous
+and look-ups (Scryfall …) are NOT part of Orbit – they have their own settings. Exception (Oliver/legal 16.11.2026):
+Commander Spellbook and EDHTop16 only from Near Orbit on, with a switch of their own (spellbook_on). The anonymous
 numbers (net/anonstats) and the scan data stay their own consent, never bundled in here.
 
 Stored in settings["orbit"]. The exchange itself stays net/relay's switch: Full Orbit = the exchange is on, so the
@@ -40,7 +41,10 @@ TERMS_LINE = "By turning it on, you agree to the <a href='{url}'>terms of use �
 # the small print: exactly what leaves the device (privacy policy §4/§5) – honest about the IP address
 OUT = {"core": "Nothing from your collection leaves the device.",
        "near": "Price downloads from our price server and the price sources (MTGJSON, Cardmarket, exchange rates) – "
-               "they see your IP address like any website, but nothing from your collection.",
+               "they see your IP address like any website, but nothing from your collection. Plus, for Commander "
+               "decks, Commander Spellbook and EDHTop16: Spellbook gets the card list (names and counts) of the deck "
+               "you open or edit, to find combos; EDHTop16 gets only the commander's name, for tournament numbers "
+               "(switch below).",
        "full": "On top: a random ID at the Bent°Corner mailbox and end-to-end encrypted parcels only to your friends – "
                "the server can't read them."}
 
@@ -79,6 +83,26 @@ def prices_shown():
     06.11.: in Core no such price appears anywhere: library, detail, search, decks, binders, scan, logs, export). Money
     a user types in (trade money, what they spent) is no market value and stays. Unbound (tools, tests): shown."""
     return _bound is None or prices_on(_bound)
+
+
+def prices_fetch_ok():
+    """Prices/exchange rates may be FETCHED now (network) – prices_on of the app's settings, read live, so a level
+    change at runtime counts at once (legal 15.11., R2: in Core no price request at all). For places without the
+    settings at hand (scan session, game objects). Unbound: no – a network gate fails closed."""
+    return _bound is not None and prices_on(_bound)
+
+
+def spellbook_on(settings):
+    """Commander Spellbook and EDHTop16 (combos, bracket, cEDH numbers, deck import by link) may be asked – from Near
+    Orbit on and with their switch (settings["spellbook"], default on; Oliver/legal 16.11.2026). In Core nothing goes
+    to either, not even an old cached result is shown."""
+    return settings is not None and level(settings) != "core" and settings.get("spellbook", True) is not False
+
+
+def spellbook_ok():
+    """spellbook_on for the app's bound settings, read live – for code without the settings at hand (the network
+    functions themselves). Unbound: no – a network gate fails closed."""
+    return spellbook_on(_bound)
 
 
 def friends_shown():

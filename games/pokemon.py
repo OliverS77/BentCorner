@@ -76,6 +76,7 @@ def _finishes(v):
 
 
 class Pokemon(Game):
+    name_confirm = True
     key = "pokemon"
     name = "Pokémon TCG"
     short = "pokemon"
@@ -461,31 +462,15 @@ class Pokemon(Game):
         return out
 
     def price_lookup(self, card_id):
-        """(trend normal, trend holo) in € for a card – from the card database, otherwise one request to TCGdex
-        (then remembered in the database so the library and next scans have it too). None without a price."""
+        """(trend normal, trend holo) in € for a card – only from the card database (the daily price file). No
+        request to TCGdex for prices any more (Oliver/legal 16.11.2026, E1a). None without a price."""
         from cards import carddb
         sid = card_id.rpartition("_")[0] if card_id.rpartition("_")[2].isdigit() else card_id
         with carddb.connection() as con:
             row = con.execute("SELECT eur, eur_foil FROM cards WHERE id = ?", (sid,)).fetchone()
         if row is not None and (row[0] is not None or row[1] is not None):
             return row[0], row[1]
-        c = _rest(f"cards/{sid}")
-        cm = (c.get("pricing") or {}).get("cardmarket") or {}
-        if not cm:
-            for vd in c.get("variants_detailed") or []:
-                cm = ((vd.get("pricing") or {}).get("cardmarket")) or {}
-                if cm:
-                    break
-        eur, foil = cm.get("trend"), cm.get("trend-holo")
-        if eur is None and foil is None:
-            return None
-        try:
-            with carddb.connection(plain=True) as con:
-                con.execute("UPDATE cards SET eur = ?, eur_foil = ? WHERE id = ?", (eur, foil, sid))
-                con.commit()
-        except sqlite3.Error:
-            pass
-        return eur, foil
+        return None
 
     # ---------- Daily prices (Cardmarket price guide + TCGplayer via our price server) ----------
     def update_prices(self, progress=lambda text, done, total: None, sets=None):
@@ -562,10 +547,19 @@ class Pokemon(Game):
                             "usd_foil = COALESCE(?, usd_foil) WHERE id = ?",   # "no price" too, not the wrong one
                             [(p.get("eur"), p.get("eur_foil"), p.get("usd"), p.get("usd_foil"), sid)
                              for sid, p in prices.items() if sid in untrusted])
+            # those euros are converted from TCGplayer: "≈" with the day of the rate (legal 14.11.2026)
+            from .base import ensure_price_est, price_est_changed
+            ensure_price_est(con)
+            con.execute("DELETE FROM price_est")
+            rate_day = currency.rate_day()
+            con.executemany("INSERT OR IGNORE INTO price_est (sid, rate_day) VALUES (?, ?)",
+                            [(sid, rate_day) for sid, p in prices.items()
+                             if sid in untrusted and (p.get("eur") is not None or p.get("eur_foil") is not None)])
             if new_variants:   # finishes TCGplayer knows but TCGdex doesn't (e.g. Reverse Holo)
                 have = set(con.execute("SELECT sid, type FROM variants"))
                 con.executemany("INSERT INTO variants VALUES (?, ?)", sorted(new_variants - have))
             con.commit()
+        price_est_changed()
         from cards import finishes
         finishes.clear_cache()
         write_hist(hist, day)

@@ -34,7 +34,9 @@ def _singles_fact(fmt):
     cards = sum(x["stats"]["cards"] for x in ss)
     value = sum(x["stats"]["total"] for x in ss)
     paid = sum(x["stats"].get("paid") or 0 for x in ss)
-    return (tr("Trades & purchases"), tr(f"{cards} cards · {fmt(value)}") + (tr(f" · paid {fmt(paid)}") if paid else ""))
+    est = any(core.session_est(x)[0] for x in ss)   # „≈" (legal 14.11.); paid is what was typed: euros
+    return (tr("Trades & purchases"), tr(f"{cards} cards · {fmt(value, est) if est else fmt(value)}")
+            + (tr(f" · paid {fmt(paid)}") if paid else ""))
 
 
 def _one(template, n):
@@ -92,13 +94,21 @@ class PackBars(Card):
         self.rows, self.avg, self.hit = rows, avg, hit
 
 
+def _approx_line(est, day):
+    """The price legend's „≈" on a stats tab (legal 14.11.2026): once, under the key sentence – "" without one."""
+    if not est:
+        return ""
+    from cards import currency
+    return "<br><span style='color:#5c6380'>≈ = " + currency.approx_tip(day) + "</span>"
+
+
 # ---------- page ----------
 class StatsPage:
     """Stats (tabs Sessions · Trade · Collection) as data. layout(tab) describes the arrangement."""
     TABS = (("sessions", "Logs"), ("trade", "Tausch"), ("collection", "Sammlung"))
 
     def __init__(self, fmt=None, settings=None, on_save=None, price_now=None, ctrl=None):
-        self.fmt = fmt or (lambda v: f"{v:.2f} €".replace(".", ","))
+        self.fmt = fmt or (lambda v, est=False: ("≈ " if est else "") + f"{v:.2f} €".replace(".", ","))
         self.settings = settings if settings is not None else {}
         self.on_save, self.price_now, self.ctrl = on_save or (lambda: None), price_now or (lambda ids: {}), ctrl
         self.all, self.dirty = [], {"trade": True, "collection": True}
@@ -318,6 +328,9 @@ class StatsPage:
         self.filtered = data
         self.packs_on = bool(pdata)
         d, dp = summarize(data), summarize(pdata)   # dp: pack figures (Ø per pack, hit rate, pack values, sets)
+        # „≈" (legal 14.11.2026): every sum here that holds a price converted from dollars; real Cardmarket without
+        est_all, est_day = core.entries_est([c for s in data for p in s["packs"] for c in p["cards"]])
+        fmt_e = (lambda v, _f=fmt: _f(v, True)) if est_all else fmt
         for c in (self.s_bars, self.s_cum, self.s_types, self.s_hist, self.s_rarity, self.s_sets, self.s_pulls,
                   self.s_best, self.s_packs, self.s_one_pulls):
             c.fmt = fmt
@@ -340,45 +353,47 @@ class StatsPage:
             profit = d["paid_total"] - d["paid"]
             ratio = d["paid_total"] / d["paid"] * 100 - 100
             self.s_hero.set_content(
-                tr("Balance"), abs(profit), lambda v, s=profit: ("+" if s >= 0 else "−") + fmt(v),
+                tr("Balance"), abs(profit), lambda v, s=profit: ("+" if s >= 0 else "−") + fmt_e(v),
                 GREEN if profit >= 0 else RED,
                 (tr(_one("In <b>{n}</b> logs you opened <b>{packs}</b> packs and pulled cards worth <b>{value}</b>. Where you entered what you paid, that is ", n))
                  if self.packs_on else
                  tr(_one("In <b>{n}</b> logs you scanned <b>{cards}</b> cards worth <b>{value}</b>. Where you entered what you paid, that is ", n)))
-                .format(n=n, packs=d["packs"], cards=d["cards"], value=fmt(d["total"])) +
+                .format(n=n, packs=d["packs"], cards=d["cards"], value=fmt_e(d["total"])) + _approx_line(est_all, est_day) +
                 (f"<b style='color:{GREEN if ratio >= 0 else RED}'>{_pct(ratio)}</b> " +
                  (tr("more than you paid.") if ratio >= 0 else tr("less than you paid."))),
                 self._session_facts(d, now, change, best))
         else:
             self.s_hero.set_content(
-                tr("Value pulled"), d["total"], fmt, CYAN,
+                tr("Value pulled"), d["total"], fmt_e, CYAN,
                 (tr(_one("In <b>{n}</b> logs you opened <b>{packs}</b> packs with <b>{cards}</b> cards. Enter what you paid "
                          "in the log (scan page: the Log tile, or here in the list) – then your balance shows up here.", n))
                  if self.packs_on else
                  tr(_one("In <b>{n}</b> logs you scanned <b>{cards}</b> cards. Enter what you paid in the log (scan "
                          "page: the Log tile, or here in the list) – then your balance shows up here.", n)))
-                .format(n=n, packs=d["packs"], cards=d["cards"]),
+                .format(n=n, packs=d["packs"], cards=d["cards"]) + _approx_line(est_all, est_day),
                 self._session_facts(d, now, change, best))
         first = [
-            (tr("Ø per pack"), avg, fmt, CYAN, tr(f"across {dp['packs']} packs")),
+            (tr("Ø per pack"), avg, fmt_e, CYAN, tr(f"across {dp['packs']} packs")),
             (tr("Hit rate"), rate, lambda v: f"{v:.0f} %", PINK,
              tr(f"{packs_hit} packs with a card worth {fmt(hit)}+")),
         ] if self.packs_on else [   # no packs: per card instead of per pack
-            (tr("Ø per card"), d["total"] / d["cards"] if d["cards"] else 0.0, fmt, CYAN, tr(f"{d['cards']} cards")),
+            (tr("Ø per card"), d["total"] / d["cards"] if d["cards"] else 0.0, fmt_e, CYAN, tr(f"{d['cards']} cards")),
             (tr("Hits"), cards_hit, lambda v: str(round(v)), PINK, tr("cards worth {value}+").format(value=fmt(hit))),
         ]
         self.s_kpis.set_items(first + [
-            (tr("Value today"), now if now is not None else "–", fmt if now is not None else str,
+            (tr("Value today"), now if now is not None else "–", fmt_e if now is not None else str,
              (GREEN if (change or 0) >= 0 else RED) if change is not None else MUTED,
              (_pct(change) + tr(" since opening")) if change is not None else tr("needs the card database")),
-            (tr("Best pull"), best[0] if best else "–", fmt if best else str, AMBER, best[1] if best else ""),
+            (tr("Best pull"), best[0] if best else "–",
+             ((lambda v, _f=fmt: _f(v, True)) if core.entry_est(best[4]) else fmt) if best else str, AMBER,
+             best[1] if best else ""),
         ])
         self.s_bars.set_data(d["sessions"])
         now_by = {s["id"]: sum(self._card_now(c, prices) for pk in s["packs"] for c in pk["cards"])
                   for s in data} if prices else None
         self.s_cum.set_data(d["sessions"], now_by)
         # per type (all types, tag filter applies)
-        rows = {}
+        rows, rows_est = {}, set()
         all_t = filter_sessions(pk_all, None, tags_sel)
         prices_t = self._now_prices(all_t)
         for s in all_t:
@@ -388,11 +403,13 @@ class StatsPage:
                 r[0] += 1
                 r[1] += sum(c.get("price") or 0 for c in p["cards"])
                 r[2] += sum(self._card_now(c, prices_t) for c in p["cards"])
+                if any(core.entry_est(c) for c in p["cards"]):
+                    rows_est.add(k)
         type_rows = []
         for k, (np_, then, nowv) in sorted(rows.items(), key=lambda kv: -kv[1][1] / kv[1][0]):
             ch = (nowv / then - 1) * 100 if then and prices_t else None
-            extra = tr(f"{np_} packs · today avg. {fmt(nowv / np_)}") + (f" ({_pct(ch)})" if ch is not None else "")
-            type_rows.append((tr(known[k]["name"]) if k in known else k, then / np_, extra))
+            extra = tr(f"{np_} packs · today avg. {fmt(nowv / np_, k in rows_est)}") + (f" ({_pct(ch)})" if ch is not None else "")
+            type_rows.append((tr(known[k]["name"]) if k in known else k, then / np_, extra, k in rows_est))
         self.s_types.set_rows(type_rows[:8])
         self.s_hist.set_data(dp["pack_values"])
         self.s_rarity.set_data(d["rarity"], d["foil"])
@@ -403,21 +420,24 @@ class StatsPage:
                     continue
                 codes = [(c.get("set") or "?").upper() for c in p["cards"]]
                 code = max(set(codes), key=codes.count)
-                e = sets.setdefault(code, [0, 0.0])
+                e = sets.setdefault(code, [0, 0.0, False])
                 e[0] += 1
                 e[1] += sum(c.get("price") or 0 for c in p["cards"])
-        set_rows = [(code, tot / k, tr(f"{k} packs · total {fmt(tot)}")) for code, (k, tot) in sets.items() if k >= 2]
+                e[2] = e[2] or any(core.entry_est(c) for c in p["cards"])
+        set_rows = [(code, tot / k, tr(f"{k} packs · total {fmt(tot, est)}"), est)
+                    for code, (k, tot, est) in sets.items() if k >= 2]
         self.s_sets.set_rows(sorted(set_rows, key=lambda r: -r[1])[:10])
         self.s_pulls.set_rows([(name + (_fin(foil) if isinstance(foil, dict) else (" ✦" if foil else "")), price,
-                                f"{code} · {time.strftime('%d.%m.%Y', time.localtime(ts))}")
+                                f"{code} · {time.strftime('%d.%m.%Y', time.localtime(ts))}",
+                                isinstance(foil, dict) and core.entry_est(foil))
                                for price, name, code, ts, foil in d["pulls"][:10]])
         best_s = sorted(d["sessions"], key=lambda s: -s["stats"]["total"])[:8]
         self.s_best.set_rows([(self._session_label(s, short=True), s["stats"]["total"],
-                               tr(f"{s['stats']['packs']} packs · avg. {fmt(s['stats']['avg_pack'])}") if s["stats"]["packs"]
-                               else tr(f"{s['stats']['cards']} cards"))
+                               tr(f"{s['stats']['packs']} packs · avg. {fmt(s['stats']['avg_pack'], core.session_est(s)[0])}")
+                               if s["stats"]["packs"] else tr(f"{s['stats']['cards']} cards"), core.session_est(s)[0])
                               for s in best_s])
         # session selection
-        self.pick_options = [(s["id"], self._session_label(s) + f"   ·   {fmt(s['stats']['total'])}")
+        self.pick_options = [(s["id"], self._session_label(s) + f"   ·   {fmt(s['stats']['total'], core.session_est(s)[0])}")
                              for s in sorted(data, key=lambda s: -s.get("started", 0))]
         if self.pick_sid not in [k for k, _ in self.pick_options]:
             self.pick_sid = self.pick_options[0][0] if self.pick_options else None
@@ -462,30 +482,33 @@ class StatsPage:
             if not p["cards"]:
                 continue
             best = max(p["cards"], key=lambda c: c.get("price") or 0)
-            rows.append((sum(c.get("price") or 0 for c in p["cards"]), best.get("name"), best.get("price")))
+            rows.append((sum(c.get("price") or 0 for c in p["cards"]), best.get("name"), best.get("price"),
+                         core.entries_est(p["cards"])[0], core.entry_est(best)))
             cards += p["cards"]
         st = s["stats"]
         overall = getattr(self, "_overall_avg", 0.0)
+        s_est = core.session_est(s)[0]   # „≈" on this log's sums (legal 14.11.2026)
+        fmt_s = (lambda v, _f=fmt: _f(v, True)) if s_est else fmt
         if self.detail_packs:   # opening boosters: pack by pack, Ø per pack vs. your average
             avg = st["avg_pack"]
             vs = (avg / overall - 1) * 100 if overall else None
             hits = sum(1 for r in rows if (r[2] or 0) >= hit)
             first = [
-                (tr("Value"), st["total"], fmt, CYAN, tr(f"{st['packs']} packs · {st['cards']} cards")),
-                (tr("Ø per pack"), avg, fmt, (GREEN if (vs or 0) >= 0 else RED) if vs is not None else INK,
+                (tr("Value"), st["total"], fmt_s, CYAN, tr(f"{st['packs']} packs · {st['cards']} cards")),
+                (tr("Ø per pack"), avg, fmt_s, (GREEN if (vs or 0) >= 0 else RED) if vs is not None else INK,
                  (_pct(vs) + tr(" vs. your average")) if vs is not None else ""),
                 (tr("Hits"), hits, lambda v: str(round(v)), PINK, tr(f"Packs with a card worth {fmt(hit)}+")),
             ]
         else:                   # scanning cards: one list – value, Ø per card, hits per card
             hits = sum(1 for c in cards if (c.get("price") or 0) >= hit)
             first = [
-                (tr("Value"), st["total"], fmt, CYAN, tr(f"{st['cards']} cards")),
-                (tr("Ø per card"), st["total"] / st["cards"] if st["cards"] else 0.0, fmt, INK, ""),
+                (tr("Value"), st["total"], fmt_s, CYAN, tr(f"{st['cards']} cards")),
+                (tr("Ø per card"), st["total"] / st["cards"] if st["cards"] else 0.0, fmt_s, INK, ""),
                 (tr("Hits"), hits, lambda v: str(round(v)), PINK, tr("cards worth {value}+").format(value=fmt(hit))),
             ]
         self.s_one_kpis.set_items(first + [
             (tr("Balance"), abs(st["profit"]) if st.get("profit") is not None else "–",
-             (lambda v, p=st.get("profit"): ("+" if p >= 0 else "−") + fmt(v)) if st.get("profit") is not None else str,
+             (lambda v, p=st.get("profit"): ("+" if p >= 0 else "−") + fmt_s(v)) if st.get("profit") is not None else str,
              (GREEN if st["profit"] >= 0 else RED) if st.get("profit") is not None else MUTED,
              tr("Stake ") + fmt(st["paid"]) if st.get("paid") else tr("no spending entered")),
         ])
@@ -493,7 +516,8 @@ class StatsPage:
         from collection import share   # copies of the same card once: "4× Lightning Bolt" (03.11.)
         top = share.grouped(sorted((c for c in cards if c.get("price")), key=lambda c: -c["price"]))[:8]
         self.s_one_pulls.set_rows([((f"{c['n']}× " if c["n"] > 1 else "") + c.get("name", "?") + _fin(c), c["price"],
-                                    f"{(c.get('set') or '').upper()} · {(c.get('rarity') or '').capitalize()}")
+                                    f"{(c.get('set') or '').upper()} · {(c.get('rarity') or '').capitalize()}",
+                                    core.entry_est(c))
                                    for c in top])
         self._notify()
 
@@ -541,6 +565,10 @@ class StatsPage:
             if r:
                 price[n] = r.get("eur") if r.get("eur") is not None else r.get("eur_foil")
         holders = trade.holders({d["id"] for d in friends})
+        from cards import currency   # „≈" (legal 14.11.2026): which of these prices are converted from dollars
+        n_est = {n for n in price if price[n] and currency.estimated((db.get(n.lower()) or {}).get("id"))}
+        i_est = lambda it: bool(coll_mod.price(it)) and currency.estimated(coll_mod.scryfall_id(it["id"]))  # noqa: E731
+        fe = lambda v, est, _f=fmt: _f(v, True) if est else _f(v)  # noqa: E731
         # trade stock
         tradeable = trade.have_items(items)  # all own lists, merged
         t_value = sum((coll_mod.price(it) or 0) * n for it, n in tradeable)
@@ -548,6 +576,8 @@ class StatsPage:
         miss_value = sum((price.get(n) or 0) * k for n, k in missing.items())
         avail = {n: k for n, k in missing.items() if holders.get(n)}
         avail_value = sum((price.get(n) or 0) * k for n, k in avail.items())
+        t_est = any(i_est(it) for it, _ in tradeable)
+        m_est, a_est = any(n in n_est for n in missing), any(n in n_est for n in avail)
         alarms = alarms_mod.alarms(self.settings)   # only the open game
         hits = sum(1 for a in alarms if a.get("hit"))
         # per friend
@@ -555,40 +585,47 @@ class StatsPage:
         for d in friends:
             res = trade.proposal(items, missing, d, owned, price, tradeable)
             if res["get"] or res["give"]:
+                g_est = any(x[0] in n_est for x in res["get"])
+                v_est = any(x[0] in n_est for x in res["give"])
                 friend_rows.append((d.get("name") or "?", res["get_sum"],
-                                    tr(f"{sum((n for _, n, _ in res['get']))} cards · you give {fmt(res['give_sum'])} ({sum((n for _, n, _ in res['give']))} cards)")))
+                                    tr(f"{sum((n for _, n, _ in res['get']))} cards · you give {fe(res['give_sum'], v_est)} ({sum((n for _, n, _ in res['give']))} cards)"),
+                                    g_est))
         friend_rows.sort(key=lambda r: -r[1])
         best_friend = friend_rows[0] if friend_rows else None
         # key statement
         if not t_count and not missing and not friends:
             self.t_hero.set_content(tr("Trade"), tr("Nothing to trade yet"), str, MUTED,
-                                    tr("Mark cards for trade in the “Orbit” tab, put cards on your wishlist or import a friend's list – then you'll see here what fits together."), [])
+                                    tr("Mark cards for trade in the “Lists & Orbit” tab, put cards on your wishlist or import a friend's list – then you'll see here what fits together."), [])
         else:
             sent = tr(f"You marked <b>{t_count}</b> cards for trade. ")
             if missing:
-                sent += tr(f"You're missing <b>{sum(missing.values())}</b> cards worth about <b>{fmt(miss_value)}</b>")
-                sent += (tr(f" – your friends have <b>{sum(avail.values())}</b> of them worth about <b>{fmt(avail_value)}</b>.") if avail else tr("."))
+                sent += tr(f"You're missing <b>{sum(missing.values())}</b> cards worth about <b>{fe(miss_value, m_est)}</b>")
+                sent += (tr(f" – your friends have <b>{sum(avail.values())}</b> of them worth about <b>{fe(avail_value, a_est)}</b>.") if avail else tr("."))
             if best_friend:
                 sent += tr(f" Best match right now: <b>{best_friend[0]}</b>.")
+            if t_est or m_est or a_est:
+                days = [currency.rate_day_of((db.get(n.lower()) or {}).get("id")) or "" for n in n_est]
+                sent += _approx_line(True, (max(days) or None) if days else currency.rate_day())
             self.t_hero.set_content(
-                tr("Trade stock"), t_value, fmt, CYAN, sent,
+                tr("Trade stock"), t_value, lambda v: fe(v, t_est), CYAN, sent,
                 [(tr("For trade"), str(t_count)), (tr("Fehlen dir"), str(sum(missing.values()))),
                  (tr("Friends"), str(len(friends))), _singles_fact(fmt), (tr("Price alerts"), f"{len(alarms)}" +
                                                       (f"  <span style='color:{AMBER}'>· {hits} "
                                                        + tr("triggered") + "</span>" if hits else ""))])
         self.t_kpis.set_items([
-            (tr("Trade stock"), t_value, fmt, CYAN, tr(f"{t_count} cards marked")),
-            (tr("Wishlist"), miss_value, fmt, AMBER, tr(f"{sum(missing.values())} cards missing")),
-            (tr("At friends"), avail_value, fmt, GREEN, tr(f"{sum(avail.values())} of your missing cards")),
+            (tr("Trade stock"), t_value, lambda v: fe(v, t_est), CYAN, tr(f"{t_count} cards marked")),
+            (tr("Wishlist"), miss_value, lambda v: fe(v, m_est), AMBER, tr(f"{sum(missing.values())} cards missing")),
+            (tr("At friends"), avail_value, lambda v: fe(v, a_est), GREEN, tr(f"{sum(avail.values())} of your missing cards")),
             (tr("Best partner"), best_friend[0] if best_friend else "–", str, INK,
-             (tr("you get ") + fmt(best_friend[1])) if best_friend else tr("import a friend's list")),
+             (tr("you get ") + fe(best_friend[1], best_friend[3])) if best_friend else tr("import a friend's list")),
         ])
         for c in (self.t_friends, self.t_missing, self.t_top):
             c.fmt = fmt
         self.t_friends.set_rows(friend_rows[:10])
         self.t_friends.setFixedHeight(max(150, 74 + 30 * len(friend_rows[:10])))
         miss_rows = sorted(((n, (price.get(n) or 0) * k, ", ".join(f"{nm} ({c}×)" for _, nm, _, c in holders.get(n, []))
-                             or tr("none of your friends has it")) for n, k in missing.items()), key=lambda r: -r[1])
+                             or tr("none of your friends has it"), n in n_est) for n, k in missing.items()),
+                           key=lambda r: -r[1])
         self.t_missing.set_rows([r for r in miss_rows if r[1] > 0][:10])
         self.t_where.set_parts([(tr("at friends"), sum(avail.values()), GREEN),
                                 (tr("missing everywhere"), sum(missing.values()) - sum(avail.values()), AMBER)],
@@ -596,7 +633,7 @@ class StatsPage:
                                center_label=tr("available"), center_color=GREEN)
         top = sorted(tradeable, key=lambda t: -(coll_mod.price(t[0]) or 0))[:10]
         self.t_top.set_rows([(it["name"] + _fin(it), (coll_mod.price(it) or 0) * n,
-                              f"{n}× · {(it.get('set') or '').upper()}") for it, n in top])
+                              f"{n}× · {(it.get('set') or '').upper()}", i_est(it)) for it, n in top])
         rar = {}
         for it, n in tradeable:
             r = it.get("rarity") or "common"
@@ -621,9 +658,21 @@ class StatsPage:
         unique = set()
         rar, langs, sets, setval, values = {}, {}, {}, {}, []
         best = None
+        from cards import currency   # „≈" (legal 14.11.2026): values holding a price converted from dollars
+        est_of = {}
+
+        def est(it):
+            sid = coll_mod.scryfall_id(it["id"])
+            if sid not in est_of:
+                est_of[sid] = bool(coll_mod.price(it)) and currency.estimated(sid)
+            return est_of[sid]
+        set_est, days = set(), []
         for it in items:
             k = int(it.get("count", 1))
             pr = coll_mod.price(it) or 0
+            if pr and est(it):
+                set_est.add((it.get("set") or "?").upper())
+                days.append(currency.rate_day_of(coll_mod.scryfall_id(it["id"])) or "")
             total += pr * k
             n_cards += k
             foils += k if it.get("foil") else 0
@@ -637,26 +686,31 @@ class StatsPage:
             setval[code] = setval.get(code, 0.0) + pr * k
             values += [pr] * k
             if pr and (best is None or pr > best[0]):
-                best = (pr, it.get("name"), code, it.get("foil"))
+                best = (pr, it.get("name"), code, it.get("foil"), est(it))
         if not n_cards:
             self.c_hero.set_content(tr("Collection"), tr("Still empty"), str, MUTED,
                                     tr("Scan packs or import your collection – then you'll see here what it's worth and what it's made of."), [])
         else:
             top10 = sum(sorted(values, reverse=True)[:10])
+            est_all = bool(days)
+            fmt_e = (lambda v, _f=fmt: _f(v, True)) if est_all else fmt
             # "your ten most valuable cards" only when there are more than ten different ones (03.11.)
             self.c_hero.set_content(
-                tr("Collection value"), total, fmt, CYAN,
+                tr("Collection value"), total, fmt_e, CYAN,
                 (tr(f"<b>{n_cards}</b> cards, <b>{len(unique)}</b> unique, from <b>{len(sets)}</b> sets. Your ten most valuable cards make up <b>{top10 / total * 100:.0f} %</b> of the value.")
                  if len(unique) > 10 else
                  tr(f"<b>{n_cards}</b> cards, <b>{len(unique)}</b> unique, from <b>{len(sets)}</b> sets."))
+                + _approx_line(est_all, max(days) or None if days else None)
                 if total else tr(f"<b>{n_cards}</b> cards from <b>{len(sets)}</b> sets."),
                 [(tr("Card") if n_cards == 1 else tr("Cards"), str(n_cards)), (tr("Unique"), str(len(unique))),
                  (tr("Set") if len(sets) == 1 else tr("Sets"), str(len(sets))),
                  (tr("Foil") if foils == 1 else tr("Foils"), str(foils)),
                  (tr("Language") if len(langs) == 1 else tr("Languages"), str(len(langs)))])
+        fmt_a = (lambda v, _f=fmt: _f(v, True)) if days else fmt
         self.c_kpis.set_items([
-            (tr("Avg. per card"), total / n_cards if n_cards else 0, fmt, CYAN, tr("across all cards")),
-            (tr("Most valuable card"), best[0] if best else "–", fmt if best else str, PINK,
+            (tr("Avg. per card"), total / n_cards if n_cards else 0, fmt_a, CYAN, tr("across all cards")),
+            (tr("Most valuable card"), best[0] if best else "–",
+             ((lambda v, _f=fmt: _f(v, True)) if best[4] else fmt) if best else str, PINK,
              best[1] if best else ""),
             (tr("Foil share"), foils / n_cards * 100 if n_cards else 0, lambda v: f"{v:.0f} %", AMBER,
              tr("1 foil") if foils == 1 else tr(f"{foils} foils")),
@@ -676,10 +730,10 @@ class StatsPage:
         self.c_sets.set_rows([(code, k, "") for code, k in sorted(sets.items(), key=lambda kv: -kv[1])[:10]])
         top = sorted(items, key=lambda it: -(coll_mod.price(it) or 0))[:10]
         self.c_top.set_rows([(it["name"] + _fin(it), coll_mod.price(it) or 0,
-                              f"{(it.get('set') or '').upper()} · {LANG_NAMES.get(it.get('lang') or 'en', '')}")
+                              f"{(it.get('set') or '').upper()} · {LANG_NAMES.get(it.get('lang') or 'en', '')}", est(it))
                              for it in top if coll_mod.price(it)])
         self.c_hist.set_data(values)
-        self.c_setval.set_rows([(code, v, tr(f"{sets[code]} cards"))
+        self.c_setval.set_rows([(code, v, tr(f"{sets[code]} cards"), code in set_est)
                                 for code, v in sorted(setval.items(), key=lambda kv: -kv[1])[:10] if v > 0])
         self._value_refresh(items)
         self._notify()

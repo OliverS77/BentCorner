@@ -72,7 +72,7 @@ TEXTS = {
     'Add': 'Hinzufügen',
     'Add all cards of this log to your collection': 'Alle Karten dieses Logs in deine Sammlung übernehmen',
     'Add all prints …': 'Alle Drucke einsetzen …',
-    'Add cards (Orbit) …': 'Karten dazu (Orbit) …',
+    'Add cards (Lists & Orbit) …': 'Karten dazu (Listen & Orbit) …',
     'Add destination …': 'Ziel hinzufügen …',
     'Add exactly this printing': 'Genau diesen Druck ins Deck',
     'Add font': 'Schrift hinzufügen',
@@ -630,7 +630,7 @@ TEXTS = {
     'Imports': 'Importe',
     'In a built deck: ': 'Steckt in einem gebauten Deck: ',
     'In my collection': 'In meiner Sammlung',
-    'In Orbit, tick cards with a friend and click “Offer as image …” – the image then shows up here.': 'In Orbit bei einem Freund Karten anhaken und „Angebot als Bild …“ klicken – das Bild erscheint dann hier.',
+    'Under Lists & Orbit, tick cards with a friend and click “Offer as image …” – the image then shows up here.': 'Unter Listen & Orbit bei einem Freund Karten anhaken und „Angebot als Bild …“ klicken – das Bild erscheint dann hier.',
     'In the background': 'Im Hintergrund',
     'In the background:': 'Im Hintergrund:',
     'In the box': 'In der Kiste',
@@ -709,7 +709,7 @@ TEXTS = {
     'Mana value': 'Manawert',
     'ManaBox/Moxfield: choose the CSV file under Import there. Excel: table with prices.': 'ManaBox/Moxfield: dort unter Import die CSV-Datei wählen. Excel: Tabelle mit Preisen.',
     'Manage list': 'Liste verwalten',
-    "Mark cards for trade in the “Orbit” tab, put cards on your wishlist or import a friend's list – then you'll see here what fits together.": 'Markiere im Reiter „Orbit“ Karten zum Tauschen, setz Karten auf die Wunschliste oder importiere die Liste eines Freundes – dann siehst du hier, was zusammenpasst.',
+    "Mark cards for trade in the “Lists & Orbit” tab, put cards on your wishlist or import a friend's list – then you'll see here what fits together.": 'Markiere im Reiter „Listen & Orbit“ Karten zum Tauschen, setz Karten auf die Wunschliste oder importiere die Liste eines Freundes – dann siehst du hier, was zusammenpasst.',
     'Marked as built – these cards now count as in use.': 'Als gebaut markiert – diese Karten zählen jetzt als verbraucht.',
     'Market · foil': 'Market · Foil',
     'Marketplaces': 'Marktplätze',
@@ -1005,8 +1005,8 @@ TEXTS = {
     'Price alert for the whole list': 'Preisalarm für die ganze Liste',
     'Price alert for the whole list – click: change': 'Preisalarm für die ganze Liste – Klick: ändern',
     'Price alert for this card': 'Preisalarm für diese Karte',
-    'Price alert for this card (Orbit)': 'Preisalarm für diese Karte (Orbit)',
-    'Price alert set – click: change (Orbit)': 'Preisalarm gesetzt – Klick: ändern (Orbit)',
+    'Price alert for this card (Lists & Orbit)': 'Preisalarm für diese Karte (Listen & Orbit)',
+    'Price alert set – click: change (Lists & Orbit)': 'Preisalarm gesetzt – Klick: ändern (Listen & Orbit)',
     'Price alert – trade card': 'Preisalarm – Tauschkarte',
     'Price alert: ': 'Preisalarm: ',
     'Price alerts': 'Preisalarme',
@@ -1389,7 +1389,7 @@ TEXTS = {
     'The collection is still empty.': 'Die Sammlung ist noch leer.',
     'The deck contains another printing of this card – switch to this one': 'Im Deck steckt ein anderer Druck dieser Karte – auf diesen umstellen',
     'The file is small enough for WhatsApp & co. Your friend imports it under “Trade” – send a new one later and their copy simply gets updated.': 'Die Datei ist klein genug für WhatsApp & Co. Dein Freund importiert sie unter „Tausch“ – schickst du später eine neue, wird seine Kopie einfach aktualisiert.',
-    'The file your friend saved under “Orbit → Export …” – or a CSV from another app. Bent°Corner recognizes a known collection and updates it; your own stays untouched.': 'Die Datei, die dein Freund unter „Orbit → Exportieren …“ gespeichert hat – oder eine CSV aus einer anderen App. Bent°Corner erkennt eine schon bekannte Sammlung wieder und aktualisiert sie, deine eigene bleibt unberührt.',
+    'The file your friend saved under “Lists & Orbit → Export …” – or a CSV from another app. Bent°Corner recognizes a known collection and updates it; your own stays untouched.': 'Die Datei, die dein Freund unter „Listen & Orbit → Exportieren …“ gespeichert hat – oder eine CSV aus einer anderen App. Bent°Corner erkennt eine schon bekannte Sammlung wieder und aktualisiert sie, deine eigene bleibt unberührt.',
     'The import is listed under Logs & stats – you can remove it there.': 'Der Import steht unter Logs & Statistik – dort kannst du ihn wieder entfernen.',
     'The interface stuttered several times this session – “Performance” might help.': 'Die Oberfläche hat in dieser Session mehrmals gestockt – „Performance“ könnte helfen.',
     'The last 90 days: each card from the day you own it (log date). Dashed: your oldest cards without additions – pure price development.': 'Die letzten 90 Tage: jede Karte ab dem Tag, an dem sie dir gehört (Log-Datum). Gestrichelt: deine ältesten Karten ohne Zugänge – die reine Preisentwicklung.',
@@ -1559,7 +1559,7 @@ TEXTS = {
     "What's in the packs?": 'Was steckt in den Packs?',
     "What's new?": 'Was ist neu?',
     'When you correct a misrecognized card, only the crop of that card is saved (no camera image) plus a line saying what was recognized and what is right. At most 20 MB – stays on this computer until you click “Send”.': 'Korrigierst du eine falsch erkannte Karte, wird nur der Ausschnitt der Karte gespeichert (kein Kamerabild) und eine Zeile, was erkannt wurde und was richtig ist. Höchstens 20 MB – bleibt auf diesem Rechner, bis du auf „Senden“ klickst.',
-    'When you trade collections and wishlists with friends, they see this name and your card back. Both stay on your computer until you share something yourself.': 'Wenn du mit Freunden Sammlungen und Wunschlisten tauschst, sehen sie diesen Namen und deine Kartenrückseite. Beides bleibt auf deinem Rechner, bis du selbst etwas teilst.',
+    'When you trade collections and wishlists with friends, they see this name and your card back. Others see your name and card back as soon as you send or accept a friend request.': 'Wenn du mit Freunden Sammlungen und Wunschlisten tauschst, sehen sie diesen Namen und deine Kartenrückseite. Andere sehen Namen und Kartenrückseite, sobald du eine Freundschaftsanfrage schickst oder annimmst.',
     'Whenever you draw a card, you gain 2 life. – Normal text in the interface, tables, descriptions.': 'Whenever you draw a card, you gain 2 life. – Normaler Text in der Oberfläche, Tabellen, Beschreibungen.',
     'Where can you get them?': 'Wo bekommst du sie her?',
     'Where is the value?': 'Wo steckt der Wert?',
@@ -1606,7 +1606,7 @@ TEXTS = {
     'You get': 'Du bekommst',
     'You get from …': 'Du bekommst von …',
     'You give': 'Du gibst',
-    'You set price alerts in Orbit – on lists and on single cards.': 'Preisalarme setzt du in Orbit – an Listen und einzelnen Karten.',
+    'You set price alerts under Lists & Orbit – on lists and on single cards.': 'Preisalarme setzt du unter Listen & Orbit – an Listen und einzelnen Karten.',
     'You set the scan frame with its own button in the bar.': 'Den Scanrahmen stellst du mit dem eigenen Knopf in der Leiste ein.',
     "You're continuing without a backup – the lamp is off.": 'Du machst ohne Sicherung weiter – das Lämpchen ist aus.',
     'Your ID': 'Deine ID',
@@ -1996,8 +1996,8 @@ RULES = [
     ('<b>Downloaded</b>\\ ·\\ (.+?)\\ sets,\\ (.+?)\\ active\\ ·\\ ≈\\ <b>(.+?)</b>\\ memory\\ ·\\ (.+?)\\ disk', '<b>Heruntergeladen</b> · \\1 Sets, \\2 aktiv · ≈ <b>\\3</b> Arbeitsspeicher · \\4 Festplatte'),
     ('(.+?)\\ cards\\ ·\\ prices\\ (.+?)', '\\1 Karten · Preise \\2'),
     ('Cancelling\\ (.+?)\\ …', '\\1 wird abgebrochen …'),
-    ('…\\ and\\ (.+?)\\ more\\ –\\ Orbit\\ →\\ Wishlist\\.', '… und \\1 weitere – Orbit → Wunschliste.'),
-    ('(.+?)\\ price\\ alerts\\ triggered\\ –\\ Orbit\\ →\\ Price\\ alerts', '\\1 Preisalarme ausgelöst – Orbit → Preisalarme'),
+    ('…\\ and\\ (.+?)\\ more\\ –\\ Lists\\ &\\ Orbit\\ →\\ Wishlist\\.', '… und \\1 weitere – Listen & Orbit → Wunschliste.'),
+    ('(.+?)\\ price\\ alerts\\ triggered\\ –\\ Lists\\ &\\ Orbit\\ →\\ Price\\ alerts', '\\1 Preisalarme ausgelöst – Listen & Orbit → Preisalarme'),
     ("Block\\ (.+?)\\?\\ You\\ won't\\ get\\ anything\\ from\\ this\\ ID\\ any\\ more\\ –\\ not\\ even\\ new\\ requests\\ –\\ and\\ their\\ lists\\ disappear\\.\\ You\\ can\\ undo\\ this\\ in\\ your\\ profile\\.", '\\1 blockieren? Du bekommst nichts mehr von dieser ID – auch keine neuen Anfragen –, seine Listen verschwinden. Aufheben geht im Profil.'),
     ('Message\\ from\\ the\\ Bent°Corner\\ team\\ –\\ see\\ profile\\ \\((.+?)\\ new\\)', 'Nachricht vom Bent°Corner-Team – siehe Profil (\\1 neu)'),
     ('Bent°Corner\\ (.+?)\\ is\\ out\\ –\\ download\\ it\\ under\\ Settings\\ →\\ Updates\\.', 'Bent°Corner \\1 ist da – laden unter Einstellungen → Updates.'),
@@ -2305,7 +2305,7 @@ RULES = [
     ("This\\ ticket\\ \\((.+?)\\)\\ wasn't\\ issued\\ to\\ you\\.", 'Dieses Ticket (\\1) ist nicht für dich ausgestellt.'),
     ("This\\ ticket\\ is\\ \\(also\\)\\ for\\ (.+?)\\ –\\ this\\ version\\ can't\\ handle\\ that\\ yet\\.", 'Dieses Ticket ist (auch) für \\1 – das kann diese Version noch nicht.'),
     ('Ticket\\ for\\ (.+?)\\ –\\ switching\\ game\\ …', 'Ticket für \\1 – wechsle das Spiel …'),
-    ('Trade\\ offer\\ from\\ (.+?)\\ received\\ –\\ Orbit\\ →\\ Trade\\ offers', 'Tauschangebot von \\1 erhalten – Orbit → Tauschangebote'),
+    ('Trade\\ offer\\ from\\ (.+?)\\ received\\ –\\ Lists\\ &\\ Orbit\\ →\\ Trade\\ offers', 'Tauschangebot von \\1 erhalten – Listen & Orbit → Tauschangebote'),
     ('(.+?)\\ trade\\ part\\(s\\)\\ booked\\ for\\ (.+?)\\ –\\ see\\ Logs\\ &\\ stats', '\\1 Tausch-Teil(e) für \\2 gebucht – siehe Logs & Statistik'),
     ('everything\\ until\\ (.+?)\\ combined', 'alles bis \\1 zusammengefasst'),
     ("This\\ ticket\\ is\\ for\\ (.+?)\\ –\\ this\\ version\\ can't\\ do\\ that\\ yet\\.", 'Dieses Ticket ist für \\1 – das kann diese Version noch nicht.'),
@@ -2588,11 +2588,15 @@ TEXTS.update({  # scanner/
     "log set": "Log-Set",
     "same print as before": "Druck wie eben",
     "print unclear": "Druck unklar",   # aiscan.sure_print: several prints with this image, the line didn't decide
+    "Reading the name …": "Namen lesen …",   # aiscan._name_pick: the name decides among the fingerprint's top 5
 })
 RULES += [  # scanner/ – reasons of the AI scanner (aiscan), translated part by part (scanner/recognizer.how_text)
     (r"SCAN° fingerprint \((.+?)\) \+ image match \((.+?)\)", r"SCAN°-Fingerabdruck (\1) + Bildvergleich (\2)"),
     (r"SCAN° fingerprint unambiguous \(gap (.+?) / (.+?)\)", r"SCAN°-Fingerabdruck eindeutig (Abstand \1 / \2)"),
     (r"SCAN° fingerprint \((.+?)\) \+ collector line", r"SCAN°-Fingerabdruck (\1) + Sammlerzeile"),
+    (r"SCAN° fingerprint \(rank (\d+)\) \+ name read", r"SCAN°-Fingerabdruck (Platz \1) + Name gelesen"),
+    (r"SCAN° fingerprint \(rank (\d+)\) \+ name read \+ collector line",
+     r"SCAN°-Fingerabdruck (Platz \1) + Name gelesen + Sammlerzeile"),
     (r"collector line \((.+?)\)", r"Sammler-Zeile (\1)"),
     (r"set symbol \((.+?) vs (.+?)\)", r"Set-Symbol (\1 vs \2)"),
 ]
@@ -2646,7 +2650,7 @@ TEXTS.update({  # Polishing-Runde vor 1.0 (Sync-Freigabe, Listen-Spalte, Alt-Art
     "I understand": "Verstanden",
     "Reversed order – click: normal": "Umgekehrte Reihenfolge – Klick: normal",
     "Click: reverse the order": "Klick: Reihenfolge umdrehen",
-    "Edit in Orbit": "In Orbit bearbeiten",
+    "Edit under Lists & Orbit": "Unter Listen & Orbit bearbeiten",
 })
 
 RULES += [  # Polishing-Runde vor 1.0
@@ -2731,8 +2735,8 @@ TEXTS.update({  # app.py – legal texts (LEGAL_TEXT, Recht 1.0)
         "Magic-Kartendaten und -Bilder stammen von <a href='https://scryfall.com'>Scryfall</a> – die App lädt sie selbst; der SCAN°-Index im Magic-Datenpaket ist aus Scryfall-Bildern berechnet. Bent°Corner ist nicht mit Scryfall verbunden.",
     "Pokémon card data from <a href='https://tcgdex.dev'>TCGdex</a> (MIT license, © 2021 TCGdex); the card images come from TCGdex via our server, which fetches each image once and keeps it, so TCGdex doesn't have to deliver it to every user individually. Supplementary images for cards TCGdex has no image of come from <a href='https://pokemontcg.io'>pokemontcg.io</a>, fetched once in the same way. Prices from <a href='https://www.cardmarket.com'>Cardmarket</a> (official price guide) and TCGplayer via the Bent°Corner price server (data from <a href='https://tcgcsv.com'>TCGCSV</a>) – thank you! Pokémon, card names and images are property of Nintendo, Creatures Inc., GAME FREAK inc. and The Pokémon Company. Bent°Corner is not produced, endorsed, supported or affiliated with Nintendo or The Pokémon Company.":
         "Pokémon-Kartendaten von <a href='https://tcgdex.dev'>TCGdex</a> (MIT-Lizenz, © 2021 TCGdex); die Kartenbilder kommen von TCGdex über unseren Server, der jedes Bild einmal holt und vorhält, damit TCGdex nicht für jeden Nutzer einzeln liefern muss. Ergänzende Bilder für Karten, zu denen TCGdex kein Bild hat, kommen von <a href='https://pokemontcg.io'>pokemontcg.io</a> und werden ebenso einmal geholt. Preise von <a href='https://www.cardmarket.com'>Cardmarket</a> (offizielle Preisliste) und TCGplayer über den Bent°Corner-Preisserver (Daten von <a href='https://tcgcsv.com'>TCGCSV</a>) – danke! Pokémon, Kartennamen und -bilder sind Eigentum von Nintendo, Creatures Inc., GAME FREAK inc. und The Pokémon Company. Bent°Corner wird von Nintendo und The Pokémon Company weder hergestellt noch unterstützt oder gefördert und ist mit ihnen nicht verbunden.",
-    "Yu-Gi-Oh! card data and images from <a href='https://ygoprodeck.com'>YGOPRODeck</a>, delivered by our server (images downloaded once and self-hosted, as YGOPRODeck requires). Prints from Japan, Korea, Asia and Spain and names in Japanese, Korean, Spanish and Chinese from <a href='https://github.com/iconmaster5326/YGOJSON'>YGOJSON</a> (MIT license, © 2024 iconmaster), which collects them from <a href='https://yugipedia.com'>Yugipedia</a> (<a href='https://creativecommons.org/licenses/by-sa/4.0/'>CC BY-SA 4.0</a>) – as a separate file in the data pack (ygo-locale.sqlite, filtered and converted by Bent°Corner, CC BY-SA 4.0 as well), shown with the image of the English print; prices from our price server (Cardmarket via YGOPRODeck, TCGplayer via <a href='https://tcgcsv.com'>TCGCSV</a>) – thank you! Yu-Gi-Oh! is a trademark of Konami Digital Entertainment; card texts and images © 4K Media Inc. / Konami. Bent°Corner is not affiliated with Konami or 4K Media.":
-        "Yu-Gi-Oh!-Kartendaten und -Bilder von <a href='https://ygoprodeck.com'>YGOPRODeck</a>, ausgeliefert von unserem Server (Bilder einmal geladen und selbst gehostet, wie YGOPRODeck es verlangt). Drucke aus Japan, Korea, Asien und Spanien sowie Namen auf Japanisch, Koreanisch, Spanisch und Chinesisch von <a href='https://github.com/iconmaster5326/YGOJSON'>YGOJSON</a> (MIT-Lizenz, © 2024 iconmaster), das sie bei <a href='https://yugipedia.com'>Yugipedia</a> sammelt (<a href='https://creativecommons.org/licenses/by-sa/4.0/'>CC BY-SA 4.0</a>) – als eigene Datei im Datenpaket (ygo-locale.sqlite, von Bent°Corner gefiltert und umgewandelt, ebenfalls CC BY-SA 4.0), angezeigt mit dem Bild des englischen Drucks; Preise von unserem Preisserver (Cardmarket über YGOPRODeck, TCGplayer über <a href='https://tcgcsv.com'>TCGCSV</a>) – danke! Yu-Gi-Oh! ist eine Marke von Konami Digital Entertainment; Kartentexte und -bilder © 4K Media Inc. / Konami. Bent°Corner steht in keiner Verbindung zu Konami oder 4K Media.",
+    "Yu-Gi-Oh! card data and images from <a href='https://ygoprodeck.com'>YGOPRODeck</a>, delivered by our server (images downloaded once and self-hosted, as YGOPRODeck requires). Prints from Japan, Korea, Asia and Spain and names in Japanese, Korean, Spanish and Chinese from <a href='https://github.com/iconmaster5326/YGOJSON'>YGOJSON</a> (MIT license, © 2024 iconmaster), which collects them from <a href='https://yugipedia.com'>Yugipedia</a> (<a href='https://creativecommons.org/licenses/by-sa/4.0/'>CC BY-SA 4.0</a>) – as a separate file in the data pack (ygo-locale.sqlite, filtered and converted by Bent°Corner, CC BY-SA 4.0 as well), shown with the image of the English print; prices from our price server (TCGplayer via <a href='https://tcgcsv.com'>TCGCSV</a>, euros converted at the ECB rate) – thank you! Yu-Gi-Oh! is a trademark of Konami Digital Entertainment; card texts and images © 4K Media Inc. / Konami. Bent°Corner is not affiliated with Konami or 4K Media.":
+        "Yu-Gi-Oh!-Kartendaten und -Bilder von <a href='https://ygoprodeck.com'>YGOPRODeck</a>, ausgeliefert von unserem Server (Bilder einmal geladen und selbst gehostet, wie YGOPRODeck es verlangt). Drucke aus Japan, Korea, Asien und Spanien sowie Namen auf Japanisch, Koreanisch, Spanisch und Chinesisch von <a href='https://github.com/iconmaster5326/YGOJSON'>YGOJSON</a> (MIT-Lizenz, © 2024 iconmaster), das sie bei <a href='https://yugipedia.com'>Yugipedia</a> sammelt (<a href='https://creativecommons.org/licenses/by-sa/4.0/'>CC BY-SA 4.0</a>) – als eigene Datei im Datenpaket (ygo-locale.sqlite, von Bent°Corner gefiltert und umgewandelt, ebenfalls CC BY-SA 4.0), angezeigt mit dem Bild des englischen Drucks; Preise von unserem Preisserver (TCGplayer über <a href='https://tcgcsv.com'>TCGCSV</a>, Euro zum EZB-Kurs umgerechnet) – danke! Yu-Gi-Oh! ist eine Marke von Konami Digital Entertainment; Kartentexte und -bilder © 4K Media Inc. / Konami. Bent°Corner steht in keiner Verbindung zu Konami oder 4K Media.",
 })
 
 TEXTS.update({  # ui/qsetpages.py – Settings → Friends & privacy: bundled license files
@@ -2839,8 +2843,13 @@ TEXTS.update({  # EDHREC off (terms forbid automated requests) – texts without
         'Bent°Corner sucht selbst die besten Kandidaten (Commander nach den guten Karten, die du in ihren Farben hast, 60er nach Farbe + Thema)',
     'Your commanders – pre-sorted. At most %1 are checked in detail (this takes a moment, you can keep working):':
         'Deine Commander – vorsortiert. Höchstens %1 werden genauer geprüft (das dauert einen Moment, du kannst weiterarbeiten):',
-    'Online requests (Scryfall, TCGdex, Commander Spellbook …) only contain the cards or decks you look up – no personal data. There is no tracking.':
-        'Online-Abfragen (Scryfall, TCGdex, Commander Spellbook …) enthalten nur die gesuchten Karten bzw. Decks – keine persönlichen Daten. Tracking gibt es nicht.',
+    "Online lookups (Scryfall …) contain only the cards you look up – no identifier. Commander Spellbook and EDHTop16 only from Near Orbit on and with their switch on: to Spellbook the card list of the Commander deck you open or edit (or the link you load), to EDHTop16 only the commander's name. There is no tracking.":
+        "Online-Abfragen (Scryfall …) enthalten nur die Karten, die du nachschlägst – keine Kennung. Commander Spellbook und EDHTop16 nur ab Nahem Orbit und mit eingeschaltetem Schalter: an Spellbook die Kartenliste des Commander-Decks, das du öffnest oder änderst (oder der Link, den du lädst), an EDHTop16 nur der Name des Commanders. Tracking gibt es nicht.",
+    "Combos and tournament data (Commander Spellbook, EDHTop16)": "Kombos und Turnierdaten (Commander Spellbook, EDHTop16)",
+    "When you open or edit a Commander deck, its card list (names and counts) goes to commanderspellbook.com to find combos and estimate the bracket, and the commander's name to edhtop16.com for tournament numbers. Off: combos only from a small list in the app, no tournament numbers.":
+        "Öffnest oder änderst du ein Commander-Deck, geht seine Kartenliste (Namen und Anzahl) an commanderspellbook.com – für Kombos und die Bracket-Schätzung – und der Name des Commanders an edhtop16.com – für Turnierzahlen. Aus: Kombos nur aus einer kleinen Liste in der App, keine Turnierzahlen.",
+    "Loading a deck by link goes through Commander Spellbook – from Near Orbit on, with the Spellbook switch on. You can paste the list as text.":
+        "Ein Deck per Link laden geht über Commander Spellbook – ab Nahem Orbit, wenn der Spellbook-Schalter an ist. Du kannst die Liste als Text einfügen.",
 })
 
 TEXTS.update({  # search fields and deck rules of games with Leaders, Life and Counter
@@ -2951,10 +2960,10 @@ TEXTS.update({  # app.py LEGAL_TEXT – prices explained, sources by data type, 
     "Sources": "Quellen",
     "Bent°Corner doesn't make its own prices. It shows the guide values of the two big marketplaces: <b>Cardmarket</b> (Europe, in €, the “trend” price) and <b>TCGplayer</b> (USA, in $, the “market price”); foils have their own value. That's why a card has one or two values – if one marketplace doesn't list it, only the other one is shown.<br><br>Where they come from: Magic via the daily bulk data of <a href='https://scryfall.com'>Scryfall</a>. Pokémon and Disney Lorcana: the Cardmarket price guide (the app downloads the file itself, at most once a day) and TCGplayer via the Bent°Corner price server (data from <a href='https://tcgcsv.com'>TCGCSV</a>). Yu-Gi-Oh!: both from the Bent°Corner price server (Cardmarket via <a href='https://ygoprodeck.com'>YGOPRODeck</a>, TCGplayer via TCGCSV).<br><br>How often: the marketplaces update their values once a day; Bent°Corner fetches them as set under Settings (default: when the app starts). Other currencies are converted with the daily rates of the European Central Bank (<a href='https://frankfurter.dev'>Frankfurter</a>).<br><br>All prices are guide values and without guarantee. They change constantly, can be outdated and are not a recommendation to buy, sell or trade. Values of collections, packs and sets are sums of these guide values.":
         "Bent°Corner macht keine eigenen Preise. Es zeigt die Richtwerte der zwei großen Marktplätze: <b>Cardmarket</b> (Europa, in €, der „Trend“-Preis) und <b>TCGplayer</b> (USA, in $, der „Market Price“); Foils haben einen eigenen Wert. Deshalb hat eine Karte einen oder zwei Werte – führt ein Marktplatz sie nicht, steht nur der andere da.<br><br>Woher: Magic über die täglichen Bulk-Daten von <a href='https://scryfall.com'>Scryfall</a>. Pokémon und Disney Lorcana: die Cardmarket-Preisliste (die App lädt die Datei selbst, höchstens einmal am Tag) und TCGplayer über den Bent°Corner-Preisserver (Daten von <a href='https://tcgcsv.com'>TCGCSV</a>). Yu-Gi-Oh!: beides vom Bent°Corner-Preisserver (Cardmarket über <a href='https://ygoprodeck.com'>YGOPRODeck</a>, TCGplayer über TCGCSV).<br><br>Wie oft: Die Marktplätze aktualisieren ihre Werte einmal am Tag; Bent°Corner holt sie so, wie du es in den Einstellungen festlegst (Standard: beim Start). Andere Währungen werden mit den Tageskursen der Europäischen Zentralbank umgerechnet (<a href='https://frankfurter.dev'>Frankfurter</a>).<br><br>Alle Preise sind Richtwerte und ohne Gewähr. Sie ändern sich ständig, können veraltet sein und sind keine Empfehlung zum Kaufen, Verkaufen oder Tauschen. Werte von Sammlungen, Packs und Sets sind Summen dieser Richtwerte.",
-    "<b>Card data:</b> Magic – <a href='https://scryfall.com'>Scryfall</a> · Pokémon – <a href='https://tcgdex.dev'>TCGdex</a> · Yu-Gi-Oh! – <a href='https://ygoprodeck.com'>YGOPRODeck</a>{lorcana_data}{more_data}.<br><b>Card images:</b> Magic – Scryfall (the app loads them itself) · Pokémon – TCGdex, through our image mirror (supplementary images: <a href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, hosted on our server as YGOPRODeck requires{lorcana_images}{more_images}.<br><b>Prices:</b> Cardmarket and TCGplayer (see Prices) · price history for Magic: <a href='https://mtgjson.com'>MTGJSON</a> · exchange rates: European Central Bank via Frankfurter.<br><b>Symbols:</b> mana symbols are redrawn by Bent°Corner (they remain property of Wizards of the Coast); the game icons are our own pixel art – no publisher logos, no set symbols.<br><b>SCAN°:</b> the fingerprint indexes in the data packs are computed by Bent°Corner from the card images and contain no images.":
-        "<b>Kartendaten:</b> Magic – <a href='https://scryfall.com'>Scryfall</a> · Pokémon – <a href='https://tcgdex.dev'>TCGdex</a> · Yu-Gi-Oh! – <a href='https://ygoprodeck.com'>YGOPRODeck</a>{lorcana_data}{more_data}.<br><b>Kartenbilder:</b> Magic – Scryfall (die App lädt sie selbst) · Pokémon – TCGdex, über unseren Bild-Spiegel (ergänzende Bilder: <a href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, auf unserem Server, wie YGOPRODeck es verlangt{lorcana_images}{more_images}.<br><b>Preise:</b> Cardmarket und TCGplayer (siehe Preise) · Preisverlauf für Magic: <a href='https://mtgjson.com'>MTGJSON</a> · Wechselkurse: Europäische Zentralbank über Frankfurter.<br><b>Symbole:</b> Manasymbole zeichnet Bent°Corner selbst nach (sie bleiben Eigentum von Wizards of the Coast); die Spiel-Symbole sind eigene Pixel-Bilder – keine Logos der Verlage, keine Set-Symbole.<br><b>SCAN°:</b> Die Fingerabdruck-Indizes in den Datenpaketen berechnet Bent°Corner aus den Kartenbildern; sie enthalten keine Bilder.",
-    "<b>The camera image never leaves your computer when you scan</b> – SCAN° (our smart card search) runs entirely on your PC: it reads the cards (fingerprinting) to find them again when you scan a card you own – nothing more. <b>No AI that could generate cards is trained with the card images.</b> While scanning, Bent°Corner only downloads images of cards to compare them (the request contains the card, never your camera image). Card pictures leave your computer only if you want them to: uploads from the Scan Studio and the scan data you send yourself.<br><br>At start, Bent°Corner reads which processor, how much memory and which graphics card are installed – only to set up SCAN° and animations. This stays on your computer. Online lookups (Scryfall, Commander Spellbook …) contain only the cards or decks you look up – no personal data. Our own server: the app checks for updates every 6 hours (version file only); images of {mirror_games} come through our image mirror (only if it can't deliver an image does the app ask the source directly), Yu-Gi-Oh! data, images and prices from our server. Prices and exchange rates only from Near Orbit on (Bent°Corner Orbit, Settings → Friends & privacy). Only in Full Orbit, which you turn on yourself: the exchange with friends (end-to-end encrypted), anonymous usage numbers if you also turn them on there (once a week, without any ID), and uploads from the Scan Studio. Details: <a href='https://bentcorner.app/datenschutz.html'>privacy policy</a>.":
-        "<b>Das Kamerabild verlässt beim Scannen nie deinen Computer</b> – SCAN° (unsere smarte Kartensuche) läuft komplett auf deinem PC: Es liest die Karten aus (Fingerprinting), um sie beim Scannen wiederzufinden, wenn du sie besitzt – mehr nicht. <b>Mit den Kartenbildern wird keine KI trainiert, die Karten erzeugen könnte.</b> Beim Scannen lädt Bent°Corner nur Bilder von Karten zum Vergleichen (die Anfrage nennt die Karte, nie dein Kamerabild). Kartenbilder verlassen deinen Rechner nur, wenn du es willst: Uploads aus dem Scan-Studio und Scan-Daten, die du selbst sendest.<br><br>Bent°Corner liest beim Start aus, welcher Prozessor, wie viel Arbeitsspeicher und welche Grafikkarte verbaut sind – nur um SCAN° und Animationen passend einzustellen. Diese Angaben bleiben auf deinem Rechner. Online-Abfragen (Scryfall, Commander Spellbook …) enthalten nur die gesuchten Karten bzw. Decks – keine persönlichen Daten. Unser eigener Server: Die App fragt alle 6 Stunden nach Updates (nur die Versionsdatei); Bilder von {mirror_games} kommen über unseren Bild-Spiegel (nur wenn er ein Bild nicht liefern kann, fragt die App direkt bei der Quelle), Yu-Gi-Oh!-Daten, -Bilder und -Preise von unserem Server. Preise und Wechselkurse erst ab „Naher Orbit“ (Bent°Corner Orbit, Einstellungen → Freunde & Privatsphäre). Nur im „Ganzen Orbit“, den du selbst einschaltest: der Austausch mit Freunden (Ende-zu-Ende verschlüsselt), anonyme Nutzungszahlen, wenn du sie dort zusätzlich einschaltest (einmal pro Woche, ohne jede Kennung), und Uploads aus dem Scan-Studio. Mehr dazu: <a href='https://bentcorner.app/datenschutz.html'>Datenschutzerklärung</a>.",
+    "<b>Card data:</b> Magic – <a href='https://scryfall.com'>Scryfall</a> · Pokémon – <a href='https://tcgdex.dev'>TCGdex</a> · Yu-Gi-Oh! – <a href='https://ygoprodeck.com'>YGOPRODeck</a>{lorcana_data}{more_data}.<br><b>Card images:</b> Magic – Scryfall (the app loads them itself) · Pokémon – TCGdex, through our image mirror (supplementary images: <a href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, hosted on our server as YGOPRODeck requires{lorcana_images}{more_images}.<br><b>Prices:</b> Cardmarket and TCGplayer (see Prices) · price history for Magic: <a href='https://mtgjson.com'>MTGJSON</a>.<br><b>Exchange rates:</b> European Central Bank (reference rates, via Frankfurter)<br><b>Symbols:</b> mana symbols are redrawn by Bent°Corner (they remain property of Wizards of the Coast); the game icons are our own pixel art – no publisher logos, no set symbols.<br><b>SCAN°:</b> the fingerprint indexes in the data packs are computed by Bent°Corner from the card images and contain no images.":
+        "<b>Kartendaten:</b> Magic – <a href='https://scryfall.com'>Scryfall</a> · Pokémon – <a href='https://tcgdex.dev'>TCGdex</a> · Yu-Gi-Oh! – <a href='https://ygoprodeck.com'>YGOPRODeck</a>{lorcana_data}{more_data}.<br><b>Kartenbilder:</b> Magic – Scryfall (die App lädt sie selbst) · Pokémon – TCGdex, über unseren Bild-Spiegel (ergänzende Bilder: <a href='https://pokemontcg.io'>pokemontcg.io</a>) · Yu-Gi-Oh! – YGOPRODeck, auf unserem Server, wie YGOPRODeck es verlangt{lorcana_images}{more_images}.<br><b>Preise:</b> Cardmarket und TCGplayer (siehe Preise) · Preisverlauf für Magic: <a href='https://mtgjson.com'>MTGJSON</a>.<br><b>Wechselkurse:</b> Europäische Zentralbank (Referenzkurse, über Frankfurter)<br><b>Symbole:</b> Manasymbole zeichnet Bent°Corner selbst nach (sie bleiben Eigentum von Wizards of the Coast); die Spiel-Symbole sind eigene Pixel-Bilder – keine Logos der Verlage, keine Set-Symbole.<br><b>SCAN°:</b> Die Fingerabdruck-Indizes in den Datenpaketen berechnet Bent°Corner aus den Kartenbildern; sie enthalten keine Bilder.",
+    "<b>The camera image never leaves your computer when you scan</b> – SCAN° (our smart card search) runs entirely on your PC: it reads the cards (fingerprinting) to find them again when you scan a card you own – nothing more. <b>No AI that could generate cards is trained with the card images.</b> While scanning, Bent°Corner only downloads images of cards to compare them (the request contains the card, never your camera image). Card pictures leave your computer only if you want them to: uploads from the Scan Studio and the scan data you send yourself.<br><br>At start, Bent°Corner reads which processor, how much memory and which graphics card are installed – only to set up SCAN° and animations. This stays on your computer. Online lookups (Scryfall …) contain only the cards you look up – no identifier. Commander Spellbook and EDHTop16 only from Near Orbit on and with their switch on: to Spellbook the card list of the Commander deck you open or edit (or the link you load), to EDHTop16 only the commander's name. Our own server: the app checks for updates every 6 hours (version file only); images of {mirror_games} come through our image mirror (only if it can't deliver an image because of a fault does the app ask the source directly – not for a game or images we have switched off), Yu-Gi-Oh! data, images and prices from our server. Prices and exchange rates only from Near Orbit on (Bent°Corner Orbit, Settings → Friends & privacy). Only in Full Orbit, which you turn on yourself: the exchange with friends (end-to-end encrypted), anonymous usage numbers if you also turn them on there (once a week, without any ID), and uploads from the Scan Studio. Details: <a href='https://bentcorner.app/datenschutz.html'>privacy policy</a>.":
+        "<b>Das Kamerabild verlässt beim Scannen nie deinen Computer</b> – SCAN° (unsere smarte Kartensuche) läuft komplett auf deinem PC: Es liest die Karten aus (Fingerprinting), um sie beim Scannen wiederzufinden, wenn du sie besitzt – mehr nicht. <b>Mit den Kartenbildern wird keine KI trainiert, die Karten erzeugen könnte.</b> Beim Scannen lädt Bent°Corner nur Bilder von Karten zum Vergleichen (die Anfrage nennt die Karte, nie dein Kamerabild). Kartenbilder verlassen deinen Rechner nur, wenn du es willst: Uploads aus dem Scan-Studio und Scan-Daten, die du selbst sendest.<br><br>Bent°Corner liest beim Start aus, welcher Prozessor, wie viel Arbeitsspeicher und welche Grafikkarte verbaut sind – nur um SCAN° und Animationen passend einzustellen. Diese Angaben bleiben auf deinem Rechner. Online-Abfragen (Scryfall …) enthalten nur die Karten, die du nachschlägst – keine Kennung. Commander Spellbook und EDHTop16 nur ab Nahem Orbit und mit eingeschaltetem Schalter: an Spellbook die Kartenliste des Commander-Decks, das du öffnest oder änderst (oder der Link, den du lädst), an EDHTop16 nur der Name des Commanders. Unser eigener Server: Die App fragt alle 6 Stunden nach Updates (nur die Versionsdatei); Bilder von {mirror_games} kommen über unseren Bild-Spiegel (nur wenn er ein Bild wegen einer Störung nicht liefern kann, lädt die App es direkt von der Quelle – nicht bei einem Spiel oder Bildern, die wir abgeschaltet haben), Yu-Gi-Oh!-Daten, -Bilder und -Preise von unserem Server. Preise und Wechselkurse erst ab „Naher Orbit“ (Bent°Corner Orbit, Einstellungen → Freunde & Privatsphäre). Nur im „Ganzen Orbit“, den du selbst einschaltest: der Austausch mit Freunden (Ende-zu-Ende verschlüsselt), anonyme Nutzungszahlen, wenn du sie dort zusätzlich einschaltest (einmal pro Woche, ohne jede Kennung), und Uploads aus dem Scan-Studio. Mehr dazu: <a href='https://bentcorner.app/datenschutz.html'>Datenschutzerklärung</a>.",
 })
 
 TEXTS.update({  # scanner: card search offered for a card without a hit (scan_ctl.unknown_card_check)
@@ -2964,6 +2973,7 @@ TEXTS.update({  # scanner: card search offered for a card without a hit (scan_ct
 RULES += [  # Notschalter je Spiel (games/offswitch.py, system/upkeep_ctl.py, ui/quickshell.py)
     (r"No longer available: (.+)", r"Nicht mehr verfügbar: \1"),
     (r"(.+) is available again\.", r"\1 ist wieder verfügbar."),
+    (r"(.+): images are back\.", r"\1: Die Bilder sind wieder da."),
     (r"Bent°Corner switches to (.+) now\.", r"Bent°Corner wechselt jetzt zu \1."),
 ]
 
@@ -3076,7 +3086,7 @@ TEXTS.update({  # friends menu: friends live in Trade, your ID only in the profi
     "Your own ID is in your profile – to copy and share.": "Deine eigene ID steht im Profil – zum Kopieren und Weitergeben.",
     "Open profile →": "Profil öffnen →",
     "Your ID and profile →": "Deine ID und Profil →",
-    "Folders, notes and more in Orbit →": "Ordner, Notizen und mehr in Orbit →",
+    "Folders, notes and more under Lists & Orbit →": "Ordner, Notizen und mehr unter Listen & Orbit →",
 })
 
 RULES += [  # changes by hand on the Sessions page
@@ -3121,7 +3131,7 @@ TEXTS.update({  # Library: editing a picked list right there (tool row above the
     "Search above, pick a card, then +": "Oben suchen, Karte wählen, dann +",
     "%1 cards on the list": "%1 Karten auf der Liste",
     "+ Put on the list": "+ Auf die Liste",
-    "Opens the list's price alert under Orbit → Price alerts": "Öffnet den Preisalarm der Liste unter Orbit → Preisalarme",
+    "Opens the list's price alert under Lists & Orbit → Price alerts": "Öffnet den Preisalarm der Liste unter Listen & Orbit → Preisalarme",
     "+ Search cards": "+ Karten suchen",
     "Search all cards and put them on this list – Done shows the list again": "Alle Karten durchsuchen und auf diese Liste legen – „Fertig“ zeigt wieder die Liste",
     "Show all cards again": "Wieder alle Karten zeigen",
@@ -3162,8 +3172,8 @@ TEXTS.update({  # Bent°Corner Orbit (Oliver, 2026-10-29): Kern · Naher Orbit �
     "You share what you choose: lists, binders or your library go end-to-end encrypted only to your friends.":
         "Du teilst, was du willst: Listen, Binder oder deine Bibliothek gehen Ende-zu-Ende verschlüsselt nur an deine Freunde.",
     "Nothing from your collection leaves the device.": "Aus deiner Sammlung verlässt nichts das Gerät.",
-    "Price downloads from our price server and the price sources (MTGJSON, Cardmarket, exchange rates) – they see your IP address like any website, but nothing from your collection.":
-        "Preisabrufe von unserem Preis-Server und den Preisquellen (MTGJSON, Cardmarket, Wechselkurse) – sie sehen wie jede Webseite deine IP-Adresse, aber nichts aus deiner Sammlung.",
+    "Price downloads from our price server and the price sources (MTGJSON, Cardmarket, exchange rates) – they see your IP address like any website, but nothing from your collection. Plus, for Commander decks, Commander Spellbook and EDHTop16: Spellbook gets the card list (names and counts) of the deck you open or edit, to find combos; EDHTop16 gets only the commander's name, for tournament numbers (switch below).":
+        "Preisabrufe von unserem Preis-Server und den Preisquellen (MTGJSON, Cardmarket, Wechselkurse) – sie sehen wie jede Webseite deine IP-Adresse, aber nichts aus deiner Sammlung. Dazu bei Commander-Decks Commander Spellbook und EDHTop16: Spellbook bekommt die Kartenliste (Namen und Anzahl) des Decks, das du öffnest oder änderst, und sucht darin Kombos; EDHTop16 bekommt nur den Namen des Commanders, für Turnierzahlen (Schalter unten).",
     "On top: a random ID at the Bent°Corner mailbox and end-to-end encrypted parcels only to your friends – the server can't read them.":
         "Dazu: eine Zufalls-ID am Bent°Corner-Briefkasten und Ende-zu-Ende verschlüsselte Päckchen nur an deine Freunde – der Server kann sie nicht lesen.",
     "With Full Orbit you accept the <a href='{url}'>terms of use</a> for the exchange (age 13+). Change it any time.":
@@ -3448,7 +3458,7 @@ TEXTS.update({  # card search: year + artist, more details (ui/panels.py, ui/sea
     "Saved in Logs": "Gespeichert in Logs",
     "Nothing scanned – no log saved": "Nichts gescannt – kein Log gespeichert",
     "1 card": "1 Karte",
-    "1 price alert triggered – Orbit → Price alerts": "1 Preisalarm ausgelöst – Orbit → Preisalarme",
+    "1 price alert triggered – Lists & Orbit → Price alerts": "1 Preisalarm ausgelöst – Listen & Orbit → Preisalarme",
     "1st Edition? Stamp to the left below the picture": "1st Edition? Stempel links unter dem Bild",
     "No other languages known for this print": "Für diesen Druck keine weiteren Sprachen bekannt",
     "Not counted – another card came during the question": "Nicht gezählt – während der Frage kam eine andere Karte",
@@ -3538,8 +3548,8 @@ TEXTS.update({  # „Was ist neu?“ – 0.9.7: EIN Hinweis zu Freunden, Teilen 
     "Friends, sharing and prices – new rules": "Freunde, Teilen und Preise – neu geregelt",
     "Friends and trading are now only available in Full Orbit. Your saved friends are kept and reappear when you turn on Full Orbit.":
         "Freunde und Tausch gibt es jetzt nur noch im Ganzen Orbit. Deine gespeicherten Freunde bleiben erhalten und erscheinen wieder, wenn du den Ganzen Orbit einschaltest.",
-    "Sharing is now off by default for new friends. What you share with which friend, you choose per friend on the new page “Shared with friends” in Orbit.":
-        "Für neue Freunde ist Teilen jetzt standardmäßig aus. Was du mit welchem Freund teilst, legst du je Freund auf der neuen Seite „Mit Freunden geteilt“ im Orbit fest.",
+    "Sharing is now off by default for new friends. What you share with which friend, you choose per friend on the new page “Shared with friends” under Lists & Orbit.":
+        "Für neue Freunde ist Teilen jetzt standardmäßig aus. Was du mit welchem Freund teilst, legst du je Freund auf der neuen Seite „Mit Freunden geteilt“ unter Listen & Orbit fest.",
     "The old question “Share library?” is gone. If you said yes back then, we'll ask you once in Full Orbit whether you want to keep sharing – until then everything stays as it is.":
         "Die alte Frage „Bibliothek teilen?“ ist weg. Hast du damals Ja gesagt, fragen wir dich im Ganzen Orbit einmal, ob du weiter teilen willst – bis dahin bleibt alles, wie es ist.",
     "In Core the app no longer shows prices – prices are available from Near Orbit on.":
@@ -3576,6 +3586,12 @@ TEXTS.update({  # Settings → Legal: GPL notices (legal, app-rechtliches-gpl.md
 })
 
 TEXTS.update({  # card view, prices: legal 02.11.2026 (the same lines as the web app's i18n/shared.js)
+    "Prices are estimates from daily market data (Cardmarket via Scryfall, TCGplayer via MTGJSON) – no guarantee. The shop has the final price.":
+        "Preise sind Schätzwerte aus täglichen Marktdaten (Cardmarket über Scryfall, TCGplayer über MTGJSON) – ohne Gewähr. Den endgültigen Preis nennt der Shop.",
+    "Prices are estimates from daily market data (TCGplayer; euros converted) – no guarantee. The shop has the final price.":
+        "Preise sind Schätzwerte aus täglichen Marktdaten (TCGplayer; Euro umgerechnet) – ohne Gewähr. Den endgültigen Preis nennt der Shop.",
+    "Cardmarket trend via Scryfall, no guarantee": "Cardmarket-Trend über Scryfall, ohne Gewähr",
+    "Cardmarket trend {foil} via Scryfall, no guarantee": "Cardmarket-Trend {foil} über Scryfall, ohne Gewähr",
     "Prices are estimates from daily market data (Cardmarket, TCGplayer) – no guarantee. The shop has the final price.":
         "Preise sind Schätzwerte aus täglichen Marktdaten (Cardmarket, TCGplayer) – ohne Gewähr. Den endgültigen Preis nennt der Shop.",
     "Shop links come from Scryfall and may carry Scryfall's partner code. Bent°Corner earns nothing from them.":
@@ -3733,7 +3749,7 @@ TEXTS.update({  # „Mit Freunden geteilt“ im Orbit (lead/legal 06.11.2026, ui
     'all cards and counts · per game, while it is open': 'alle Karten und Anzahlen · je Spiel, wenn es offen ist',
     'You can change it any time here.': 'Du kannst es jederzeit hier ändern.',
     'No friends yet – add a friend by ID in the friends menu.': 'Noch keine Freunde – füge im Freunde-Menü einen Freund per ID hinzu.',
-    'Friends only exist in Full Orbit – until then everything stays on this computer.': 'Freunde gibt es erst im Ganzen Orbit – bis dahin bleibt alles auf diesem Computer.',
+    'Friends only exist in Full Orbit – until then you share nothing.': 'Freunde gibt es erst im Ganzen Orbit – bis dahin teilst du nichts.',
     'Name and card back – part of the friendship, every friend sees them': 'Name und Kartenrücken – gehören zur Freundschaft, jeder Freund sieht sie',
     "We ask your friend's app to delete your shared data; they get no new data.": 'Wir bitten die App deines Freundes, deine geteilten Daten zu löschen; neue Daten bekommt er nicht mehr.',
     'FRIENDS · WHO GETS SOMETHING': 'FREUNDE · WER BEKOMMT ETWAS',
@@ -3795,6 +3811,15 @@ TEXTS.update({  # first start: collections already on this PC (performance 06.11
     'The mini game is now called “Scalper Invasion” and also runs during setup – for example while the card data is loading.':
         'Das Minispiel heißt jetzt „Scalper Invasion“ und läuft auch in der Einrichtung – zum Beispiel, während die Kartendaten laden.',
     'Wishlist cards while scanning – and an easier start': 'Wunschkarten beim Scannen und ein einfacherer Start',
+    'Magic euro prices now come from Scryfall, with our own euro curve from Near Orbit on. Pokémon prices come only from the daily price file, Yu-Gi-Oh! euro prices are converted (≈).':
+        'Magic-Euro-Preise kommen jetzt von Scryfall, mit eigener Euro-Kurve ab Nahem Orbit. Pokémon nur noch aus der täglichen Preisdatei, Yu-Gi-Oh!-Euro umgerechnet (≈).',
+    'In Core, Bent°Corner no longer fetches prices or exchange rates while scanning. Commander Spellbook and EDHTop16 are only available from Near Orbit on, with their own switch.':
+        'Im Kern holt Bent°Corner beim Scannen keine Preise und keine Kurse mehr. Commander Spellbook und EDHTop16 gibt es erst ab Nahem Orbit, mit eigenem Schalter.',
+    'Deck and list tiles show the whole card with the artist and © line.':
+        'Deck- und Listen-Kacheln zeigen die ganze Karte mit Künstler- und ©-Zeile.',
+    'If we switch off a game or its images, Bent°Corner no longer loads them. Once switched back on, everything is there again.':
+        'Schalten wir ein Spiel oder seine Bilder ab, lädt Bent°Corner sie nicht mehr. Nach dem Wiedereinschalten ist alles wieder da.',
+    'Fewer requests, cleaner price sources': 'Weniger Abrufe, klarere Preisquellen',
     "Point your phone's camera at the turning sphere – or type the code below.": 'Halte die Kamera deines Handys auf die drehende Kugel – oder tippe den Code darunter ein.',
     "The test server didn't accept the access code.": 'Der Testserver hat den Zugangscode nicht angenommen.',
     'The online backup is empty.': 'Die Online-Sicherung ist leer.',
@@ -4377,8 +4402,8 @@ TEXTS.update({  # Review 0.9.7, niedrige Funde (lead 10.11.)
 })
 
 TEXTS.update({  # Review H2-8 am PC (lead 10.11.)
-    "This closing ticket doesn't match your last offer – it's waiting under Orbit → Trade offers.":
-        "Dieses Abschluss-Ticket passt nicht zu deinem letzten Angebot – es liegt unter Orbit → Tauschangebote.",
+    "This closing ticket doesn't match your last offer – it's waiting under Lists & Orbit → Trade offers.":
+        "Dieses Abschluss-Ticket passt nicht zu deinem letzten Angebot – es liegt unter Listen & Orbit → Tauschangebote.",
 })
 
 TEXTS.update({  # leaner setup 0.9.8 (lead 13.11., library) – one sentence per step; consent texts via Gordon to legal
@@ -4410,4 +4435,16 @@ TEXTS.update({  # leaner setup 0.9.8 (lead 13.11., library) – one sentence per
     "Sound": "Ton",
     "Volume of the scan sounds – wheel: louder/quieter": "Lautstärke der Scan-Töne – Mausrad: lauter/leiser",
     "Scan sounds are off – click: volume": "Scan-Töne sind aus – Klick: Lautstärke",
+})
+TEXTS.update({  # „≈" on converted euro prices (legal 14.11.2026, word for word; library)
+    "converted from the TCGplayer US price (ECB rate of {date})":
+        "umgerechnet aus dem US-Preis von TCGplayer (Kurs EZB vom {date})",
+    "converted from the TCGplayer US price": "umgerechnet aus dem US-Preis von TCGplayer",
+    "1 card converted from dollars": "1 Karte aus Dollar umgerechnet",
+    "Price in €": "Preis in €",   # a converted value is no Cardmarket price (legal 14.11., lead)
+})
+RULES += [(r"(\d+) cards converted from dollars", r"\1 Karten aus Dollar umgerechnet")]
+TEXTS.update({  # the tab "Orbit" is now "Listen | Orbit" – two lines like "Logs | Statistik" (Oliver via Gordon/lead 14.11.2026)
+    "Lists\nOrbit": "Listen\nOrbit",
+    "Lists & Orbit": "Listen & Orbit",
 })

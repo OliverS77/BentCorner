@@ -77,7 +77,13 @@ ListView {
             text: modelData.price
             color: T.muted; font.family: T.font; font.pixelSize: 11
         }
-        HoverHandler { id: h; cursorShape: Qt.PointingHandCursor }
+        HoverHandler { id: h; cursorShape: Qt.PointingHandCursor
+            onHoveredChanged: {   // „≈": the legal text (legal 14.11.2026) – the whole tile is the hover target
+                if (!(modelData.priceTip || "")) return
+                if (!hovered) { shell.tip("", 0, 0); return }
+                var p = parent.mapToItem(null, parent.width / 2, parent.height)
+                shell.tip(modelData.priceTip, p.x, p.y)
+            } }
         TapHandler { onTapped: s.picked(modelData.id) }
     }
 }

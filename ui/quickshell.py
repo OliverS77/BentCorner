@@ -364,6 +364,16 @@ class Shell(QtCore.QObject):
         return tr(s)
 
     @QtCore.Slot(str, result=str)
+    def approxTip(self, link):
+        """A hovered link in a rich-text price line: "approx:<rate day>" (librarycore.approx_link) -> the legal text
+        on the „≈" (legal 14.11.2026); "" for any other link."""
+        i = (link or "").find("approx:")
+        if i < 0:
+            return ""
+        from cards import currency
+        return currency.approx_tip(link[i + 7:].split("|")[0] or None)
+
+    @QtCore.Slot(str, result=str)
     def pageTitle(self, key):
         from app import NAV_ITEMS
         return tr(dict(NAV_ITEMS).get(key, key)).replace("\n", " & ")   # stacked tab names in one line

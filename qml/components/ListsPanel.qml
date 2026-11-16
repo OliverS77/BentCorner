@@ -306,7 +306,7 @@ Rectangle {
                             sourceComponent: Row {
                                 spacing: 2
                                 Btn {   // open in Trade for editing
-                                    width: 30; height: 26; compact: true; text: "→"; tip: shell.text("Edit in Orbit")
+                                    width: 30; height: 26; compact: true; text: "→"; tip: shell.text("Edit under Lists & Orbit")
                                     onClicked: p.lib.editList(row.modelData.kind, row.modelData.id)
                                 }
                                 Btn {   // menu

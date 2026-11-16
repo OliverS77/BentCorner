@@ -14,11 +14,18 @@ from collection import sessions
 from collection.collection import lang_short
 from scanner import hybrid
 from scanner.common import BASE
-from scanner.core import has_packs, pack_total
+from scanner.core import entries_est, entry_est, has_packs, pack_total, session_est
 from system.i18n import tr
 from ui import qstate, scanlook
 from ui.librarycore import run_async
 from ui.scanlook import TIER_COLOR, eur, money, rarity_text, signed, tier
+
+
+def _card_est(card):
+    """Is a card's euro price converted from dollars? (its print in the card database – „≈", legal 14.11.2026)"""
+    from cards import currency
+    from collection.collection import scryfall_id
+    return currency.estimated(scryfall_id(str((card or {}).get("id") or "")))
 
 
 class CardPanel(QtCore.QObject):
@@ -437,9 +444,10 @@ class CardPanel(QtCore.QObject):
 
     @staticmethod
     def price_text(card):
+        est = _card_est(card)   # „≈": converted from dollars (legal 14.11.2026)
         if card["eur"] is not None:
-            return eur(card["eur"])
-        return f"{eur(card['eur_foil'])} (Foil)" if card.get("eur_foil") is not None else tr("no price")
+            return eur(card["eur"], est)
+        return f"{eur(card['eur_foil'], est)} (Foil)" if card.get("eur_foil") is not None else tr("no price")
 
     def row_text(self, card, online):
         """Two lines of a result row: name, below it what tells the prints apart – "BASE3 · Fossil · 1999 · #43/62 ·
@@ -613,10 +621,11 @@ class CardPanel(QtCore.QObject):
             return
         from cards import finishes
         opts = finishes.options(c)
-        n = tr("–") if c["eur"] is None else eur(c["eur"])
-        f = "–" if c.get("eur_foil") is None else eur(c["eur_foil"])
+        est = _card_est(c)   # „≈": converted from dollars (legal 14.11.2026)
+        n = tr("–") if c["eur"] is None else eur(c["eur"], est)
+        f = "–" if c.get("eur_foil") is None else eur(c["eur_foil"], est)
         active = c.get("eur_foil") if self.foil else c["eur"]
-        big = tr("no price") if active is None else eur(active)
+        big = tr("no price") if active is None else eur(active, est)
         base = next((o["label"] for o in opts if not o["foil"]), None)
         shiny = [o["label"] for o in opts if o["foil"]]   # share the foil price (Holo, Reverse Holo, pattern …)
         parts = ([f"{tr(base)} {n}"] if base else []) + ([f"{' / '.join(tr(x) for x in shiny[:2])} {f}"] if shiny else [])
@@ -716,17 +725,18 @@ class StatsPanel(qstate.Panel):
         packs = [pk for pk in cur["packs"] if pk["cards"]]
         cards = [e for pk in packs for e in pk["cards"]]
         profit = st["profit"]
+        s_est = entries_est(cards)[0]   # „≈" on this log's sums (legal 14.11.2026)
         self.s_tiles.set(items=[
-            (tr("Value"), eur(st["total"]), scanlook.INK), (tr("Spent"), money(st["paid"]) if st["paid"] else tr("–"), scanlook.MUTED),
-            (tr("Balance"), tr("–") if profit is None else signed(profit),
+            (tr("Value"), eur(st["total"], s_est), scanlook.INK), (tr("Spent"), money(st["paid"]) if st["paid"] else tr("–"), scanlook.MUTED),
+            (tr("Balance"), tr("–") if profit is None else signed(profit, est=s_est),
              scanlook.MUTED if profit is None else self._profit_color(profit))]
-            + ([(tr("Ø per pack"), eur(st["avg_pack"]), scanlook.CYAN), (tr("Packs"), str(st["packs"]), scanlook.INK)]
+            + ([(tr("Ø per pack"), eur(st["avg_pack"], s_est), scanlook.CYAN), (tr("Packs"), str(st["packs"]), scanlook.INK)]
                if self.s_has_packs else [])
             + [(tr("Cards"), str(st["cards"]), scanlook.INK)])
         totals = [pack_total(pk) for pk in packs] if self.s_has_packs else []   # scanning cards: no pack by pack
         lines = []
         if totals:
-            lines.append((st["avg_pack"], scanlook.CYAN, f"Ø {eur(st['avg_pack'])}"))
+            lines.append((st["avg_pack"], scanlook.CYAN, f"Ø {eur(st['avg_pack'], s_est)}"))
         n_paid = int(info.get("packs_planned") or 0) or len(packs)
         if st["paid"] and n_paid:
             lines.append((st["paid"] / n_paid, QtGui.QColor("#ff6b6b"), tr(f"Cost/pack {money(st['paid'] / n_paid)}")))
@@ -748,7 +758,7 @@ class StatsPanel(qstate.Panel):
         top = sorted((e for e in cards if e["price"] is not None), key=lambda e: -e["price"])[:5]
         hit = self.ctrl.settings["hit"]
         self.s_top.set(rows=[(e["name"] + (tr(" · foil") if e["foil"] else ""), f"{e['set']} #{e['number']}",
-                              eur(e["price"]), TIER_COLOR[tier(e["price"], hit)]) for e in top])
+                              eur(e["price"], entry_est(e)), TIER_COLOR[tier(e["price"], hit)]) for e in top])
 
         # Total across all saved sessions (oldest first)
         all_s = [s for s in sessions.load_all() if s["stats"]["cards"] and sessions.counts_in_stats(s)]
@@ -762,11 +772,13 @@ class StatsPanel(qstate.Panel):
         paid = sum(s["stats"]["paid"] for s in paid_s)
         g_profit = sum(s["stats"]["total"] for s in paid_s) - paid if paid_s else None
         g_packs = [(tr("Packs"), str(n_packs), scanlook.INK)] if self.g_has_packs else []
-        g_per_pack = [(tr("Ø per pack"), eur(pk_tot / n_packs) if n_packs else tr("–"), scanlook.CYAN)] if self.g_has_packs else []
+        g_est = any(session_est(s)[0] for s in all_s)   # „≈" (legal 14.11.2026)
+        pk_est = any(session_est(s)[0] for s in pk_s)
+        g_per_pack = [(tr("Ø per pack"), eur(pk_tot / n_packs, pk_est) if n_packs else tr("–"), scanlook.CYAN)] if self.g_has_packs else []
         self.g_tiles.set(items=[(tr("Logs"), str(len(all_s)), scanlook.INK)] + g_packs + [
-            ("Gesamtwert", eur(tot), scanlook.INK),
+            ("Gesamtwert", eur(tot, g_est), scanlook.INK),
             (tr("Spent"), money(paid) if paid else tr("–"), scanlook.MUTED),
-            (tr("Balance"), tr("–") if g_profit is None else signed(g_profit),
+            (tr("Balance"), tr("–") if g_profit is None else signed(g_profit, est=g_est),
              scanlook.MUTED if g_profit is None else self._profit_color(g_profit))] + g_per_pack)
         labels = [time.strftime("%d.%m.", time.localtime(s["started"])) for s in all_s]
         self.g_sessions.set(a=[s["stats"]["total"] for s in all_s], b=[s["stats"]["paid"] for s in all_s],
@@ -787,5 +799,5 @@ class StatsPanel(qstate.Panel):
         best10 = sorted((t for t in every if t[0]["price"] is not None), key=lambda t: -t[0]["price"])[:10]
         self.g_top.set(rows=[(e["name"] + (tr(" · foil") if e["foil"] else ""),
                               f"{e['set']} #{e['number']} · {time.strftime('%d.%m.%Y', time.localtime(s['started']))}",
-                              eur(e["price"]), TIER_COLOR[tier(e["price"], hit)]) for e, s in best10])
+                              eur(e["price"], entry_est(e)), TIER_COLOR[tier(e["price"], hit)]) for e, s in best10])
         qstate._changed()

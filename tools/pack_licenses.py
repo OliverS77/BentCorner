@@ -85,7 +85,7 @@ Pokémon
 cards.sqlite – card database
   Card data from YGOPRODeck (https://ygoprodeck.com, API: https://ygoprodeck.com/api-guide/). Card images are
   self-hosted by Bent°Corner, as YGOPRODeck requires; they are not part of this file. Prices in the database:
-  Cardmarket via YGOPRODeck, TCGplayer via TCGCSV (https://tcgcsv.com) – guide values without guarantee.
+  TCGplayer via TCGCSV (https://tcgcsv.com), euros converted at the ECB rate – guide values without guarantee.
 
 fingerprints-all.npz – recognition index
   Image fingerprints computed by Bent°Corner from the card images. It contains no card images.

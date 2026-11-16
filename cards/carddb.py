@@ -65,7 +65,13 @@ def _drop_empty(path):
         pass
 
 
+_start_checked = set()
+
+
 def exists():
+    if DB_PATH not in _start_checked:   # once per database and session, before anything opens it
+        _start_checked.add(DB_PATH)
+        start_cleanup(DB_PATH)
     _drop_empty(DB_PATH)
     if DB_PATH.exists():
         if DB_PATH not in _upgrade_checked:
@@ -99,6 +105,30 @@ def _merge_extra():
 _upgrade_checked = set()
 
 
+def prepare_game(key):
+    """A data pack for a game that is NOT open arrived (pack job, background thread): take over its newer card
+    database and merge its extra data now – the later game switch then finds nothing to do (Yu-Gi-Oh! after a new
+    pack: ~5 s frozen at the switch, measured 14.11.2026). The open game keeps the old way (its database is in use).
+    -> True if the database was taken over"""
+    import games
+    from cards import packs
+    from scanner.common import DATA
+    if key == games.current().key or key not in packs.PACKS:
+        return False
+    src = packs.file_of(key, "cards.sqlite")
+    db = games.folders(key, DATA)["ref"] / "cards.sqlite"
+    if src is None or not db.exists():
+        return False   # first install: happens at the switch as before (nothing to keep)
+    done = _from_bundle(upgrade=True, src=src, db=db)
+    g = games.load(key)
+    if g.merge_extra is not None:
+        try:
+            g.merge_extra(db)
+        except Exception:  # noqa: BLE001 – the switch tries again
+            __import__("logging").getLogger("booster").exception("Merging extra card data")
+    return done
+
+
 def _bundle_src():
     import sys
     import games
@@ -125,35 +155,59 @@ def _build_of(path):
         return 0
 
 
-def _from_bundle(upgrade=False):
+_bundle_lock = threading.Lock()   # prepare_game (pack job, background) and a game switch never copy at once
+
+
+def _from_bundle(upgrade=False, src=None, db=None):
+    with _bundle_lock:   # the other one waits; then its build check finds the database already newer
+        return _from_bundle_locked(upgrade, src, db)
+
+
+def _from_bundle_locked(upgrade=False, src=None, db=None):
     """Copy the game's bundled card database (models/<game>/cards.sqlite, e.g. Pokémon – small enough to
     ship) into the data folder on first use. upgrade=True: only if the bundled one is newer
-    (meta.pk_build, see tools/build_pokemon_db.py) – then keeping the old one's prices. -> True if it is there now."""
+    (meta.pk_build, see tools/build_pokemon_db.py) – then keeping the old one's prices. -> True if it is there now.
+    src/db: another game's pack database and its target (prepare_game, in the background) – default the open game."""
     import shutil
-    src = _bundle_src()
+    own = db is None
+    src = _bundle_src() if own else src
+    db = DB_PATH if own else pathlib.Path(db)
     if src is None:
         return False
-    if upgrade and _build_of(src) <= _build_of(DB_PATH):
+    if upgrade and _build_of(src) <= _build_of(db):
         return False
     try:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = DB_PATH.with_name("cards.bundle.sqlite")
+        db.parent.mkdir(parents=True, exist_ok=True)
+        tmp = db.with_name("cards.bundle.sqlite")
         shutil.copyfile(src, tmp)
         if upgrade:   # keep the current prices of the old database
             con = sqlite3.connect(tmp)
             try:
-                con.execute("ATTACH DATABASE ? AS old", (str(DB_PATH),))
+                con.execute("ATTACH DATABASE ? AS old", (str(db),))
+                kept = "SELECT id FROM old.cards WHERE eur IS NOT NULL OR eur_foil IS NOT NULL OR usd IS NOT NULL " \
+                       "OR usd_foil IS NOT NULL"
                 con.execute("UPDATE cards SET (eur, eur_foil, usd, usd_foil) = (SELECT o.eur, o.eur_foil, o.usd, "
-                            "o.usd_foil FROM old.cards o WHERE o.id = cards.id) WHERE id IN (SELECT id FROM old.cards "
-                            "WHERE eur IS NOT NULL OR eur_foil IS NOT NULL OR usd IS NOT NULL OR usd_foil IS NOT NULL)")
+                            "o.usd_foil FROM old.cards o WHERE o.id = cards.id) WHERE id IN (" + kept + ")")
+                # the kept prices keep their mark "converted" (price_est, "≈") – the pack's mark is for its own prices
+                from games.base import ensure_price_est
+                ensure_price_est(con)
+                con.execute("DELETE FROM price_est WHERE sid IN (" + kept + ")")
+                old_cols = {r[1] for r in con.execute("PRAGMA old.table_info(price_est)")}
+                if old_cols:
+                    day = "rate_day" if "rate_day" in old_cols else "NULL"
+                    con.execute(f"INSERT OR IGNORE INTO price_est (sid, rate_day) SELECT sid, {day} FROM old.price_est "
+                                "WHERE sid IN (" + kept + ")")
                 con.commit()
                 con.execute("DETACH DATABASE old")
             finally:
                 con.close()
-        tmp.replace(DB_PATH)
-        _meta_cache.clear()
-        global _SET_CODES
-        _SET_CODES = None
+        tmp.replace(db)
+        from games.base import price_est_changed
+        price_est_changed()
+        if own:
+            _meta_cache.clear()
+            global _SET_CODES
+            _SET_CODES = None
         return True
     except (OSError, sqlite3.Error):
         log_ = __import__("logging").getLogger("booster")
@@ -399,7 +453,16 @@ def download(progress=lambda text, done, total: None, languages=True, game=None)
         con.commit()
     finally:
         con.close()
-    tmp_db.replace(db_path)
+    for attempt in range(20):   # the open database may be in use for a moment (Windows): try again for ~1 minute
+        try:
+            tmp_db.replace(db_path)
+            break
+        except PermissionError:
+            if attempt == 19:
+                raise
+            time.sleep(3)
+    _indexed.discard(db_path)
+    db_path.with_name(LANGS_PENDING).unlink(missing_ok=True)   # the new database has the languages already
     for name in ("default_cards.jsonl.gz", "all_cards.jsonl.gz"):   # only now: resumable up to here
         _drop_download(ref / name)
     return n_cards, n_langs
@@ -434,6 +497,91 @@ def _import_langs(con, progress=lambda text, done, total: None):
         con.executemany("INSERT INTO langs VALUES (?,?,?,?,?)", batch)
         n += len(batch)
     return n
+
+
+LANGS_PENDING = "cards.langs.sqlite"   # a finished copy with the new languages, waiting to replace cards.sqlite
+
+
+def _sig(path):
+    st = pathlib.Path(path).stat()
+    return f"{st.st_size}:{st.st_mtime_ns}"
+
+
+def rebuild_langs(db_path, progress=lambda text, done, total: None):
+    """New languages of the Magic pack into a COPY of the card database (background), then swap it in (swap_langs).
+    The open database never gets the big write transaction (14.11.2026: ~545,000 rows while the UI waited for the
+    lock). A copy only exists complete: built as .part, renamed only after commit + close. -> swap_langs' answer"""
+    import shutil
+    db_path = pathlib.Path(db_path)
+    part = db_path.with_name(LANGS_PENDING + ".part")
+    final = db_path.with_name(LANGS_PENDING)
+    part.unlink(missing_ok=True)
+    sig = _sig(db_path)
+    shutil.copyfile(db_path, part)
+    try:
+        con = sqlite3.connect(part)
+        try:
+            n = _import_langs(con, progress)
+            con.executemany("INSERT OR REPLACE INTO meta VALUES (?, ?)",
+                            [("langs", str(n)), ("languages", "1" if n else "0"), ("copied_from", sig)])
+            con.commit()
+        finally:
+            con.close()
+        part.replace(final)
+    except BaseException:
+        part.unlink(missing_ok=True)   # never a half copy
+        raise
+    return swap_langs(db_path)
+
+
+def swap_langs(db_path=None):
+    """Put a waiting language copy in place. -> "done", "busy" (the database is open right now – try later or at the
+    next start), "stale" (the database changed since the copy, e.g. prices: the copy is dropped – build again) or None
+    (nothing waiting)."""
+    db_path = pathlib.Path(db_path or DB_PATH)
+    final = db_path.with_name(LANGS_PENDING)
+    if not final.exists():
+        return None
+    try:
+        con = sqlite3.connect(final)
+        try:
+            row = con.execute("SELECT value FROM meta WHERE key = 'copied_from'").fetchone()
+        finally:
+            con.close()
+        if not db_path.exists() or not row or row[0] != _sig(db_path):
+            final.unlink(missing_ok=True)
+            return "stale"
+        final.replace(db_path)
+    except PermissionError:
+        return "busy"
+    except (OSError, sqlite3.Error):
+        __import__("logging").getLogger("booster").exception("Swapping in the language copy")
+        return "busy"
+    _indexed.discard(db_path)
+    _meta_cache.clear()
+    return "done"
+
+
+def start_cleanup(db_path=None):
+    """At start, before the database is opened: a build broken off (crash, closed app) leaves no .part behind, and a
+    finished copy that is still current is put in place now. -> swap_langs' answer"""
+    db_path = pathlib.Path(db_path or DB_PATH)
+    db_path.with_name(LANGS_PENDING + ".part").unlink(missing_ok=True)
+    return swap_langs(db_path)
+
+
+def index_missing(npz_path, db_path):
+    """How many cards of a Magic fingerprint index the card database doesn't know (new sets: the index came with the
+    pack, the database is the user's Scryfall download) – a hit on one of them can't be shown."""
+    import numpy as np
+    with np.load(npz_path, allow_pickle=False) as z:
+        sids = {str(i).rpartition("_")[0] for i in z["ids"]}
+    con = sqlite3.connect(pathlib.Path(db_path).as_uri() + "?mode=ro", uri=True)
+    try:
+        have = {r[0] for r in con.execute("SELECT id FROM cards")}
+    finally:
+        con.close()
+    return len(sids - have)
 
 
 def import_langs(db_path=None, progress=lambda text, done, total: None):
@@ -929,8 +1077,13 @@ def group_counts(text, expr, expr_args=(), **filters):
     card as an SQL expression on c (ui/grouping.sql_expr)."""
     with connection() as con:
         src, where, args = _base(text, filters)
-        sql = (f"SELECT {expr} AS v, COUNT(*), SUM(COALESCE(c.eur, c.eur_foil, 0)), MAX(c.set_name), MAX(c.released) "
-               f"FROM {src}" + (" WHERE " + " AND ".join(where) if where else "") + " GROUP BY v")
+        # „≈" per branch (legal 14.11.2026): any print whose euros are converted from dollars, + the newest rate day
+        from games.base import price_est_map
+        est = (", MAX(e.sid IS NOT NULL AND COALESCE(c.eur, c.eur_foil) IS NOT NULL), MAX(e.rate_day)"
+               if price_est_map() else "")
+        src = src + (" LEFT JOIN price_est e ON e.sid = c.id" if est else "")
+        sql = (f"SELECT {expr} AS v, COUNT(*), SUM(COALESCE(c.eur, c.eur_foil, 0)), MAX(c.set_name), MAX(c.released)"
+               f"{est} FROM {src}" + (" WHERE " + " AND ".join(where) if where else "") + " GROUP BY v")
         return [tuple(r) for r in con.execute(sql, list(expr_args) + args)]
 
 
@@ -949,17 +1102,32 @@ _FRONT = "lower(CASE WHEN instr(name, ' // ') > 0 THEN substr(name, 1, instr(nam
 _indexed = set()
 
 
+_index_failed = {}   # database -> time.monotonic() of the last failed try
+INDEX_RETRY = 60.0   # s between two tries after a failure (another writer held the database, 14.11.2026)
+
+
 def _name_indexes(con):
-    """Indexes for case-insensitive and front-face name lookup (once, ~1 s)."""
-    if DB_PATH in _indexed:
+    """Indexes for case-insensitive and front-face name lookup (once, ~1 s). Counts as done only when they exist –
+    after a failure (the database was busy: a background writer) it is tried again a minute later, not never again in
+    this session; it never waits long for a writer (the caller is often the UI thread)."""
+    if DB_PATH in _indexed or time.monotonic() - _index_failed.get(DB_PATH, -INDEX_RETRY) < INDEX_RETRY:
         return
     try:
-        con.execute("CREATE INDEX IF NOT EXISTS cards_lname ON cards(lower(name))")
-        con.execute(f"CREATE INDEX IF NOT EXISTS cards_front ON cards({_FRONT})")
-        con.commit()
+        con.execute("PRAGMA busy_timeout = 250")
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS cards_lname ON cards(lower(name))")
+            con.execute(f"CREATE INDEX IF NOT EXISTS cards_front ON cards({_FRONT})")
+            con.commit()
+        finally:
+            con.execute("PRAGMA busy_timeout = 5000")   # sqlite3's default again
         _indexed.add(DB_PATH)
-    except sqlite3.Error:  # e.g. read-only: then just slower
-        _indexed.add(DB_PATH)
+        _index_failed.pop(DB_PATH, None)
+    except sqlite3.Error as e:
+        if "readonly" in str(e).lower():   # read-only: it never works – then just slower
+            _indexed.add(DB_PATH)
+        else:
+            _index_failed[DB_PATH] = time.monotonic()
+            __import__("logging").getLogger("booster").info("Name indexes not made yet (%s) – later", e)
 
 
 # sets whose cards aren't really playable (Magic, from Scryfall's set types): gold border (World Championship decks),

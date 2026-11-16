@@ -94,7 +94,7 @@ class DecksBackend(QtCore.QObject):
             out.append({"i": i, "kind": "deck", "id": deck["id"], "name": deck["name"], "built": bool(deck.get("built")),
                         "fmt": dict(decks.FORMATS).get(deck.get("format"), deck.get("format") or ""),
                         "count": f"{info.get('count', 0)}" + (f" / {size}" if size else ""),
-                        "price": eur(info.get("price") or 0), "identity": info.get("identity") or "",
+                        "price": eur(info.get("price") or 0, info.get("price_est")), "identity": info.get("identity") or "",
                         "bracket": info.get("bracket") or 0, "art": self._art(info.get("art_row")),
                         "artist": (info.get("art_row") or {}).get("artist") or "",
                         "folder": deck.get("folder") or ""})
