@@ -32,9 +32,14 @@ Item {
     function cancel() { if (!open) return; open = false; closedAt = Date.now(); if (field) field.dropFocus(); canceled() }
     function justClosed() { return Date.now() - closedAt < 400 }
     function accept() {
-        var t = field ? field.text.trim() : ""
+        // the field first, then close: with fill the content is gone the moment open turns false – a call on the
+        // field after that broke off before accepted() and nothing was created (Lists & Orbit tile, 17.11.2026)
+        var f = field
+        var t = f ? f.text.trim() : ""
         if (t === "") return
-        open = false; field.dropFocus(); accepted(mode, ident, t)
+        f.dropFocus()
+        open = false
+        accepted(mode, ident, t)
     }
 
     width: parent ? parent.width : 300

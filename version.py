@@ -12,12 +12,15 @@ import re
 # „shippen“ sagt, wird daraus die nächste Version mit drei Stellen (release_of: 0.9.9) gebaut und mit
 # tools/publish_release.py veröffentlicht (das verweigert vierstellige). Danach geht es mit <Ship>.100 weiter.
 # Die nächste freie Nummer für PC und Web: docs/VERSIONEN.md.
-VERSION = "0.9.10"
+VERSION = "0.9.11"
 
 
 # „Was ist neu?“ nach einem Update: je geshippter Version höchstens 5 kurze Punkte (mehr liest keiner) – englisch,
 # Deutsch in locales/de.py. Alles Weitere bleibt unter Einstellungen → Updates.
 HIGHLIGHTS = {
+    "0.9.11": [   # hotfix (Oliver 18.11. via Gordon/lead): new lists/binders could not be created
+        'New lists and binders can be created and renamed again in the Lists & Orbit tab.',
+    ],
     "0.9.10": [   # lead 16.11. from the patch-notes collection; legal 16.11. (point 4 in legal's wording)
         'Magic euro prices now come from Scryfall, with our own euro curve from Near Orbit on. Pokémon prices come only from the daily price file, Yu-Gi-Oh! euro prices are converted (≈).',
         'In Core, Bent°Corner no longer fetches prices or exchange rates while scanning. Commander Spellbook and EDHTop16 are only available from Near Orbit on, with their own switch.',

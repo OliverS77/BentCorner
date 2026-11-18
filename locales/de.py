@@ -4134,6 +4134,11 @@ TEXTS.update({  # Lampen-Tooltip mit Online-Sicherung (legal 07.11.)
         'Fällt der Computer aus, holst du deine Daten aus der Online-Sicherung zurück – über ein anderes gekoppeltes Gerät oder mit deinem Schutz-Code; eine Sicherungsdatei ist ein zweiter Weg zurück. Die Lampe geht dann aus.',
 })
 
+TEXTS.update({  # „Was ist neu?“ – Hotfix 0.9.11 (Oliver 18.11.)
+    'New lists and binders can be created and renamed again in the Lists & Orbit tab.':
+        'Neue Listen und Binder lassen sich im Tab Listen & Orbit wieder anlegen und umbenennen.',
+})
+
 TEXTS.update({  # „Was ist neu?“ – Hotfix 0.9.8 (Oliver/Gordon 13.11.)
     "Fixes a bug that kept the online backup from starting on the PC.":
         "Behebt einen Fehler, durch den die Online-Sicherung am PC nicht startete.",

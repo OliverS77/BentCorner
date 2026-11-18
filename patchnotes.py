@@ -1,5 +1,6 @@
 """Patch-Historie – erzeugt von version.py (nicht von Hand ändern)."""
 NOTES = [
+    ('0.9.11', '2026-11-18', 'Hotfix – „Neue Listen und Binder lassen sich im Tab Listen & Orbit wieder anlegen und umbenennen.“ (Listen-Fehler InlineAsk; Oliver 18.11. über Gordon/lead)'),
     ('0.9.10', '2026-11-16', 'Magic-Euro-Preise kommen jetzt von Scryfall, mit eigener Euro-Kurve ab Nahem Orbit. Pokémon nur noch aus der täglichen Preisdatei, Yu-Gi-Oh!-Euro umgerechnet (≈). Im Kern holt Bent°Corner beim Scannen keine Preise und keine Kurse mehr. Commander Spellbook und EDHTop16 gibt es erst ab Nahem Orbit, mit eigenem Schalter. Deck- und Listen-Kacheln zeigen die ganze Karte mit Künstler- und ©-Zeile. Schalten wir ein Spiel oder seine Bilder ab, lädt Bent°Corner sie nicht mehr. Nach dem Wiedereinschalten ist alles wieder da.'),
     ('0.9.9.126', '2026-11-16', 'Profil „Wer scannt?“ sagt richtig, wann andere Namen und Kartenrückseite sehen.'),
     ('0.9.9.123', '2026-11-16', 'Die Kartenansicht fragt Scryfall nur noch bei Magic-Karten – bei anderen Spielen geht dorthin nichts.'),
